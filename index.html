@@ -1133,6 +1133,7 @@
         let recordedChunks = [];
         let audioPieces = {};
         let currentSessionPieces = {}; // Only current session recordings
+        let microphonePermissionGranted = false; // Track if microphone permission is granted
         let currentView = 'landing'; // 'landing', 'lesson', 'summary'
         let sessionActive = false;
         let sharedExercises = []; // For storing exercises from shared lessons
@@ -1353,6 +1354,72 @@
                 }
             } catch (error) {
                 console.error('Error enumerating audio devices:', error);
+            }
+        }
+
+        // Check and request microphone permission
+        async function ensureMicrophonePermission() {
+            if (microphonePermissionGranted && audioStream && audioStream.active) {
+                return audioStream; // Already have permission and active stream
+            }
+
+            try {
+                // Check if we have permission without requesting it first
+                if (navigator.permissions) {
+                    const permission = await navigator.permissions.query({ name: 'microphone' });
+                    if (permission.state === 'denied') {
+                        throw new Error('Microphone permission denied');
+                    }
+                }
+
+                // Detect mobile device for constraints
+                const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                
+                // Check if HTTPS is required (only for mobile browsers)
+                const isLocalHost = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '::1';
+                if (isMobile && location.protocol !== 'https:' && !isLocalHost) {
+                    throw new Error('Audio recording requires HTTPS on mobile devices. Please access this page via HTTPS.');
+                }
+
+                // Request microphone access
+                const constraints = {
+                    audio: isMobile ? {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    } : {
+                        deviceId: settings.microphoneId ? { exact: settings.microphoneId } : undefined,
+                        sampleRate: settings.sampleRate,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                };
+
+                // Don't close existing stream - keep it alive for permission caching
+
+                console.log('🔧 Audio constraints:', constraints);
+                
+                try {
+                    audioStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    console.log('✅ Got audio stream:', audioStream);
+                } catch (getUserMediaError) {
+                    console.warn('❌ Enhanced constraints failed, trying basic audio...', getUserMediaError);
+                    // Fallback to most basic audio constraints
+                    const basicConstraints = { audio: true };
+                    audioStream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+                    console.log('✅ Got audio stream with basic constraints:', audioStream);
+                }
+
+                microphonePermissionGranted = true;
+                console.log('✅ Microphone permission granted and cached');
+                return audioStream;
+
+            } catch (error) {
+                microphonePermissionGranted = false;
+                console.error('❌ Failed to get microphone permission:', error);
+                throw error;
             }
         }
 
@@ -1720,50 +1787,12 @@
             try {
                 console.log('🎤 Starting recording process...');
                 
-                // Mobile-friendly audio constraints
+                // Check device type for mobile-specific handling
                 const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 console.log(`📱 Device detected: ${isMobile ? 'Mobile' : 'Desktop'}`);
                 
-                // Check if HTTPS is required (only for mobile browsers)
-                const isLocalHost = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '::1';
-                if (isMobile && location.protocol !== 'https:' && !isLocalHost) {
-                    throw new Error('Audio recording requires HTTPS on mobile devices. Please access this page via HTTPS.');
-                }
-                
-                const constraints = {
-                    audio: isMobile ? {
-                        // Simplified constraints for mobile
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    } : {
-                        // Full constraints for desktop
-                        deviceId: settings.microphoneId ? { exact: settings.microphoneId } : undefined,
-                        sampleRate: settings.sampleRate,
-                        channelCount: 1,
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    }
-                };
-                
-                console.log('🔧 Audio constraints:', constraints);
-                console.log('🌐 Browser info:', {
-                    userAgent: navigator.userAgent,
-                    protocol: location.protocol,
-                    hasGetUserMedia: !!navigator.mediaDevices?.getUserMedia
-                });
-
-                try {
-                    audioStream = await navigator.mediaDevices.getUserMedia(constraints);
-                    console.log('✅ Got audio stream:', audioStream);
-                } catch (getUserMediaError) {
-                    console.warn('❌ Enhanced constraints failed, trying basic audio...', getUserMediaError);
-                    // Fallback to most basic audio constraints
-                    const basicConstraints = { audio: true };
-                    audioStream = await navigator.mediaDevices.getUserMedia(basicConstraints);
-                    console.log('✅ Got audio stream with basic constraints:', audioStream);
-                }
+                // Use cached permission and stream
+                audioStream = await ensureMicrophonePermission();
                 
                 // Use mobile-compatible MediaRecorder options
                 let mediaRecorderOptions = {};
@@ -1841,7 +1870,7 @@
         function stopRecording() {
             if (mediaRecorder && isRecording) {
                 mediaRecorder.stop();
-                audioStream.getTracks().forEach(track => track.stop());
+                // Don't stop the audio stream tracks - keep them alive for permission caching
                 isRecording = false;
                 updateRecordingUI();
             }
@@ -2372,7 +2401,7 @@
                     };
 
                     recorder.onstop = () => {
-                        stream.getTracks().forEach(track => track.stop());
+                        // Don't stop tracks in test mode to avoid permission re-requests
                         const audioBlob = new Blob(chunks, { type: 'audio/wav' });
                         const url = URL.createObjectURL(audioBlob);
                         
@@ -3039,6 +3068,20 @@ USING (true);
                 }
             }
         }
+
+        // Cleanup function to properly close audio stream when leaving page
+        function cleanupAudioResources() {
+            if (audioStream) {
+                console.log('🧹 Cleaning up audio resources...');
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+                microphonePermissionGranted = false;
+            }
+        }
+
+        // Add cleanup listeners
+        window.addEventListener('beforeunload', cleanupAudioResources);
+        window.addEventListener('pagehide', cleanupAudioResources);
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', async () => {
