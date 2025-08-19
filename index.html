@@ -1002,9 +1002,6 @@
         <!-- Summary Page -->
         <div class="summary-page" id="summaryPage">
             <div class="header-buttons">
-                <button class="header-btn" onclick="hideSummary()" title="Back to Lessons">⬅</button>
-                <button class="header-btn export-btn" onclick="exportLesson()" id="exportBtnSummary" title="Export All">📦</button>
-                <button class="header-btn share-btn" onclick="shareLesson()" id="shareBtnSummary" title="Share Lesson">🔗</button>
                 <button class="header-btn settings-btn" onclick="openSettings()" title="Settings">⚙</button>
             </div>
 
@@ -1028,27 +1025,30 @@
                 </div>
             </div>
 
+            <div class="summary-controls">
+                <button class="back-to-lessons-btn" onclick="hideSummary()">
+                    ← Back to Lesson
+                </button>
+                <button class="download-all-btn" onclick="downloadAllPieces()" id="downloadAllBtn">
+                    📥 Download All
+                </button>
+                <button class="btn danger" onclick="endSession()" id="endSessionBtnSummary">
+                    🚪 End Lesson
+                </button>
+                <button class="btn" onclick="shareLesson()" id="shareBtnSummary">
+                    🔗 Share
+                </button>
+            </div>
+
             <div class="share-result" id="shareResult" style="display: none;">
                 <div class="share-result-content">
-                    <h3>🔗 Lesson Shared Successfully!</h3>
-                    <p>Your lesson has been uploaded and is ready to share.</p>
+                    <h3>🔗 Lesson Uploaded Successfully!</h3>
+                    <p>Copy the link below to share with your friends!</p>
                     <div class="share-link-container">
                         <input type="text" id="shareLink" class="share-link-input" readonly>
                         <button class="btn" onclick="copyShareLink()">📋 Copy</button>
                     </div>
                 </div>
-            </div>
-
-            <div class="summary-controls">
-                <button class="download-all-btn" onclick="downloadAllPieces()" id="downloadAllBtn">
-                    📥 Download Session
-                </button>
-                <button class="back-to-lessons-btn" onclick="hideSummary()">
-                    ← Back to Lessons
-                </button>
-                <button class="btn danger" onclick="endSession()" id="endSessionBtnSummary">
-                    🚪 End Session
-                </button>
             </div>
 
             <div id="summaryContent">
@@ -2474,12 +2474,14 @@
 
         // Export lesson functionality
         async function exportLesson() {
-            const exportBtn = document.getElementById('exportBtn');
-            const originalText = exportBtn.innerHTML;
+            const exportBtn = document.getElementById('downloadAllBtn');
+            const originalText = exportBtn ? exportBtn.innerHTML : null;
             
             try {
-                exportBtn.disabled = true;
-                exportBtn.innerHTML = '⏳';
+                if (exportBtn) {
+                    exportBtn.disabled = true;
+                    exportBtn.innerHTML = '⏳';
+                }
                 showStatus('Preparing lesson export...', 'processing');
                 
                 // Collect all audio pieces from current session
@@ -2557,14 +2559,16 @@
                 console.error('Error exporting lesson:', error);
                 showStatus('Error exporting lesson', 'error');
             } finally {
-                exportBtn.disabled = false;
-                exportBtn.innerHTML = originalText;
+                if (exportBtn && originalText !== null) {
+                    exportBtn.disabled = false;
+                    exportBtn.innerHTML = originalText;
+                }
             }
         }
         
         // Update export button state based on available recordings
         function updateExportButton() {
-            const exportBtn = document.getElementById('exportBtn');
+            const exportBtn = document.getElementById('downloadAllBtn');
             if (exportBtn) {
                 const totalPieces = Object.values(currentSessionPieces).reduce((total, pieces) => total + pieces.length, 0);
                 exportBtn.disabled = totalPieces === 0;
@@ -2817,6 +2821,12 @@ USING (true);
             
             console.log('🔗 Loading shared lesson:', lessonId);
             showStatus('Loading shared lesson...', 'processing');
+            
+            // Hide recording controls when in lesson review mode
+            const recordingSection = document.querySelector('.recording-section');
+            if (recordingSection) {
+                recordingSection.style.display = 'none';
+            }
             
             try {
                 const supabaseClient = initSupabase();
