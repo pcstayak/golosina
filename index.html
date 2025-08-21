@@ -50,8 +50,8 @@
                     <button class="nav-btn" onclick="nextExercise()" id="nextBtn">
                         Next ➡
                     </button>
-                    <button class="nav-btn" onclick="showSummary()" id="showSummaryBtn" style="display: none;">
-                        🚪 Summary
+                    <button class="nav-btn" onclick="showRecap()" id="showRecapBtn" style="display: none;">
+                        🚪 Recap
                     </button>
                 </div>
 
@@ -81,29 +81,29 @@
             </div>
         </div>
 
-        <!-- Summary Page -->
-        <div class="summary-page" id="summaryPage">
+        <!-- Recap Page -->
+        <div class="recap-page" id="recapPage">
             <div class="header-buttons">
                 <button class="header-btn settings-btn" onclick="openSettings()" title="Settings">⚙</button>
             </div>
 
-            <div class="summary-header">
-                <h1>Lesson Summary</h1>
+            <div class="recap-header">
+                <h1>Lesson Recap</h1>
                 <p>Review all your recorded vocal exercises</p>
             </div>
 
 
-            <div class="summary-controls">
-                <button class="back-to-lessons-btn" id="backToLessonBtn" onclick="hideSummary()">
+            <div class="recap-controls">
+                <button class="back-to-lessons-btn" id="backToLessonBtn" onclick="hideRecap()">
                     ← Back to Lesson
                 </button>
                 <button class="download-all-btn" onclick="downloadAllPieces()" id="downloadAllBtn">
                     📥 Download All
                 </button>
-                <button class="btn danger" onclick="endSession()" id="endSessionBtnSummary">
+                <button class="btn danger" onclick="endSession()" id="endSessionBtnRecap">
                     🚪 End Lesson
                 </button>
-                <button class="btn" onclick="shareLesson()" id="shareBtnSummary">
+                <button class="btn" onclick="shareLesson()" id="shareBtnRecap">
                     🔗 Share
                 </button>
             </div>
@@ -119,7 +119,7 @@
                 </div>
             </div>
 
-            <div id="summaryContent">
+            <div id="recapContent">
                 <!-- Dynamic lesson sections will be inserted here -->
             </div>
         </div>

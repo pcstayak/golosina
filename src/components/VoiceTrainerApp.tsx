@@ -3,7 +3,7 @@
 import { useApp } from '@/contexts/AppContext';
 import LandingPage from './pages/LandingPage';
 import LessonPage from './pages/LessonPage';
-import SummaryPage from './pages/SummaryPage';
+import RecapPage from './pages/RecapPage';
 import StatusNotification from './ui/StatusNotification';
 import { useEffect } from 'react';
 import { usePersistence } from '@/hooks/usePersistence';
@@ -23,8 +23,8 @@ export default function VoiceTrainerApp() {
         return <LandingPage />;
       case 'lesson':
         return <LessonPage />;
-      case 'summary':
-        return <SummaryPage />;
+      case 'recap':
+        return <RecapPage />;
       default:
         return <LandingPage />;
     }
