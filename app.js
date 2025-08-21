@@ -149,14 +149,7 @@
             return exerciseSets[currentSetIndex];
         }
 
-        // Initialize application
-        document.addEventListener('DOMContentLoaded', function() {
-            loadSettings();
-            initializeAudioDevices();
-            showLanding();
-            updateExportButton();
-            setupEventListeners();
-        });
+        // This DOMContentLoaded is handled by the one at the end of the file
 
         // Settings management
         function loadSettings() {
@@ -452,47 +445,83 @@
         }
 
         function updateSummaryPage() {
-            updateSummaryStats();
             renderLessonSections();
             updateDownloadAllButton();
+            loadAllCommentIndicators();
+            updateSummaryControls();
         }
 
-        function updateSummaryStats() {
-            const currentSet = getCurrentSet();
-            if (!currentSet) return;
-            
-            let lessonsWithRecordings = 0;
-            let totalRecordings = 0;
-            
-            currentSet.exercises.forEach(exercise => {
-                const exerciseKey = `exercise_${exercise.id}`;
-                const count = (currentSessionPieces[exerciseKey] || []).length;
-                if (count > 0) {
-                    lessonsWithRecordings++;
-                    totalRecordings += count;
-                }
-            });
-            
-            document.getElementById('totalLessons').textContent = lessonsWithRecordings;
-            document.getElementById('totalRecordings').textContent = totalRecordings;
-            document.getElementById('totalDuration').textContent = '0:00'; // Placeholder for duration calculation
-        }
 
         function renderLessonSections() {
             const summaryContent = document.getElementById('summaryContent');
             summaryContent.innerHTML = '';
 
-            // Show only current session from selected set
-            const currentSet = getCurrentSet();
-            if (!currentSet) return;
+            if (isSharedSession) {
+                // Handle shared session display
+                const setSection = document.createElement('div');
+                setSection.innerHTML = `<h2 style="color: #4a90e2; margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #4a90e2;">Shared Lesson</h2>`;
+                summaryContent.appendChild(setSection);
 
-            const setSection = document.createElement('div');
-            setSection.innerHTML = `<h2 style="color: ${currentSet.color}; margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid ${currentSet.color};">${currentSet.name} - Current Session</h2>`;
-            summaryContent.appendChild(setSection);
+                // Iterate through shared exercises
+                Object.keys(currentSessionPieces).forEach(exerciseKey => {
+                    const pieces = currentSessionPieces[exerciseKey] || [];
+                    const exerciseName = pieces[0]?.exerciseName || 'Unknown Exercise';
+                    const exerciseId = exerciseKey.replace('shared_', '');
+                    
+                    const lessonSection = document.createElement('div');
+                    lessonSection.className = 'lesson-section';
+                    lessonSection.innerHTML = `
+                        <div class="lesson-header" onclick="toggleLessonSection('${exerciseId}')" style="background: #4a90e2;">
+                            <div>
+                                <h3 class="lesson-title">${exerciseName}</h3>
+                            </div>
+                            <div class="lesson-meta">
+                                <span>${pieces.length} recordings</span>
+                                <span class="collapse-icon" id="icon-${exerciseId}">▼</span>
+                            </div>
+                        </div>
+                        <div class="lesson-content" id="content-${exerciseId}">
+                            <div class="lesson-pieces" id="pieces-${exerciseId}">
+                                ${pieces.length === 0 ? 
+                                    '<div class="empty-lesson">No recordings for this lesson yet.</div>' :
+                                    pieces.map((piece, index) => `
+                                        <div class="summary-piece">
+                                            <div class="piece-info">
+                                                <div class="piece-name-summary">${piece.name}</div>
+                                                <div class="piece-timestamp">Shared Recording ${index + 1}</div>
+                                            </div>
+                                            <div class="piece-controls">
+                                                <button class="piece-btn play-btn" onclick="playSharedAudioPiece('${index}', '${exerciseKey}')" title="Play">▶</button>
+                                                <button class="piece-btn download-btn" onclick="downloadSharedPiece('${index}', '${exerciseKey}')" title="Download">📥</button>
+                                                <button class="piece-btn comment-btn" id="shared-comment-btn-${index}-${exerciseKey}" onclick="toggleSharedComment('${index}', '${exerciseKey}')" title="Add Comment">💬</button>
+                                            </div>
+                                            <div class="piece-comment-section" id="shared-comment-${index}-${exerciseKey}" style="display: none;">
+                                                <textarea class="comment-input" id="shared-comment-input-${index}-${exerciseKey}" placeholder="Add your notes or comments about this recording..." rows="3"></textarea>
+                                                <div class="comment-buttons">
+                                                    <button class="comment-save-btn" onclick="saveSharedComment('${index}', '${exerciseKey}')">Save</button>
+                                                    <button class="comment-cancel-btn" onclick="toggleSharedComment('${index}', '${exerciseKey}')">Cancel</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')
+                                }
+                            </div>
+                        </div>
+                    `;
+                    summaryContent.appendChild(lessonSection);
+                });
+            } else {
+                // Show only current session from selected set
+                const currentSet = getCurrentSet();
+                if (!currentSet) return;
 
-            currentSet.exercises.forEach(exercise => {
-                const exerciseKey = `exercise_${exercise.id}`;
-                const pieces = currentSessionPieces[exerciseKey] || [];
+                const setSection = document.createElement('div');
+                setSection.innerHTML = `<h2 style="color: ${currentSet.color}; margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid ${currentSet.color};">${currentSet.name} - Current Session</h2>`;
+                summaryContent.appendChild(setSection);
+
+                currentSet.exercises.forEach(exercise => {
+                    const exerciseKey = `exercise_${exercise.id}`;
+                    const pieces = currentSessionPieces[exerciseKey] || [];
                 
                 const lessonSection = document.createElement('div');
                 lessonSection.className = 'lesson-section';
@@ -519,7 +548,15 @@
                                         <div class="piece-controls">
                                             <button class="piece-btn play-btn" onclick="playAudioPieceSummary('${piece.id}', '${exerciseKey}')" title="Play">▶</button>
                                             <button class="piece-btn download-btn" onclick="downloadSinglePiece('${piece.id}', '${exerciseKey}')" title="Download">📥</button>
+                                            <button class="piece-btn comment-btn" id="comment-btn-${piece.id}" onclick="toggleComment('${piece.id}', '${exerciseKey}')" title="Add Comment">💬</button>
                                             <button class="piece-btn delete-btn" onclick="deleteAudioPieceSummary('${piece.id}', '${exerciseKey}')" title="Delete">🗑</button>
+                                        </div>
+                                        <div class="piece-comment-section" id="comment-${piece.id}" style="display: none;">
+                                            <textarea class="comment-input" id="comment-input-${piece.id}" placeholder="Add your notes or comments about this recording..." rows="3"></textarea>
+                                            <div class="comment-buttons">
+                                                <button class="comment-save-btn" onclick="saveComment('${piece.id}', '${exerciseKey}')">Save</button>
+                                                <button class="comment-cancel-btn" onclick="toggleComment('${piece.id}', '${exerciseKey}')">Cancel</button>
+                                            </div>
                                         </div>
                                     </div>
                                 `).join('')
@@ -528,7 +565,8 @@
                     </div>
                 `;
                 summaryContent.appendChild(lessonSection);
-            });
+                });
+            }
         }
 
         function toggleLessonSection(exerciseId) {
@@ -605,8 +643,357 @@
             }
         }
 
+        // Functions for shared audio pieces
+        function playSharedAudioPiece(index, exerciseKey) {
+            const pieces = currentSessionPieces[exerciseKey] || [];
+            const piece = pieces[index];
+            
+            if (piece) {
+                let audio;
+                if (piece.audioData) {
+                    // Handle blob data
+                    audio = new Audio(URL.createObjectURL(piece.audioData));
+                } else if (piece.url) {
+                    // Handle public URL
+                    audio = new Audio(piece.url);
+                } else {
+                    console.error('No audio data or URL found for piece:', piece);
+                    showStatus('Error: No audio data found', 'error');
+                    return;
+                }
+                
+                audio.play().catch(error => {
+                    console.error('Error playing shared audio:', error);
+                    showStatus('Error playing shared audio', 'error');
+                });
+            } else {
+                console.error('Shared audio piece not found:', index, exerciseKey);
+                showStatus('Shared audio piece not found', 'error');
+            }
+        }
+
+        async function downloadSharedPiece(index, exerciseKey) {
+            const pieces = currentSessionPieces[exerciseKey] || [];
+            const piece = pieces[index];
+            
+            if (piece) {
+                try {
+                    showStatus('Downloading shared recording...', 'processing');
+                    
+                    let audioBlob;
+                    if (piece.audioData) {
+                        audioBlob = piece.audioData;
+                    } else if (piece.url) {
+                        // Fetch the audio from URL
+                        const response = await fetch(piece.url);
+                        audioBlob = await response.blob();
+                    } else {
+                        throw new Error('No audio data or URL found');
+                    }
+                    
+                    const url = URL.createObjectURL(audioBlob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = piece.name || `shared_recording_${index + 1}.webm`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    showStatus('Shared recording downloaded!', 'success');
+                } catch (error) {
+                    console.error('Error downloading shared piece:', error);
+                    showStatus('Error downloading shared recording', 'error');
+                }
+            } else {
+                console.error('Shared audio piece not found for download:', index, exerciseKey);
+                showStatus('Shared audio piece not found', 'error');
+            }
+        }
+
         function downloadAllPieces() {
             exportLesson();
+        }
+
+        // Comment Functions
+        function toggleComment(pieceId, exerciseKey) {
+            const commentSection = document.getElementById(`comment-${pieceId}`);
+            const isVisible = commentSection.style.display !== 'none';
+            
+            if (isVisible) {
+                commentSection.style.display = 'none';
+            } else {
+                commentSection.style.display = 'block';
+                // Load existing comment
+                loadComment(pieceId, exerciseKey);
+            }
+        }
+
+        function toggleSharedComment(index, exerciseKey) {
+            const commentSection = document.getElementById(`shared-comment-${index}-${exerciseKey}`);
+            const isVisible = commentSection.style.display !== 'none';
+            
+            if (isVisible) {
+                commentSection.style.display = 'none';
+            } else {
+                commentSection.style.display = 'block';
+                // Load existing comment for shared recording
+                loadSharedComment(index, exerciseKey);
+            }
+        }
+
+        async function saveComment(pieceId, exerciseKey) {
+            const commentInput = document.getElementById(`comment-input-${pieceId}`);
+            const comment = commentInput.value.trim();
+            
+            if (!comment) {
+                showStatus('Please enter a comment', 'error');
+                return;
+            }
+
+            try {
+                showStatus('Saving comment...', 'processing');
+                
+                const supabaseClient = initSupabase();
+                if (!supabaseClient) {
+                    throw new Error('Supabase not configured');
+                }
+
+                // Create unique recording ID
+                const recordingId = `${exerciseKey}_${pieceId}`;
+                
+                // Try to update existing comment first, then insert if doesn't exist
+                const { data, error } = await supabaseClient
+                    .from('recording_comments')
+                    .upsert({
+                        recording_id: recordingId,
+                        comment: comment,
+                        updated_at: new Date().toISOString()
+                    }, {
+                        onConflict: 'recording_id'
+                    });
+
+                if (error) {
+                    throw new Error(error.message);
+                }
+
+                // Store comment locally as well
+                if (!window.recordingComments) {
+                    window.recordingComments = {};
+                }
+                window.recordingComments[recordingId] = comment;
+
+                showStatus('Comment saved successfully!', 'success');
+                updateCommentButtonIndicator(`comment-btn-${pieceId}`, true);
+                toggleComment(pieceId, exerciseKey);
+                
+            } catch (error) {
+                console.error('Error saving comment:', error);
+                showStatus('Error saving comment: ' + error.message, 'error');
+            }
+        }
+
+        async function saveSharedComment(index, exerciseKey) {
+            const commentInput = document.getElementById(`shared-comment-input-${index}-${exerciseKey}`);
+            const comment = commentInput.value.trim();
+            
+            if (!comment) {
+                showStatus('Please enter a comment', 'error');
+                return;
+            }
+
+            try {
+                showStatus('Saving comment...', 'processing');
+                
+                const supabaseClient = initSupabase();
+                if (!supabaseClient) {
+                    throw new Error('Supabase not configured');
+                }
+
+                // Get current lesson ID from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const sessionId = urlParams.get('lesson');
+                
+                // Create unique recording ID for shared recording
+                const recordingId = `shared_${sessionId}_${exerciseKey}_${index}`;
+                
+                const { data, error } = await supabaseClient
+                    .from('recording_comments')
+                    .upsert({
+                        recording_id: recordingId,
+                        session_id: sessionId,
+                        comment: comment,
+                        updated_at: new Date().toISOString()
+                    }, {
+                        onConflict: 'recording_id'
+                    });
+
+                if (error) {
+                    throw new Error(error.message);
+                }
+
+                // Store comment locally
+                if (!window.recordingComments) {
+                    window.recordingComments = {};
+                }
+                window.recordingComments[recordingId] = comment;
+
+                showStatus('Comment saved successfully!', 'success');
+                updateCommentButtonIndicator(`shared-comment-btn-${index}-${exerciseKey}`, true);
+                toggleSharedComment(index, exerciseKey);
+                
+            } catch (error) {
+                console.error('Error saving shared comment:', error);
+                showStatus('Error saving comment: ' + error.message, 'error');
+            }
+        }
+
+        async function loadComment(pieceId, exerciseKey) {
+            try {
+                const supabaseClient = initSupabase();
+                if (!supabaseClient) return;
+
+                const recordingId = `${exerciseKey}_${pieceId}`;
+                
+                // Check local cache first
+                if (window.recordingComments && window.recordingComments[recordingId]) {
+                    const commentInput = document.getElementById(`comment-input-${pieceId}`);
+                    if (commentInput) {
+                        commentInput.value = window.recordingComments[recordingId];
+                    }
+                    return;
+                }
+
+                const { data, error } = await supabaseClient
+                    .from('recording_comments')
+                    .select('comment')
+                    .eq('recording_id', recordingId)
+                    .single();
+
+                if (data && !error) {
+                    const commentInput = document.getElementById(`comment-input-${pieceId}`);
+                    if (commentInput) {
+                        commentInput.value = data.comment;
+                    }
+                    
+                    // Cache locally
+                    if (!window.recordingComments) {
+                        window.recordingComments = {};
+                    }
+                    window.recordingComments[recordingId] = data.comment;
+                }
+            } catch (error) {
+                console.error('Error loading comment:', error);
+            }
+        }
+
+        async function loadSharedComment(index, exerciseKey) {
+            try {
+                const supabaseClient = initSupabase();
+                if (!supabaseClient) return;
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const sessionId = urlParams.get('lesson');
+                const recordingId = `shared_${sessionId}_${exerciseKey}_${index}`;
+                
+                // Check local cache first
+                if (window.recordingComments && window.recordingComments[recordingId]) {
+                    const commentInput = document.getElementById(`shared-comment-input-${index}-${exerciseKey}`);
+                    if (commentInput) {
+                        commentInput.value = window.recordingComments[recordingId];
+                    }
+                    return;
+                }
+
+                const { data, error } = await supabaseClient
+                    .from('recording_comments')
+                    .select('comment')
+                    .eq('recording_id', recordingId)
+                    .single();
+
+                if (data && !error) {
+                    const commentInput = document.getElementById(`shared-comment-input-${index}-${exerciseKey}`);
+                    if (commentInput) {
+                        commentInput.value = data.comment;
+                    }
+                    
+                    // Cache locally
+                    if (!window.recordingComments) {
+                        window.recordingComments = {};
+                    }
+                    window.recordingComments[recordingId] = data.comment;
+                }
+            } catch (error) {
+                console.error('Error loading shared comment:', error);
+            }
+        }
+
+        async function loadAllCommentIndicators() {
+            try {
+                const supabaseClient = initSupabase();
+                if (!supabaseClient) return;
+
+                // Load regular recording comments
+                if (!isSharedSession) {
+                    const currentSet = getCurrentSet();
+                    if (currentSet) {
+                        for (const exercise of currentSet.exercises) {
+                            const exerciseKey = `exercise_${exercise.id}`;
+                            const pieces = currentSessionPieces[exerciseKey] || [];
+                            
+                            for (const piece of pieces) {
+                                const recordingId = `${exerciseKey}_${piece.id}`;
+                                const { data } = await supabaseClient
+                                    .from('recording_comments')
+                                    .select('comment')
+                                    .eq('recording_id', recordingId)
+                                    .single();
+                                
+                                if (data && data.comment) {
+                                    updateCommentButtonIndicator(`comment-btn-${piece.id}`, true);
+                                    if (!window.recordingComments) window.recordingComments = {};
+                                    window.recordingComments[recordingId] = data.comment;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Load shared recording comments
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const sessionId = urlParams.get('lesson');
+                    
+                    for (const [exerciseKey, pieces] of Object.entries(currentSessionPieces)) {
+                        for (let index = 0; index < pieces.length; index++) {
+                            const recordingId = `shared_${sessionId}_${exerciseKey}_${index}`;
+                            const { data } = await supabaseClient
+                                .from('recording_comments')
+                                .select('comment')
+                                .eq('recording_id', recordingId)
+                                .single();
+                            
+                            if (data && data.comment) {
+                                updateCommentButtonIndicator(`shared-comment-btn-${index}-${exerciseKey}`, true);
+                                if (!window.recordingComments) window.recordingComments = {};
+                                window.recordingComments[recordingId] = data.comment;
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading comment indicators:', error);
+            }
+        }
+
+        function updateCommentButtonIndicator(buttonId, hasComment) {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                if (hasComment) {
+                    button.classList.add('has-comment');
+                    button.title = 'Edit Comment (has comment)';
+                } else {
+                    button.classList.remove('has-comment');
+                    button.title = 'Add Comment';
+                }
+            }
         }
 
         function updateDownloadAllButton() {
@@ -615,6 +1002,25 @@
             
             downloadBtn.disabled = totalPieces === 0;
             downloadBtn.textContent = `📥 Download Session (${totalPieces} files)`;
+        }
+
+        function updateSummaryControls() {
+            // Check if we're on a shared lesson page
+            const urlParams = new URLSearchParams(window.location.search);
+            const lessonId = urlParams.get('lesson');
+            
+            const backToLessonBtn = document.getElementById('backToLessonBtn');
+            const endSessionBtn = document.getElementById('endSessionBtnSummary');
+            
+            if (lessonId) {
+                // Hide navigation buttons for shared lessons
+                if (backToLessonBtn) backToLessonBtn.style.display = 'none';
+                if (endSessionBtn) endSessionBtn.style.display = 'none';
+            } else {
+                // Show navigation buttons for regular sessions
+                if (backToLessonBtn) backToLessonBtn.style.display = 'inline-block';
+                if (endSessionBtn) endSessionBtn.style.display = 'inline-block';
+            }
         }
 
         function updateNavigationButtons() {
@@ -1541,6 +1947,21 @@
             try {
                 shareBtn.disabled = true;
                 shareBtn.innerHTML = '⏳';
+                
+                // Check if we're already on a shared lesson page
+                const urlParams = new URLSearchParams(window.location.search);
+                const lessonId = urlParams.get('lesson');
+                
+                if (lessonId) {
+                    // We're already on a shared lesson page, just copy the current URL
+                    const currentUrl = window.location.href;
+                    showShareResult(currentUrl);
+                    // Auto-copy to clipboard
+                    copyShareLink();
+                    return;
+                }
+                
+                // We're on a regular session, need to upload and share
                 showStatus('Preparing lesson for sharing...', 'processing');
                 
                 const supabaseClient = initSupabase();
@@ -1866,9 +2287,11 @@ USING (true);
                 currentExerciseIndex = 0;
                 sessionActive = true;
                 
-                // Show lesson view with shared recordings
-                showLessons();
-                updateExerciseDisplay();
+                // Hide landing page and show summary view with all shared recordings
+                document.getElementById('landingPage').classList.add('hide');
+                document.getElementById('lessonPage').classList.add('hide');
+                document.getElementById('summaryPage').classList.add('show');
+                updateSummaryPage();
                 
                 // Update page title and header
                 document.title = `GOLOSINA - Shared Lesson ${lessonId}`;
@@ -1965,7 +2388,15 @@ USING (true);
             initializeAudioDevices();
             setupEventListeners();
             initializeMobileSupport();
+            updateExportButton();
             
-            // Check for shared lesson in URL parameters
-            await handleSharedLesson();
+            // Check for shared lesson in URL parameters, otherwise show landing
+            const urlParams = new URLSearchParams(window.location.search);
+            const lessonId = urlParams.get('lesson');
+            
+            if (lessonId) {
+                await handleSharedLesson();
+            } else {
+                showLanding();
+            }
         });
