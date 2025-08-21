@@ -92,23 +92,9 @@
                 <p>Review all your recorded vocal exercises</p>
             </div>
 
-            <div class="summary-stats" id="summaryStats">
-                <div class="stat-item">
-                    <span class="stat-value" id="totalLessons">0</span>
-                    <span class="stat-label">Lessons</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="totalRecordings">0</span>
-                    <span class="stat-label">Recordings</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-value" id="totalDuration">0:00</span>
-                    <span class="stat-label">Duration</span>
-                </div>
-            </div>
 
             <div class="summary-controls">
-                <button class="back-to-lessons-btn" onclick="hideSummary()">
+                <button class="back-to-lessons-btn" id="backToLessonBtn" onclick="hideSummary()">
                     ← Back to Lesson
                 </button>
                 <button class="download-all-btn" onclick="downloadAllPieces()" id="downloadAllBtn">
