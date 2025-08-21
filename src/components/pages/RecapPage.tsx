@@ -17,9 +17,65 @@ export default function RecapPage() {
   const totalPieces = Object.values(state.currentSessionPieces)
     .reduce((total, pieces) => total + pieces.length, 0);
 
-  const handleDownloadAll = () => {
-    // TODO: Implement download functionality
-    console.log('Download all recordings');
+  const handleDownloadAll = async () => {
+    if (totalPieces === 0) {
+      alert('No recordings to download');
+      return;
+    }
+
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      
+      // Get current timestamp for filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      
+      // Add all recordings to zip
+      let fileCount = 0;
+      for (const [exerciseKey, pieces] of Object.entries(state.currentSessionPieces)) {
+        if (pieces.length === 0) continue;
+        
+        const exerciseId = exerciseKey.split('_')[1];
+        const exercise = getCurrentExercises().find(ex => 
+          ex.id.toString() === exerciseId
+        );
+        
+        if (!exercise) continue;
+        
+        // Create folder for this exercise
+        const exerciseFolder = zip.folder(exercise.name.replace(/[/\\?%*:|"<>]/g, '-'));
+        
+        for (let i = 0; i < pieces.length; i++) {
+          const piece = pieces[i];
+          const fileName = `recording_${i + 1}_${piece.id}.wav`;
+          
+          // Convert blob to array buffer
+          const arrayBuffer = await piece.blob.arrayBuffer();
+          exerciseFolder?.file(fileName, arrayBuffer);
+          fileCount++;
+        }
+      }
+      
+      // Generate and download zip
+      const content = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      });
+      
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `voice_lesson_recordings_${timestamp}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Error creating zip file:', error);
+      alert('Error creating download file. Please try again.');
+    }
   };
 
   const handleShare = () => {
