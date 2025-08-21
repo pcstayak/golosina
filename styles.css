@@ -158,11 +158,11 @@ body {
     transform: none;
 }
 
-#showSummaryBtn {
+#showRecapBtn {
     background: #28a745 !important;
 }
 
-#showSummaryBtn:hover {
+#showRecapBtn:hover {
     background: #218838 !important;
 }
 
@@ -474,11 +474,11 @@ body {
     transition: width 0.3s ease;
 }
 
-.summary-page {
+.recap-page {
     display: none;
 }
 
-.summary-page.show {
+.recap-page.show {
     display: block;
 }
 
@@ -490,14 +490,14 @@ body {
     display: none;
 }
 
-.summary-header {
+.recap-header {
     text-align: center;
     margin-bottom: 30px;
     padding-bottom: 20px;
     border-bottom: 2px solid #eee;
 }
 
-.summary-controls {
+.recap-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -616,7 +616,7 @@ body {
     padding: 20px;
 }
 
-.summary-piece {
+.recap-piece {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -628,7 +628,7 @@ body {
     transition: all 0.3s ease;
 }
 
-.summary-piece:hover {
+.recap-piece:hover {
     background: #e9ecef;
     transform: translateX(5px);
 }
@@ -637,7 +637,7 @@ body {
     flex-grow: 1;
 }
 
-.piece-name-summary {
+.piece-name-recap {
     font-weight: 500;
     color: #333;
     margin-bottom: 5px;
@@ -863,7 +863,7 @@ body {
         min-width: auto;
     }
 
-    .summary-controls {
+    .recap-controls {
         flex-direction: column;
         gap: 15px;
     }

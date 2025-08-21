@@ -4,7 +4,7 @@ import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft, Download, Share2 } from 'lucide-react';
 
-export default function SummaryPage() {
+export default function RecapPage() {
   const { state, dispatch, getCurrentExercises } = useApp();
 
   const backToLesson = () => {
@@ -68,14 +68,14 @@ export default function SummaryPage() {
         </div>
 
         <h2 className="text-2xl font-bold text-gray-800">
-          Session Summary
+          Session Recap
         </h2>
         <p className="text-gray-600">
           Review your recorded exercises from this session
         </p>
       </div>
 
-      {/* Summary Content */}
+      {/* Recap Content */}
       <div className="space-y-6">
         {Object.keys(state.currentSessionPieces).length === 0 ? (
           <div className="bg-white rounded-xl shadow-lg p-8 text-center">

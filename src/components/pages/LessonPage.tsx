@@ -30,8 +30,8 @@ export default function LessonPage() {
     dispatch({ type: 'CLEAR_SESSION_PIECES' });
   };
 
-  const showSummary = () => {
-    dispatch({ type: 'SET_CURRENT_VIEW', payload: 'summary' });
+  const showRecap = () => {
+    dispatch({ type: 'SET_CURRENT_VIEW', payload: 'recap' });
   };
 
   const currentSet = getCurrentSet();
@@ -54,11 +54,11 @@ export default function LessonPage() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={showSummary}
+            onClick={showRecap}
             className="flex items-center gap-2"
           >
             <BarChart3 className="w-4 h-4" />
-            View Summary
+            View Recap
           </Button>
         </div>
 
