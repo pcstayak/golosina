@@ -111,16 +111,22 @@ export const useAudioRecording = () => {
       dispatch({ type: 'SET_MEDIA_RECORDER', payload: recorder });
       dispatch({ type: 'SET_RECORDED_CHUNKS', payload: [] });
       
+      const chunks: BlobPart[] = [];
+      const startTime = Date.now();
+      
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          dispatch({ type: 'SET_RECORDED_CHUNKS', payload: [...state.recordedChunks, event.data] });
+          chunks.push(event.data);
           console.log('📊 Chunk received:', event.data.size, 'bytes');
         }
       };
       
       recorder.onstop = () => {
-        console.log('⏹ Recording stopped, processing...');
-        processRecording();
+        const duration = (Date.now() - startTime) / 1000; // Calculate actual duration
+        console.log('⏹ Recording stopped, processing...', duration, 'seconds');
+        dispatch({ type: 'SET_RECORDED_CHUNKS', payload: chunks });
+        // Process recording with the collected chunks and actual duration
+        processRecordingWithChunks(chunks, duration);
       };
       
       recorder.onerror = (event: any) => {
@@ -152,7 +158,7 @@ export const useAudioRecording = () => {
       
       showError(errorMessage);
     }
-  }, [dispatch, ensureMicrophonePermission, showError, state.recordedChunks]);
+  }, [dispatch, ensureMicrophonePermission, showError]);
 
   const stopRecording = useCallback(() => {
     if (state.mediaRecorder && state.isRecording) {
@@ -169,18 +175,18 @@ export const useAudioRecording = () => {
     }
   }, [state.isRecording, startRecording, stopRecording]);
 
-  const processRecording = useCallback(async () => {
-    if (state.recordedChunks.length === 0) {
+  const processRecordingWithChunks = useCallback(async (chunks: BlobPart[], duration?: number) => {
+    if (chunks.length === 0) {
       showError('No audio data recorded');
       return;
     }
 
     try {
-      console.log('🔄 Processing recorded chunks:', state.recordedChunks.length);
+      console.log('🔄 Processing recorded chunks:', chunks.length);
       
       // Create blob from recorded chunks
-      const audioBlob = new Blob(state.recordedChunks, { 
-        type: state.recordedChunks[0].type || 'audio/webm' 
+      const audioBlob = new Blob(chunks, { 
+        type: chunks.length > 0 && chunks[0] instanceof Blob ? (chunks[0] as Blob).type : 'audio/webm'
       });
       console.log('📦 Created audio blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
       
@@ -188,50 +194,42 @@ export const useAudioRecording = () => {
         throw new Error('Recorded audio blob is empty');
       }
       
-      // Convert to AudioBuffer for processing
-      const audioBuffer = await blobToAudioBuffer(audioBlob);
-      console.log('🎵 Audio buffer created:', audioBuffer.duration, 'seconds');
-      
-      // Create audio context for processing
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      // Split audio by silence
-      const splitPieces = await splitAudioBySilence(audioBuffer, audioContext);
-      console.log('✂️ Audio split into', splitPieces.length, 'pieces');
-      
-      if (splitPieces.length === 0) {
-        showWarning('No valid audio pieces found. Try speaking louder or adjust silence settings.');
-        return;
+      const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
+      if (!currentExercise) {
+        throw new Error('No current exercise found');
       }
       
-      // Store audio pieces
-      const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
       const exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise.id}`;
       
-      for (let i = 0; i < splitPieces.length; i++) {
-        const pieceBlob = await audioBufferToBlob(splitPieces[i]);
-        const pieceId = Date.now() + '_' + i;
-        const timestamp = new Date().toISOString();
-        
-        const pieceData: AudioPiece = {
-          id: pieceId,
-          blob: pieceBlob,
-          timestamp: timestamp,
-          duration: splitPieces[i].duration,
-          exerciseId: currentExercise.id,
-          exerciseName: currentExercise.name
-        };
-        
-        dispatch({ type: 'ADD_AUDIO_PIECE', payload: { exerciseKey, piece: pieceData } });
-      }
+      // Use actual duration if provided, otherwise estimate
+      const recordingDuration = duration || Math.max(chunks.length * 0.1, 1);
       
-      showSuccess(`Recorded ${splitPieces.length} audio piece${splitPieces.length !== 1 ? 's' : ''}`);
+      const pieceId = Date.now().toString();
+      const timestamp = new Date().toISOString();
+      
+      const pieceData: AudioPiece = {
+        id: pieceId,
+        blob: audioBlob,
+        timestamp: timestamp,
+        duration: recordingDuration,
+        exerciseId: currentExercise.id,
+        exerciseName: currentExercise.name
+      };
+      
+      dispatch({ type: 'ADD_AUDIO_PIECE', payload: { exerciseKey, piece: pieceData } });
+      
+      showSuccess(`Recording saved! (${recordingDuration.toFixed(1)}s)`);
       
     } catch (error: any) {
       console.error('Error processing recording:', error);
       showError('Error processing recording: ' + error.message);
     }
-  }, [state.recordedChunks, state.currentExerciseIndex, dispatch, getCurrentExercises, getCurrentSet, showError, showWarning, showSuccess]);
+  }, [state.currentExerciseIndex, dispatch, getCurrentExercises, getCurrentSet, showError, showSuccess]);
+
+  // Keep the old function for compatibility
+  const processRecording = useCallback(async () => {
+    return processRecordingWithChunks(state.recordedChunks);
+  }, [state.recordedChunks, processRecordingWithChunks]);
 
   // Audio processing utilities
   const splitAudioBySilence = async (audioBuffer: AudioBuffer, audioContext: AudioContext): Promise<AudioBuffer[]> => {
