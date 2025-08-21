@@ -2,12 +2,173 @@
 
 import { useApp } from '@/contexts/AppContext';
 import { useNotification } from './useNotification';
-import { useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { AudioPiece } from '@/contexts/AppContext';
+import { useRealTimeSilenceDetection } from './useRealTimeSilenceDetection';
 
 export const useAudioRecording = () => {
   const { state, dispatch, getCurrentExercises, getCurrentSet } = useApp();
   const { showSuccess, showError, showWarning } = useNotification();
+  
+  // Auto-splitting state
+  const [currentAudioLevel, setCurrentAudioLevel] = useState(0);
+  const currentRecorderRef = useRef<MediaRecorder | null>(null);
+  const currentChunksRef = useRef<BlobPart[]>([]);
+  const recordingStartTimeRef = useRef<number | null>(null);
+
+  // Auto-splitting callbacks
+  const handleSilenceDetected = useCallback(() => {
+    if (!state.isRecording || !state.settings.autoSplitEnabled) return;
+    
+    console.log('🔇 Silence detected - auto-splitting recording');
+    dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: true });
+    
+    // Finish current segment
+    if (currentRecorderRef.current && currentRecorderRef.current.state === 'recording') {
+      currentRecorderRef.current.stop();
+    }
+  }, [state.isRecording, state.settings.autoSplitEnabled, dispatch]);
+
+  const handleSpeechDetected = useCallback(() => {
+    if (state.isAutoSplitting) {
+      dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: false });
+    }
+  }, [state.isAutoSplitting, dispatch]);
+
+  const handleAudioLevelUpdate = useCallback((level: number) => {
+    setCurrentAudioLevel(level);
+  }, []);
+
+  // Silence detection configuration
+  const silenceConfig = {
+    threshold: state.settings.autoSplitThreshold,
+    duration: state.settings.autoSplitDuration,
+    minRecordingLength: state.settings.minRecordingLength,
+    enabled: state.settings.autoSplitEnabled && state.isRecording,
+    onSilenceDetected: handleSilenceDetected,
+    onSpeechDetected: handleSpeechDetected,
+    onAudioLevelUpdate: handleAudioLevelUpdate
+  };
+
+  // Initialize silence detection
+  const silenceDetection = useRealTimeSilenceDetection(state.audioStream, silenceConfig);
+
+  // Helper function to start a new recording segment
+  const startNewRecordingSegment = useCallback(async (stream: MediaStream) => {
+    // Increment segment counter
+    const newSegment = state.isRecording ? state.currentRecordingSegment + 1 : 1;
+    dispatch({ type: 'SET_CURRENT_RECORDING_SEGMENT', payload: newSegment });
+
+    // Mobile device detection for codec selection
+    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    let mediaRecorderOptions: MediaRecorderOptions = {};
+    if (isMobile) {
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mediaRecorderOptions.mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mediaRecorderOptions.mimeType = 'audio/webm';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mediaRecorderOptions.mimeType = 'audio/mp4';
+      }
+    } else {
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mediaRecorderOptions.mimeType = 'audio/webm;codecs=opus';
+        mediaRecorderOptions.audioBitsPerSecond = 128000;
+      }
+    }
+
+    const recorder = new MediaRecorder(stream, mediaRecorderOptions);
+    currentRecorderRef.current = recorder;
+    currentChunksRef.current = [];
+    recordingStartTimeRef.current = Date.now();
+
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        currentChunksRef.current.push(event.data);
+      }
+    };
+
+    recorder.onstop = () => {
+      if (recordingStartTimeRef.current) {
+        const duration = (Date.now() - recordingStartTimeRef.current) / 1000;
+        processRecordingSegment(currentChunksRef.current, duration, newSegment);
+      }
+
+      // Start new segment if auto-splitting and still recording
+      if (state.isRecording && state.settings.autoSplitEnabled && state.isAutoSplitting) {
+        setTimeout(() => {
+          if (state.isRecording) {
+            startNewRecordingSegment(stream);
+          }
+        }, 100); // Small delay to ensure smooth transition
+      }
+    };
+
+    recorder.onerror = (event: any) => {
+      console.error('🚨 MediaRecorder error:', event.error);
+      showError('Recording error: ' + event.error.message);
+    };
+
+    recorder.start(100);
+    console.log(`🎤 Recording segment ${newSegment} started`);
+  }, [state.isRecording, state.currentRecordingSegment, state.settings.autoSplitEnabled, state.isAutoSplitting, dispatch, showError]);
+
+  // Process a completed recording segment
+  const processRecordingSegment = useCallback(async (chunks: BlobPart[], duration: number, segmentNumber: number) => {
+    if (chunks.length === 0) {
+      console.warn('No audio data recorded for segment', segmentNumber);
+      return;
+    }
+
+    // Check minimum recording length
+    if (duration < state.settings.minRecordingLength) {
+      console.log(`Segment ${segmentNumber} too short (${duration.toFixed(1)}s), skipping`);
+      return;
+    }
+
+    try {
+      const audioBlob = new Blob(chunks, { 
+        type: chunks.length > 0 && chunks[0] instanceof Blob ? (chunks[0] as Blob).type : 'audio/webm'
+      });
+
+      if (audioBlob.size === 0) {
+        console.warn('Empty audio blob for segment', segmentNumber);
+        return;
+      }
+
+      const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
+      if (!currentExercise) {
+        console.error('No current exercise found');
+        return;
+      }
+
+      const exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise.id}`;
+      const pieceId = `${Date.now()}_seg${segmentNumber}`;
+      const timestamp = new Date().toISOString();
+
+      const pieceData: AudioPiece = {
+        id: pieceId,
+        blob: audioBlob,
+        timestamp: timestamp,
+        duration: duration,
+        exerciseId: currentExercise.id,
+        exerciseName: `${currentExercise.name} (Segment ${segmentNumber})`
+      };
+
+      dispatch({ type: 'ADD_AUDIO_PIECE', payload: { exerciseKey, piece: pieceData } });
+
+      const message = state.settings.autoSplitEnabled ? 
+        `Segment ${segmentNumber} saved! (${duration.toFixed(1)}s)` :
+        `Recording saved! (${duration.toFixed(1)}s)`;
+      
+      showSuccess(message);
+
+    } catch (error: any) {
+      console.error('Error processing recording segment:', error);
+      showError('Error processing recording: ' + error.message);
+    }
+  }, [state.settings.minRecordingLength, state.settings.autoSplitEnabled, state.currentExerciseIndex, dispatch, getCurrentExercises, getCurrentSet, showError, showSuccess]);
 
   const ensureMicrophonePermission = useCallback(async () => {
     if (state.microphonePermissionGranted && state.audioStream && state.audioStream.active) {
@@ -78,66 +239,18 @@ export const useAudioRecording = () => {
     try {
       console.log('🎤 Starting recording process...');
       
-      // Check device type for mobile-specific handling
-      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      console.log(`📱 Device detected: ${isMobile ? 'Mobile' : 'Desktop'}`);
-      
-      // Use cached permission and stream
+      // Get microphone stream
       const stream = await ensureMicrophonePermission();
       
-      // Use mobile-compatible MediaRecorder options
-      let mediaRecorderOptions: MediaRecorderOptions = {};
-      if (isMobile) {
-        // Try different codecs for mobile compatibility
-        console.log('🎵 Checking supported audio formats...');
-        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-          mediaRecorderOptions.mimeType = 'audio/webm;codecs=opus';
-        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-          mediaRecorderOptions.mimeType = 'audio/webm';
-        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-          mediaRecorderOptions.mimeType = 'audio/mp4';
-        }
-      } else {
-        // Desktop: prefer high quality
-        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-          mediaRecorderOptions.mimeType = 'audio/webm;codecs=opus';
-          mediaRecorderOptions.audioBitsPerSecond = 128000;
-        }
-      }
-      
-      console.log('🔧 MediaRecorder options:', mediaRecorderOptions);
-      
-      const recorder = new MediaRecorder(stream, mediaRecorderOptions);
-      dispatch({ type: 'SET_MEDIA_RECORDER', payload: recorder });
-      dispatch({ type: 'SET_RECORDED_CHUNKS', payload: [] });
-      
-      const chunks: BlobPart[] = [];
-      const startTime = Date.now();
-      
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-          console.log('📊 Chunk received:', event.data.size, 'bytes');
-        }
-      };
-      
-      recorder.onstop = () => {
-        const duration = (Date.now() - startTime) / 1000; // Calculate actual duration
-        console.log('⏹ Recording stopped, processing...', duration, 'seconds');
-        dispatch({ type: 'SET_RECORDED_CHUNKS', payload: chunks });
-        // Process recording with the collected chunks and actual duration
-        processRecordingWithChunks(chunks, duration);
-      };
-      
-      recorder.onerror = (event: any) => {
-        console.error('🚨 MediaRecorder error:', event.error);
-        showError('Recording error: ' + event.error.message);
-      };
-      
-      recorder.start(100); // Collect data every 100ms
+      // Reset segment counter for new recording session
+      dispatch({ type: 'SET_CURRENT_RECORDING_SEGMENT', payload: 1 });
+      dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: false });
       dispatch({ type: 'SET_IS_RECORDING', payload: true });
       
-      console.log('🎤 Recording is now active!');
+      // Start first recording segment
+      await startNewRecordingSegment(stream);
+      
+      console.log('🎤 Recording is now active with auto-splitting support!');
     } catch (error: any) {
       console.error('Error starting recording:', error);
       
@@ -158,14 +271,29 @@ export const useAudioRecording = () => {
       
       showError(errorMessage);
     }
-  }, [dispatch, ensureMicrophonePermission, showError]);
+  }, [dispatch, ensureMicrophonePermission, startNewRecordingSegment, showError]);
 
   const stopRecording = useCallback(() => {
-    if (state.mediaRecorder && state.isRecording) {
-      state.mediaRecorder.stop();
+    if (state.isRecording) {
+      console.log('⏹ Stopping recording...');
+      
+      // Stop current recording segment
+      if (currentRecorderRef.current && currentRecorderRef.current.state === 'recording') {
+        currentRecorderRef.current.stop();
+      }
+      
+      // Update recording state
       dispatch({ type: 'SET_IS_RECORDING', payload: false });
+      dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: false });
+      dispatch({ type: 'SET_CURRENT_RECORDING_SEGMENT', payload: 1 });
+      
+      // Reset refs
+      currentRecorderRef.current = null;
+      currentChunksRef.current = [];
+      recordingStartTimeRef.current = null;
+      setCurrentAudioLevel(0);
     }
-  }, [state.mediaRecorder, state.isRecording, dispatch]);
+  }, [state.isRecording, dispatch]);
 
   const toggleRecording = useCallback(async () => {
     if (!state.isRecording) {
@@ -383,5 +511,8 @@ export const useAudioRecording = () => {
     stopRecording,
     toggleRecording,
     ensureMicrophonePermission,
+    // Auto-splitting data
+    currentAudioLevel,
+    silenceDetection,
   };
 };
