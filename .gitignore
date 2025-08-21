@@ -223,4 +223,5 @@ index_old.html
 *.min.css
 
 # Claude
-/.claude/
+/.claude/**
+!/.claude/agents/**
