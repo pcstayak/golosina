@@ -3,9 +3,19 @@
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft, Download, Share2 } from 'lucide-react';
+import { useState } from 'react';
+import ShareModal from '@/components/modals/ShareModal';
+import AlertDialog from '@/components/ui/AlertDialog';
 
 export default function RecapPage() {
   const { state, dispatch, getCurrentExercises } = useApp();
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [alertDialog, setAlertDialog] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    variant: 'success' | 'error' | 'warning' | 'info';
+  }>({ show: false, title: '', message: '', variant: 'info' });
 
   const backToLesson = () => {
     dispatch({ type: 'SET_CURRENT_VIEW', payload: 'lesson' });
@@ -18,12 +28,18 @@ export default function RecapPage() {
     .reduce((total, pieces) => total + pieces.length, 0);
 
   const handleDownloadAll = async () => {
-    if (totalPieces === 0) {
-      alert('No recordings to download');
+    if (!hasRecordings) {
+      setAlertDialog({
+        show: true,
+        title: 'No Recordings',
+        message: 'There are no recordings to download. Start recording to create audio files.',
+        variant: 'info'
+      });
       return;
     }
 
     try {
+      // Create a zip file with all recordings
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
       
@@ -42,21 +58,30 @@ export default function RecapPage() {
         
         if (!exercise) continue;
         
-        // Create folder for this exercise
+        // Create folder for this exercise with better file name sanitization
         const exerciseFolder = zip.folder(exercise.name.replace(/[/\\?%*:|"<>]/g, '-'));
         
         for (let i = 0; i < pieces.length; i++) {
           const piece = pieces[i];
-          const fileName = `recording_${i + 1}_${piece.id}.wav`;
+          const fileName = `recording_${i + 1}_${piece.id}.webm`;
           
-          // Convert blob to array buffer
-          const arrayBuffer = await piece.blob.arrayBuffer();
-          exerciseFolder?.file(fileName, arrayBuffer);
+          // Add blob directly to zip folder
+          exerciseFolder?.file(fileName, piece.blob);
           fileCount++;
         }
       }
       
-      // Generate and download zip
+      if (fileCount === 0) {
+        setAlertDialog({
+          show: true,
+          title: 'No Audio Files',
+          message: 'No valid audio files found to download.',
+          variant: 'error'
+        });
+        return;
+      }
+      
+      // Generate and download zip with compression
       const content = await zip.generateAsync({ 
         type: 'blob',
         compression: 'DEFLATE',
@@ -72,15 +97,26 @@ export default function RecapPage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
+      setAlertDialog({
+        show: true,
+        title: 'Download Started',
+        message: `Successfully created download file with ${fileCount} recording${fileCount !== 1 ? 's' : ''}.`,
+        variant: 'success'
+      });
+      
     } catch (error) {
       console.error('Error creating zip file:', error);
-      alert('Error creating download file. Please try again.');
+      setAlertDialog({
+        show: true,
+        title: 'Download Failed',
+        message: 'Error creating download file. Please try again or download recordings individually.',
+        variant: 'error'
+      });
     }
   };
 
   const handleShare = () => {
-    // TODO: Implement share functionality
-    console.log('Share lesson');
+    setShowShareModal(true);
   };
 
   return (
@@ -220,6 +256,24 @@ export default function RecapPage() {
           })
         )}
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <ShareModal
+          onClose={() => setShowShareModal(false)}
+          currentSessionPieces={state.currentSessionPieces}
+          getCurrentExercises={getCurrentExercises}
+        />
+      )}
+
+      {/* Alert Dialog */}
+      <AlertDialog
+        isOpen={alertDialog.show}
+        onClose={() => setAlertDialog({ ...alertDialog, show: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }

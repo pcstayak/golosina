@@ -7,21 +7,26 @@ import ExerciseDisplay from '@/components/lesson/ExerciseDisplay';
 import AudioPiecesDisplay from '@/components/lesson/AudioPiecesDisplay';
 import NavigationControls from '@/components/lesson/NavigationControls';
 import { ArrowLeft, BarChart3 } from 'lucide-react';
+import { useState } from 'react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 export default function LessonPage() {
   const { state, dispatch, getCurrentSet } = useApp();
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
 
   const handleBackToLanding = () => {
     if (Object.keys(state.currentSessionPieces).some(key => 
       state.currentSessionPieces[key]?.length > 0
     )) {
-      if (confirm('You have unsaved recordings in this session. Are you sure you want to abandon this lesson? All current session recordings will be lost.')) {
-        dispatch({ type: 'CLEAR_SESSION_PIECES' });
-        endSession();
-      }
+      setShowAbandonConfirm(true);
     } else {
       endSession();
     }
+  };
+
+  const confirmAbandonSession = () => {
+    dispatch({ type: 'CLEAR_SESSION_PIECES' });
+    endSession();
   };
 
   const endSession = () => {
@@ -106,6 +111,19 @@ export default function LessonPage() {
           <AudioPiecesDisplay />
         </div>
       </div>
+
+      {/* Abandon Session Confirmation */}
+      <ConfirmDialog
+        isOpen={showAbandonConfirm}
+        onClose={() => setShowAbandonConfirm(false)}
+        onConfirm={confirmAbandonSession}
+        title="Abandon Session"
+        message="You have unsaved recordings in this session. Are you sure you want to abandon this lesson? All current session recordings will be lost."
+        confirmText="Abandon Session"
+        cancelText="Stay in Session"
+        variant="warning"
+        confirmButtonVariant="danger"
+      />
     </div>
   );
 }

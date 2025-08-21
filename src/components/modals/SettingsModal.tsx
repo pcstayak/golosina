@@ -2,8 +2,9 @@
 
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/Button';
-import { X } from 'lucide-react';
+import { X, Play, Square, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTestRecording } from '@/hooks/useTestRecording';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -12,6 +13,16 @@ interface SettingsModalProps {
 export default function SettingsModal({ onClose }: SettingsModalProps) {
   const { state, dispatch } = useApp();
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const {
+    isTestRecording,
+    testRecording,
+    isPlaying,
+    audioLevel,
+    startTestRecording,
+    stopTestRecording,
+    playTestRecording,
+    clearTestRecording
+  } = useTestRecording();
 
   useEffect(() => {
     // Load available audio devices
@@ -147,15 +158,84 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
               <p className="text-sm text-gray-600 mb-3">
                 Test your microphone settings before starting a session.
               </p>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  // TODO: Implement test recording
-                  console.log('Test recording');
-                }}
-              >
-                🎤 Test Record
-              </Button>
+              
+              {/* Audio Level Indicator */}
+              {isTestRecording && (
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 mb-1">Audio Level</p>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-green-500 h-2 rounded-full transition-all duration-100"
+                      style={{ width: `${Math.min(audioLevel, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Recording Controls */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {!isTestRecording ? (
+                  <Button
+                    variant="primary"
+                    onClick={startTestRecording}
+                    className="flex items-center gap-2"
+                  >
+                    🎤 Start Test
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={stopTestRecording}
+                    className="flex items-center gap-2"
+                  >
+                    <Square className="w-4 h-4" />
+                    Stop Recording
+                  </Button>
+                )}
+              </div>
+
+              {/* Test Recording Playback */}
+              {testRecording && (
+                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">
+                        Test Recording ({testRecording.duration.toFixed(1)}s)
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(testRecording.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={playTestRecording}
+                        disabled={isPlaying}
+                        className="flex items-center gap-1"
+                      >
+                        <Play className="w-3 h-3" />
+                        {isPlaying ? 'Playing...' : 'Play'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={clearTestRecording}
+                        className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 mt-2">
+                {isTestRecording ? 
+                  'Recording... Click "Stop Recording" when finished.' :
+                  'Click "Start Test" to record a short sample and verify your microphone is working properly.'
+                }
+              </p>
             </div>
           </div>
         </div>

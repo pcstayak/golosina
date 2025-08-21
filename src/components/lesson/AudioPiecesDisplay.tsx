@@ -3,9 +3,15 @@
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/Button';
 import { Play, Download, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 export default function AudioPiecesDisplay() {
   const { state, dispatch, getCurrentExercise, getCurrentSet } = useApp();
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; pieceId: string | null }>({ 
+    show: false, 
+    pieceId: null 
+  });
   
   const currentExercise = getCurrentExercise();
   
@@ -47,12 +53,17 @@ export default function AudioPiecesDisplay() {
   };
 
   const deletePiece = (pieceId: string) => {
-    if (confirm('Are you sure you want to delete this recording?')) {
+    setDeleteConfirm({ show: true, pieceId });
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm.pieceId) {
       dispatch({ 
         type: 'REMOVE_AUDIO_PIECE', 
-        payload: { exerciseKey, pieceId } 
+        payload: { exerciseKey, pieceId: deleteConfirm.pieceId } 
       });
     }
+    setDeleteConfirm({ show: false, pieceId: null });
   };
 
   if (pieces.length === 0) {
@@ -115,6 +126,19 @@ export default function AudioPiecesDisplay() {
           </div>
         </div>
       ))}
+      
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.show}
+        onClose={() => setDeleteConfirm({ show: false, pieceId: null })}
+        onConfirm={confirmDelete}
+        title="Delete Recording"
+        message="Are you sure you want to delete this recording? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        confirmButtonVariant="danger"
+      />
     </div>
   );
 }
