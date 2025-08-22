@@ -33,6 +33,11 @@ export interface Settings {
   sampleRate: number;
   silenceThreshold: number;
   silenceDuration: number;
+  // Auto-splitting settings
+  autoSplitEnabled: boolean;
+  autoSplitThreshold: number;
+  autoSplitDuration: number;
+  minRecordingLength: number;
 }
 
 interface AppState {
@@ -46,6 +51,10 @@ interface AppState {
   mediaRecorder: MediaRecorder | null;
   audioStream: MediaStream | null;
   recordedChunks: BlobPart[];
+  
+  // Auto-splitting state
+  currentRecordingSegment: number;
+  isAutoSplitting: boolean;
   
   // Audio pieces
   audioPieces: Record<string, AudioPiece[]>;
@@ -79,7 +88,9 @@ type AppAction =
   | { type: 'REMOVE_AUDIO_PIECE'; payload: { exerciseKey: string; pieceId: string } }
   | { type: 'SET_EXERCISE_SETS'; payload: ExerciseSet[] }
   | { type: 'CLEAR_SESSION_PIECES' }
-  | { type: 'SET_SHARED_SESSION'; payload: { isShared: boolean; exercises?: Exercise[] } };
+  | { type: 'SET_SHARED_SESSION'; payload: { isShared: boolean; exercises?: Exercise[] } }
+  | { type: 'SET_CURRENT_RECORDING_SEGMENT'; payload: number }
+  | { type: 'SET_IS_AUTO_SPLITTING'; payload: boolean };
 
 const defaultExerciseSets: ExerciseSet[] = [
   {
@@ -179,6 +190,10 @@ const initialState: AppState = {
   mediaRecorder: null,
   audioStream: null,
   recordedChunks: [],
+  
+  // Auto-splitting state
+  currentRecordingSegment: 1,
+  isAutoSplitting: false,
   audioPieces: {},
   currentSessionPieces: {},
   currentView: 'landing',
@@ -188,7 +203,12 @@ const initialState: AppState = {
     microphoneId: '',
     sampleRate: 44100,
     silenceThreshold: 0.01,
-    silenceDuration: 0.5
+    silenceDuration: 0.5,
+    // Auto-splitting defaults
+    autoSplitEnabled: true,
+    autoSplitThreshold: 0.02,
+    autoSplitDuration: 1.0,
+    minRecordingLength: 0.5
   },
   isSharedSession: false,
   sharedExercises: []
@@ -252,6 +272,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
         isSharedSession: action.payload.isShared,
         sharedExercises: action.payload.exercises || []
       };
+    case 'SET_CURRENT_RECORDING_SEGMENT':
+      return { ...state, currentRecordingSegment: action.payload };
+    case 'SET_IS_AUTO_SPLITTING':
+      return { ...state, isAutoSplitting: action.payload };
     default:
       return state;
   }

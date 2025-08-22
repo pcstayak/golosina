@@ -151,6 +151,101 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             </div>
           </div>
 
+          {/* Auto-Splitting Settings */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Auto-Splitting</h3>
+            
+            {/* Enable Auto-Splitting */}
+            <div className="mb-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={state.settings.autoSplitEnabled}
+                  onChange={(e) => handleSettingChange('autoSplitEnabled', e.target.checked)}
+                  className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
+                />
+                <span className="ml-2 text-sm font-medium text-gray-700">
+                  Enable automatic recording splitting
+                </span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1">
+                Automatically create separate recordings when silence is detected
+              </p>
+            </div>
+
+            {/* Auto-Split Settings (only show when enabled) */}
+            {state.settings.autoSplitEnabled && (
+              <div className="space-y-4 ml-6 pl-4 border-l-2 border-gray-200">
+                {/* Auto-Split Threshold */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Auto-Split Threshold: <span className="font-normal">{(state.settings.autoSplitThreshold * 100).toFixed(1)}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0.005"
+                    max="0.1"
+                    step="0.005"
+                    value={state.settings.autoSplitThreshold}
+                    onChange={(e) => handleSettingChange('autoSplitThreshold', parseFloat(e.target.value))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Audio level below this threshold counts as silence
+                  </p>
+                </div>
+
+                {/* Auto-Split Duration */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Auto-Split Duration: <span className="font-normal">{state.settings.autoSplitDuration.toFixed(1)}s</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0.3"
+                    max="3.0"
+                    step="0.1"
+                    value={state.settings.autoSplitDuration}
+                    onChange={(e) => handleSettingChange('autoSplitDuration', parseFloat(e.target.value))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    How long silence must last to trigger auto-split
+                  </p>
+                </div>
+
+                {/* Minimum Recording Length */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Minimum Recording Length: <span className="font-normal">{state.settings.minRecordingLength.toFixed(1)}s</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0.3"
+                    max="2.0"
+                    step="0.1"
+                    value={state.settings.minRecordingLength}
+                    onChange={(e) => handleSettingChange('minRecordingLength', parseFloat(e.target.value))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Minimum length for a valid recording segment
+                  </p>
+                </div>
+
+                {/* Auto-Split Info */}
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <div className="flex items-start">
+                    <div className="text-blue-600 text-sm">
+                      💡 <strong>How it works:</strong> When you pause speaking for longer than the auto-split duration, 
+                      a new recording will automatically start. This helps organize your practice into natural phrases or exercises.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Test Recording Section */}
           <div>
             <h3 className="text-lg font-medium text-gray-800 mb-4">Test Recording</h3>
