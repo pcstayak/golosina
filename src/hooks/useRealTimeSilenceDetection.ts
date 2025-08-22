@@ -154,8 +154,9 @@ export const useRealTimeSilenceDetection = (
           }));
         }
 
-        // Continue analysis if still active
-        if (state.isActive && config.enabled) {
+        // Continue analysis if analyser is still available and detection is enabled
+        // Use ref check instead of state to avoid stale closure issues
+        if (analyserRef.current && config.enabled) {
           animationFrameRef.current = requestAnimationFrame(analyzeAudio);
         }
       };
@@ -167,7 +168,7 @@ export const useRealTimeSilenceDetection = (
       console.error('Error starting silence detection:', error);
       cleanup();
     }
-  }, [audioStream, config, cleanup, state.isActive]);
+  }, [audioStream, config, cleanup]);
 
   const stopDetection = useCallback(() => {
     cleanup();

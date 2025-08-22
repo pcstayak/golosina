@@ -2,7 +2,7 @@
 
 import { useApp } from '@/contexts/AppContext';
 import { useNotification } from './useNotification';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import type { AudioPiece } from '@/contexts/AppContext';
 import { useRealTimeSilenceDetection } from './useRealTimeSilenceDetection';
 
@@ -15,12 +15,24 @@ export const useAudioRecording = () => {
   const currentRecorderRef = useRef<MediaRecorder | null>(null);
   const currentChunksRef = useRef<BlobPart[]>([]);
   const recordingStartTimeRef = useRef<number | null>(null);
+  
+  // Refs to track current state for closures
+  const isRecordingRef = useRef(false);
+  const isAutoSplittingRef = useRef(false);
+  const autoSplitEnabledRef = useRef(false);
+  const startNewRecordingSegmentRef = useRef<((stream: MediaStream) => Promise<void>) | null>(null);
+  
+  // Update refs when state changes
+  useEffect(() => {
+    isRecordingRef.current = state.isRecording;
+    isAutoSplittingRef.current = state.isAutoSplitting;
+    autoSplitEnabledRef.current = state.settings.autoSplitEnabled;
+  }, [state.isRecording, state.isAutoSplitting, state.settings.autoSplitEnabled]);
 
   // Auto-splitting callbacks
   const handleSilenceDetected = useCallback(() => {
     if (!state.isRecording || !state.settings.autoSplitEnabled) return;
     
-    console.log('🔇 Silence detected - auto-splitting recording');
     dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: true });
     
     // Finish current segment
@@ -30,10 +42,10 @@ export const useAudioRecording = () => {
   }, [state.isRecording, state.settings.autoSplitEnabled, dispatch]);
 
   const handleSpeechDetected = useCallback(() => {
-    if (state.isAutoSplitting) {
-      dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: false });
-    }
-  }, [state.isAutoSplitting, dispatch]);
+    // Don't reset isAutoSplitting here - let the new recording segment handle it
+    // This prevents the race condition where isAutoSplitting gets set to false
+    // before the onstop handler can create the new segment
+  }, []);
 
   const handleAudioLevelUpdate = useCallback((level: number) => {
     setCurrentAudioLevel(level);
@@ -62,8 +74,17 @@ export const useAudioRecording = () => {
 
     // Check minimum recording length
     if (duration < state.settings.minRecordingLength) {
-      console.log(`Segment ${segmentNumber} too short (${duration.toFixed(1)}s), skipping`);
       return;
+    }
+
+    // For auto-split segments, filter out segments that are likely just silence
+    // If the segment duration is close to the auto-split duration, it's probably mostly silence
+    if (state.settings.autoSplitEnabled && segmentNumber > 1) {
+      const silenceThreshold = state.settings.autoSplitDuration;
+      
+      if (duration <= silenceThreshold + 0.3) { // 0.3s tolerance for timing variations
+        return;
+      }
     }
 
     try {
@@ -111,8 +132,8 @@ export const useAudioRecording = () => {
 
   // Helper function to start a new recording segment
   const startNewRecordingSegment = useCallback(async (stream: MediaStream) => {
-    // Increment segment counter
-    const newSegment = state.isRecording ? state.currentRecordingSegment + 1 : 1;
+    // Increment segment counter using refs to avoid stale closure issues
+    const newSegment = isRecordingRef.current ? state.currentRecordingSegment + 1 : 1;
     dispatch({ type: 'SET_CURRENT_RECORDING_SEGMENT', payload: newSegment });
 
     // Mobile device detection for codec selection
@@ -152,15 +173,17 @@ export const useAudioRecording = () => {
       }
 
       // Start new segment if auto-splitting and still recording
-      if (state.isRecording && state.settings.autoSplitEnabled && state.isAutoSplitting) {
+      // Only need to check if recording is active and auto-split is enabled
+      // isAutoSplitting is just a transitional state for UI feedback
+      if (isRecordingRef.current && autoSplitEnabledRef.current) {
+        // Small delay to ensure smooth transition
         setTimeout(() => {
-          if (state.isRecording) {
-            startNewRecordingSegment(stream);
+          if (isRecordingRef.current && startNewRecordingSegmentRef.current) {
+            startNewRecordingSegmentRef.current(stream);
           }
-        }, 100); // Small delay to ensure smooth transition
+        }, 100);
       } else {
         // Recording stopped normally - clean up refs
-        console.log('🧹 Cleaning up recording refs after normal stop');
         dispatch({ type: 'SET_CURRENT_RECORDING_SEGMENT', payload: 1 });
         currentRecorderRef.current = null;
         currentChunksRef.current = [];
@@ -169,13 +192,24 @@ export const useAudioRecording = () => {
     };
 
     recorder.onerror = (event: any) => {
-      console.error('🚨 MediaRecorder error:', event.error);
+      console.error('MediaRecorder error:', event.error);
       showError('Recording error: ' + event.error.message);
     };
 
     recorder.start(100);
-    console.log(`🎤 Recording segment ${newSegment} started`);
-  }, [state.isRecording, state.currentRecordingSegment, state.settings.autoSplitEnabled, state.isAutoSplitting, dispatch, showError, processRecordingSegment]);
+    
+    // Reset auto-splitting state after a brief delay for UI feedback
+    if (state.isAutoSplitting) {
+      setTimeout(() => {
+        dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: false });
+      }, 2000); // Give 2 seconds for the "Auto-splitting active" message to be visible
+    }
+  }, [state.currentRecordingSegment, dispatch, showError, processRecordingSegment]);
+  
+  // Update the function ref
+  useEffect(() => {
+    startNewRecordingSegmentRef.current = startNewRecordingSegment;
+  }, [startNewRecordingSegment]);
 
   const ensureMicrophonePermission = useCallback(async () => {
     if (state.microphonePermissionGranted && state.audioStream && state.audioStream.active) {
@@ -216,36 +250,29 @@ export const useAudioRecording = () => {
         }
       };
 
-      console.log('🔧 Audio constraints:', constraints);
       
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log('✅ Got audio stream:', stream);
       } catch (getUserMediaError) {
-        console.warn('❌ Enhanced constraints failed, trying basic audio...', getUserMediaError);
         // Fallback to most basic audio constraints
         const basicConstraints = { audio: true };
         stream = await navigator.mediaDevices.getUserMedia(basicConstraints);
-        console.log('✅ Got audio stream with basic constraints:', stream);
       }
 
       dispatch({ type: 'SET_AUDIO_STREAM', payload: stream });
       dispatch({ type: 'SET_MICROPHONE_PERMISSION', payload: true });
-      console.log('✅ Microphone permission granted and cached');
       return stream;
 
     } catch (error: any) {
       dispatch({ type: 'SET_MICROPHONE_PERMISSION', payload: false });
-      console.error('❌ Failed to get microphone permission:', error);
+      console.error('Failed to get microphone permission:', error);
       throw error;
     }
   }, [state.microphonePermissionGranted, state.audioStream, state.settings, dispatch]);
 
   const startRecording = useCallback(async () => {
     try {
-      console.log('🎤 Starting recording process...');
-      
       // Get microphone stream
       const stream = await ensureMicrophonePermission();
       
@@ -256,8 +283,6 @@ export const useAudioRecording = () => {
       
       // Start first recording segment
       await startNewRecordingSegment(stream);
-      
-      console.log('🎤 Recording is now active with auto-splitting support!');
     } catch (error: any) {
       console.error('Error starting recording:', error);
       
@@ -282,8 +307,6 @@ export const useAudioRecording = () => {
 
   const stopRecording = useCallback(() => {
     if (state.isRecording) {
-      console.log('⏹ Stopping recording...');
-      
       // Update recording state first
       dispatch({ type: 'SET_IS_RECORDING', payload: false });
       dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: false });
@@ -318,13 +341,10 @@ export const useAudioRecording = () => {
     }
 
     try {
-      console.log('🔄 Processing recorded chunks:', chunks.length);
-      
       // Create blob from recorded chunks
       const audioBlob = new Blob(chunks, { 
         type: chunks.length > 0 && chunks[0] instanceof Blob ? (chunks[0] as Blob).type : 'audio/webm'
       });
-      console.log('📦 Created audio blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
       
       if (audioBlob.size === 0) {
         throw new Error('Recorded audio blob is empty');

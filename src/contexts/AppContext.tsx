@@ -205,7 +205,7 @@ const initialState: AppState = {
     silenceThreshold: 0.01,
     silenceDuration: 0.5,
     // Auto-splitting defaults
-    autoSplitEnabled: false,
+    autoSplitEnabled: true,
     autoSplitThreshold: 0.02,
     autoSplitDuration: 1.0,
     minRecordingLength: 0.5
