@@ -129,13 +129,16 @@ export default function ShareModal({ onClose, currentSessionPieces, getCurrentEx
         getCurrentExercises
       );
 
-      if (result.success && result.shareUrl) {
+      if (result.success && result.sessionId) {
+        // Generate shareable URL on client side (always uses correct origin)
+        const shareUrl = `${window.location.origin}/shared/${result.sessionId}`;
+        
         // Copy the shareable URL to clipboard
-        const copySuccess = await copyToClipboard(result.shareUrl);
+        const copySuccess = await copyToClipboard(shareUrl);
         if (copySuccess) {
           showSuccess('Session uploaded! Shareable link copied to clipboard.');
         } else {
-          showSuccess(`Session uploaded! Share this link: ${result.shareUrl}`);
+          showSuccess(`Session uploaded! Share this link: ${shareUrl}`);
         }
         onClose();
       } else {

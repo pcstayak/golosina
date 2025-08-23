@@ -22,6 +22,7 @@ export interface SharedLessonData {
 
 export interface UploadResult {
   success: boolean
+  sessionId?: string
   shareUrl?: string
   error?: string
 }
@@ -202,12 +203,9 @@ export class SharedLessonService {
         }
       }
 
-      // Generate shareable URL
-      const shareUrl = `${window.location.origin}/shared/${sessionId}`
-
       return {
         success: true,
-        shareUrl
+        sessionId // Return sessionId instead, let client generate URL
       }
 
     } catch (error) {
