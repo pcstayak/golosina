@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import { X, Share2, Mail, Copy, Download, Check } from 'lucide-react';
+import { X, Share2, Mail, Copy, Download, Check, Cloud, Loader2 } from 'lucide-react';
 import { useNotification } from '@/hooks/useNotification';
 import type { AudioPiece } from '@/contexts/AppContext';
 import {
@@ -16,6 +16,8 @@ import {
   createAudioFiles,
   type ShareData
 } from '@/utils/shareUtils';
+import { SharedLessonService } from '@/services/sharedLessonService';
+import { useApp } from '@/contexts/AppContext';
 
 interface ShareModalProps {
   onClose: () => void;
@@ -25,7 +27,9 @@ interface ShareModalProps {
 
 export default function ShareModal({ onClose, currentSessionPieces, getCurrentExercises }: ShareModalProps) {
   const { showSuccess, showError } = useNotification();
+  const { getCurrentSet } = useApp();
   const [isCreatingFiles, setIsCreatingFiles] = useState(false);
+  const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
   const [copied, setCopied] = useState(false);
   
   const summary = createLessonSummary(currentSessionPieces, getCurrentExercises);
@@ -105,6 +109,49 @@ export default function ShareModal({ onClose, currentSessionPieces, getCurrentEx
     showSuccess('Summary downloaded!');
   };
 
+  const handleUploadToCloud = async () => {
+    if (!hasRecordings) {
+      showError('No recordings to upload');
+      return;
+    }
+
+    try {
+      setIsUploadingToCloud(true);
+      
+      const currentSet = getCurrentSet();
+      const sessionId = SharedLessonService.generateSessionId();
+      
+      const result = await SharedLessonService.uploadLessonRecap(
+        sessionId,
+        currentSet?.name || 'Vocal Training Session',
+        currentSet?.description || 'A vocal training session with recordings',
+        currentSessionPieces,
+        getCurrentExercises
+      );
+
+      if (result.success && result.sessionId) {
+        // Generate shareable URL on client side (always uses correct origin)
+        const shareUrl = `${window.location.origin}/shared/${result.sessionId}`;
+        
+        // Copy the shareable URL to clipboard
+        const copySuccess = await copyToClipboard(shareUrl);
+        if (copySuccess) {
+          showSuccess('Session uploaded! Shareable link copied to clipboard.');
+        } else {
+          showSuccess(`Session uploaded! Share this link: ${shareUrl}`);
+        }
+        onClose();
+      } else {
+        showError(result.error || 'Failed to upload session');
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      showError('Failed to upload session. Please try again.');
+    } finally {
+      setIsUploadingToCloud(false);
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -179,6 +226,28 @@ export default function ShareModal({ onClose, currentSessionPieces, getCurrentEx
               </>
             )}
             
+            {/* Cloud Upload */}
+            {hasRecordings && (
+              <Button
+                onClick={handleUploadToCloud}
+                disabled={isUploadingToCloud || isCreatingFiles}
+                className="w-full flex items-center justify-center gap-2"
+                variant="primary"
+              >
+                {isUploadingToCloud ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading to Cloud...
+                  </>
+                ) : (
+                  <>
+                    <Cloud className="w-4 h-4" />
+                    Upload & Get Shareable Link
+                  </>
+                )}
+              </Button>
+            )}
+            
             {/* Email Share */}
             <Button
               onClick={handleEmailShare}
@@ -213,8 +282,7 @@ export default function ShareModal({ onClose, currentSessionPieces, getCurrentEx
           {/* Help Text */}
           <div className="mt-6 p-3 bg-blue-50 rounded-lg">
             <p className="text-xs text-blue-800">
-              💡 <strong>Tip:</strong> Use "Share Summary" for quick sharing, or "Share with Audio Files" 
-              to include your recordings (if supported by your device).
+              💡 <strong>Tip:</strong> Use "Upload & Get Shareable Link" to create a permanent link that others can access to listen to your recordings and view your session details. Other options work for quick local sharing.
             </p>
           </div>
         </div>
