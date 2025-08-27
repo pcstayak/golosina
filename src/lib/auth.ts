@@ -1,5 +1,16 @@
 import { supabase, UserProfile, UserRole } from './supabase'
 import { AuthError, User, Session } from '@supabase/supabase-js'
+import { 
+  checkRegistrationRateLimit, 
+  recordRegistrationAttempt,
+  checkLoginRateLimit,
+  recordLoginAttempt,
+  checkPasswordResetRateLimit,
+  recordPasswordResetAttempt,
+  checkEmailVerificationRateLimit,
+  recordEmailVerificationAttempt,
+  formatRemainingTime
+} from './rateLimiting'
 
 export interface AuthResponse {
   success: boolean
@@ -31,16 +42,26 @@ export class AuthService {
     }
 
     try {
+      // Check rate limiting
+      const rateLimitCheck = checkRegistrationRateLimit(data.email)
+      if (rateLimitCheck.blocked) {
+        const timeStr = rateLimitCheck.remainingTime ? formatRemainingTime(rateLimitCheck.remainingTime) : 'some time'
+        return { success: false, error: `Too many registration attempts. Please try again in ${timeStr}.` }
+      }
+
       // Validate required fields
       if (!data.email || !data.password) {
+        recordRegistrationAttempt(data.email, false)
         return { success: false, error: 'Email and password are required' }
       }
 
       if (!data.termsAccepted || !data.privacyPolicyAccepted) {
+        recordRegistrationAttempt(data.email, false)
         return { success: false, error: 'You must accept the terms of service and privacy policy' }
       }
 
       if (data.password.length < 8) {
+        recordRegistrationAttempt(data.email, false)
         return { success: false, error: 'Password must be at least 8 characters long' }
       }
 
@@ -61,12 +82,17 @@ export class AuthService {
       })
 
       if (authError) {
+        recordRegistrationAttempt(data.email, false)
         return { success: false, error: authError.message }
       }
 
       if (!authData.user) {
+        recordRegistrationAttempt(data.email, false)
         return { success: false, error: 'Failed to create user account' }
       }
+
+      // Success - reset rate limiting
+      recordRegistrationAttempt(data.email, true)
 
       // Log the registration event
       await this.logAuthEvent(
@@ -85,6 +111,7 @@ export class AuthService {
       }
     } catch (error) {
       console.error('Registration error:', error)
+      recordRegistrationAttempt(data.email, false)
       return { success: false, error: 'An unexpected error occurred during registration' }
     }
   }
@@ -95,12 +122,21 @@ export class AuthService {
     }
 
     try {
+      // Check rate limiting
+      const rateLimitCheck = checkLoginRateLimit(data.email)
+      if (rateLimitCheck.blocked) {
+        const timeStr = rateLimitCheck.remainingTime ? formatRemainingTime(rateLimitCheck.remainingTime) : 'some time'
+        return { success: false, error: `Too many login attempts. Please try again in ${timeStr}.` }
+      }
+
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password
       })
 
       if (authError) {
+        recordLoginAttempt(data.email, false)
+        
         // Log failed login attempt
         await this.logAuthEvent(
           null,
@@ -114,8 +150,12 @@ export class AuthService {
       }
 
       if (!authData.user || !authData.session) {
+        recordLoginAttempt(data.email, false)
         return { success: false, error: 'Failed to authenticate user' }
       }
+
+      // Success - reset rate limiting
+      recordLoginAttempt(data.email, true)
 
       // Update last login timestamp
       await supabase
@@ -140,6 +180,7 @@ export class AuthService {
       }
     } catch (error) {
       console.error('Login error:', error)
+      recordLoginAttempt(data.email, false)
       return { success: false, error: 'An unexpected error occurred during login' }
     }
   }
@@ -169,17 +210,28 @@ export class AuthService {
     }
 
     try {
+      // Check rate limiting
+      const rateLimitCheck = checkPasswordResetRateLimit(email)
+      if (rateLimitCheck.blocked) {
+        const timeStr = rateLimitCheck.remainingTime ? formatRemainingTime(rateLimitCheck.remainingTime) : 'some time'
+        return { success: false, error: `Too many password reset requests. Please try again in ${timeStr}.` }
+      }
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`
       })
 
       if (error) {
+        recordPasswordResetAttempt(email, false)
         return { success: false, error: error.message }
       }
 
+      // Success - record attempt
+      recordPasswordResetAttempt(email, true)
       return { success: true }
     } catch (error) {
       console.error('Password reset error:', error)
+      recordPasswordResetAttempt(email, false)
       return { success: false, error: 'An unexpected error occurred' }
     }
   }
@@ -358,18 +410,29 @@ export class AuthService {
     }
 
     try {
+      // Check rate limiting
+      const rateLimitCheck = checkEmailVerificationRateLimit(email)
+      if (rateLimitCheck.blocked) {
+        const timeStr = rateLimitCheck.remainingTime ? formatRemainingTime(rateLimitCheck.remainingTime) : 'some time'
+        return { success: false, error: `Please wait ${timeStr} before requesting another verification email.` }
+      }
+
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: email
       })
 
       if (error) {
+        recordEmailVerificationAttempt(email, false)
         return { success: false, error: error.message }
       }
 
+      // Success - record attempt
+      recordEmailVerificationAttempt(email, true)
       return { success: true }
     } catch (error) {
       console.error('Resend confirmation error:', error)
+      recordEmailVerificationAttempt(email, false)
       return { success: false, error: 'An unexpected error occurred' }
     }
   }

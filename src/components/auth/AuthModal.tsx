@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { LoginForm } from './LoginForm'
-import { RegisterForm } from './RegisterForm'
+import { RegistrationFlow } from './RegistrationFlow'
 import { ForgotPasswordForm } from './ForgotPasswordForm'
 
 type AuthMode = 'login' | 'register' | 'forgot-password'
@@ -62,7 +62,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
 
             {mode === 'register' && (
-              <RegisterForm
+              <RegistrationFlow
                 onSuccess={handleSuccess}
                 onToggleToLogin={() => setMode('login')}
               />

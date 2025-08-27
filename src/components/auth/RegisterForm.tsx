@@ -7,7 +7,7 @@ import { UserRole } from '../../lib/supabase'
 import { Button } from '../ui/Button'
 
 interface RegisterFormProps {
-  onSuccess?: () => void
+  onSuccess?: (email: string) => void
   onToggleToLogin?: () => void
 }
 
@@ -118,7 +118,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       })
       
       if (result.success) {
-        onSuccess?.()
+        onSuccess?.(formData.email)
       } else {
         setErrors({ general: result.error || 'Registration failed' })
       }
