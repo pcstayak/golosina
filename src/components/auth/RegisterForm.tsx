@@ -9,11 +9,15 @@ import { Button } from '../ui/Button'
 interface RegisterFormProps {
   onSuccess?: (email: string) => void
   onToggleToLogin?: () => void
+  initialRole?: UserRole
+  showRoleSelection?: boolean
 }
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({
   onSuccess,
-  onToggleToLogin
+  onToggleToLogin,
+  initialRole = 'student',
+  showRoleSelection = true
 }) => {
   const { signUp } = useAuth()
   const [formData, setFormData] = useState({
@@ -22,7 +26,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    role: 'student' as UserRole,
+    role: initialRole,
     termsAccepted: false,
     privacyPolicyAccepted: false,
     marketingEmailsConsent: false
@@ -144,23 +148,42 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
           </div>
         )}
 
-        {/* Role Selection */}
-        <div>
-          <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-            I am a...
-          </label>
-          <select
-            id="role"
-            name="role"
-            value={formData.role}
-            onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
-          >
-            <option value="student">Student - I want to learn voice training</option>
-            <option value="teacher">Teacher - I want to teach voice training</option>
-          </select>
-        </div>
+        {/* Role Selection - Only show if enabled */}
+        {showRoleSelection && (
+          <div>
+            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+              I am a...
+            </label>
+            <select
+              id="role"
+              name="role"
+              value={formData.role}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
+            >
+              <option value="student">Student - I want to learn voice training</option>
+              <option value="teacher">Teacher - I want to teach voice training</option>
+            </select>
+          </div>
+        )}
+
+        {/* Role Display - Show when role selection is hidden */}
+        {!showRoleSelection && (
+          <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+            <div className="flex items-center space-x-2">
+              <span className="text-lg">
+                {formData.role === 'student' ? '🎤' : '🎵'}
+              </span>
+              <span className="text-sm font-medium text-blue-900">
+                {formData.role === 'student' 
+                  ? 'Creating your student account'
+                  : 'Creating your teacher account'
+                }
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Name Fields */}
         <div className="grid grid-cols-2 gap-4">

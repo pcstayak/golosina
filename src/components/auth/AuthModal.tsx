@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { LoginForm } from './LoginForm'
-import { RegistrationFlow } from './RegistrationFlow'
+import { EnhancedRegistrationFlow } from './EnhancedRegistrationFlow'
 import { ForgotPasswordForm } from './ForgotPasswordForm'
 
 type AuthMode = 'login' | 'register' | 'forgot-password'
@@ -39,7 +39,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className={`
+          relative bg-white rounded-lg shadow-xl w-full max-h-[90vh] overflow-y-auto
+          ${mode === 'register' ? 'max-w-4xl' : 'max-w-md'}
+        `}>
           {/* Close button */}
           <button
             onClick={onClose}
@@ -62,7 +65,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
 
             {mode === 'register' && (
-              <RegistrationFlow
+              <EnhancedRegistrationFlow
                 onSuccess={handleSuccess}
                 onToggleToLogin={() => setMode('login')}
               />
