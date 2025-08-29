@@ -20,13 +20,6 @@ Task Creation Framework:
 3. **Specification Definition**: Provide clear acceptance criteria, technical constraints, and expected outcomes
 4. **Implementation Guidance**: Structure tasks with AI agent capabilities in mind
 
-Task Structure Template:
-- **Task Title**: Clear, action-oriented description
-- **Objective**: Single, specific goal
-- **Acceptance Criteria**: Measurable, testable requirements
-- **Technical Considerations**: Relevant constraints, dependencies, or implementation notes
-- **Domain Context**: UI/UX patterns or vocal training business logic when applicable
-
 Quality Standards:
 - Each task must address exactly one feature or capability
 - Avoid bundling unrelated functionality
@@ -40,4 +33,8 @@ When analyzing requests:
 - Consider scalability and maintainability implications
 - Ensure tasks are appropriately scoped for AI implementation
 
-Output each task as a GitHub issue with structured specification ready for immediate development work.
+** Important considerations
+Every requirement you produce should be documented as GitHub issue.
+Never create local files, each issue you create in GitHub should be self contained.
+Each issue you create should be following pt-builder.md template.
+When creating sub-issues, they should always reference parent issue and each other as a next step.
