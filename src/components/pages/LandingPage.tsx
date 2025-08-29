@@ -1,14 +1,17 @@
 'use client'
 
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
-import { Settings } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import SettingsModal from '@/components/modals/SettingsModal';
 
 export default function LandingPage() {
   const { state, dispatch } = useApp();
+  const { signOut } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const selectExerciseSet = (setIndex: number) => {
     dispatch({ type: 'SET_CURRENT_SET_INDEX', payload: setIndex });
@@ -21,6 +24,21 @@ export default function LandingPage() {
     dispatch({ type: 'CLEAR_SESSION_PIECES' });
     dispatch({ type: 'SET_SHARED_SESSION', payload: { isShared: false } });
     dispatch({ type: 'SET_CURRENT_VIEW', payload: 'lesson' });
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const result = await signOut();
+      if (!result.success) {
+        console.error('Logout failed:', result.error);
+        // You could add toast notification here if available
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const getSetRecordingsCount = (setId: number): number => {
@@ -42,15 +60,27 @@ export default function LandingPage() {
           <h1 className="text-5xl font-bold text-white">
             🎵 Golosina
           </h1>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowSettings(true)}
-            className="flex items-center gap-2"
-          >
-            <Settings className="w-4 h-4" />
-            Settings
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="w-4 h-4" />
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowSettings(true)}
+              className="flex items-center gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              Settings
+            </Button>
+          </div>
         </div>
         <p className="text-xl text-white/80 mb-8">
           Your AI-powered voice training companion
