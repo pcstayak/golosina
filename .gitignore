@@ -137,7 +137,7 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 *.cab
-*.msi
+*`.m`si
 *.msm
 *.msp
 *.lnk
@@ -224,3 +224,5 @@ index_old.html
 
 # Claude
 /.claude/
+
+!./claude/agents/**
