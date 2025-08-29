@@ -1,7 +1,8 @@
 'use client'
 
 import { useApp } from '@/contexts/AppContext';
-import { BookOpen, Clock, Lightbulb } from 'lucide-react';
+import { BookOpen, Clock, Lightbulb, Image } from 'lucide-react';
+import MediaGallery from './MediaGallery';
 
 export default function ExerciseDisplay() {
   const { getCurrentExercise } = useApp();
@@ -25,7 +26,18 @@ export default function ExerciseDisplay() {
         {currentExercise.name}
       </h3>
       
-      <div className="space-y-4">
+      <div className="space-y-6">
+        {/* Media content section */}
+        {currentExercise.media && currentExercise.media.length > 0 && (
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <Image className="w-4 h-4" />
+              Visual Guide
+            </h4>
+            <MediaGallery mediaItems={currentExercise.media} />
+          </div>
+        )}
+        
         <div>
           <h4 className="font-semibold text-gray-700 mb-2">Instructions</h4>
           <p className="text-gray-600 leading-relaxed">
