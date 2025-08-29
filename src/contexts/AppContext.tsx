@@ -51,6 +51,16 @@ export interface Settings {
   minRecordingLength: number;
 }
 
+interface MediaManagement {
+  isMediaPickerOpen: boolean;
+  selectedExerciseForMedia: number | null; // Exercise ID
+  mediaLibraryFilters: {
+    search: string;
+    type: 'all' | 'image' | 'video' | 'gif';
+    sortBy: 'date' | 'name' | 'size' | 'type';
+  };
+}
+
 interface AppState {
   // Exercise state
   currentSetIndex: number;
@@ -82,6 +92,9 @@ interface AppState {
   // Shared lesson state
   isSharedSession: boolean;
   sharedExercises: Exercise[];
+  
+  // Media management state
+  mediaManagement: MediaManagement;
 }
 
 type AppAction = 
@@ -101,7 +114,12 @@ type AppAction =
   | { type: 'CLEAR_SESSION_PIECES' }
   | { type: 'SET_SHARED_SESSION'; payload: { isShared: boolean; exercises?: Exercise[] } }
   | { type: 'SET_CURRENT_RECORDING_SEGMENT'; payload: number }
-  | { type: 'SET_IS_AUTO_SPLITTING'; payload: boolean };
+  | { type: 'SET_IS_AUTO_SPLITTING'; payload: boolean }
+  | { type: 'OPEN_MEDIA_PICKER'; payload: { exerciseId: number } }
+  | { type: 'CLOSE_MEDIA_PICKER' }
+  | { type: 'UPDATE_MEDIA_FILTERS'; payload: Partial<MediaManagement['mediaLibraryFilters']> }
+  | { type: 'ADD_MEDIA_TO_EXERCISE'; payload: { exerciseId: number; setId: number; media: MediaContent[] } }
+  | { type: 'REMOVE_MEDIA_FROM_EXERCISE'; payload: { exerciseId: number; setId: number; mediaId: string } };
 
 const defaultExerciseSets: ExerciseSet[] = [
   {
@@ -265,7 +283,16 @@ const initialState: AppState = {
     minRecordingLength: 0.5
   },
   isSharedSession: false,
-  sharedExercises: []
+  sharedExercises: [],
+  mediaManagement: {
+    isMediaPickerOpen: false,
+    selectedExerciseForMedia: null,
+    mediaLibraryFilters: {
+      search: '',
+      type: 'all',
+      sortBy: 'date',
+    },
+  },
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -330,6 +357,73 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, currentRecordingSegment: action.payload };
     case 'SET_IS_AUTO_SPLITTING':
       return { ...state, isAutoSplitting: action.payload };
+    case 'OPEN_MEDIA_PICKER':
+      return {
+        ...state,
+        mediaManagement: {
+          ...state.mediaManagement,
+          isMediaPickerOpen: true,
+          selectedExerciseForMedia: action.payload.exerciseId,
+        },
+      };
+    case 'CLOSE_MEDIA_PICKER':
+      return {
+        ...state,
+        mediaManagement: {
+          ...state.mediaManagement,
+          isMediaPickerOpen: false,
+          selectedExerciseForMedia: null,
+        },
+      };
+    case 'UPDATE_MEDIA_FILTERS':
+      return {
+        ...state,
+        mediaManagement: {
+          ...state.mediaManagement,
+          mediaLibraryFilters: {
+            ...state.mediaManagement.mediaLibraryFilters,
+            ...action.payload,
+          },
+        },
+      };
+    case 'ADD_MEDIA_TO_EXERCISE':
+      return {
+        ...state,
+        exerciseSets: state.exerciseSets.map(set =>
+          set.id === action.payload.setId
+            ? {
+                ...set,
+                exercises: set.exercises.map(exercise =>
+                  exercise.id === action.payload.exerciseId
+                    ? {
+                        ...exercise,
+                        media: [...(exercise.media || []), ...action.payload.media],
+                      }
+                    : exercise
+                ),
+              }
+            : set
+        ),
+      };
+    case 'REMOVE_MEDIA_FROM_EXERCISE':
+      return {
+        ...state,
+        exerciseSets: state.exerciseSets.map(set =>
+          set.id === action.payload.setId
+            ? {
+                ...set,
+                exercises: set.exercises.map(exercise =>
+                  exercise.id === action.payload.exerciseId
+                    ? {
+                        ...exercise,
+                        media: exercise.media?.filter(m => m.id !== action.payload.mediaId) || [],
+                      }
+                    : exercise
+                ),
+              }
+            : set
+        ),
+      };
     default:
       return state;
   }

@@ -186,7 +186,7 @@ export const useRealTimeSilenceDetection = (
     return () => {
       stopDetection();
     };
-  }, [audioStream, config.enabled, config.threshold, config.duration]);
+  }, [audioStream, config.enabled, config.threshold, config.duration, startDetection, stopDetection]);
 
   // Cleanup on unmount
   useEffect(() => {

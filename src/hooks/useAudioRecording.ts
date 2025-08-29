@@ -128,7 +128,7 @@ export const useAudioRecording = () => {
       console.error('Error processing recording segment:', error);
       showError('Error processing recording: ' + error.message);
     }
-  }, [state.settings.minRecordingLength, state.settings.autoSplitEnabled, state.currentExerciseIndex, dispatch, getCurrentExercises, getCurrentSet, showError, showSuccess]);
+  }, [state.settings.minRecordingLength, state.settings.autoSplitEnabled, state.settings.autoSplitDuration, state.currentExerciseIndex, dispatch, getCurrentExercises, getCurrentSet, showError, showSuccess]);
 
   // Helper function to start a new recording segment
   const startNewRecordingSegment = useCallback(async (stream: MediaStream) => {
@@ -204,7 +204,7 @@ export const useAudioRecording = () => {
         dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: false });
       }, 2000); // Give 2 seconds for the "Auto-splitting active" message to be visible
     }
-  }, [state.currentRecordingSegment, dispatch, showError, processRecordingSegment]);
+  }, [state.currentRecordingSegment, state.isAutoSplitting, dispatch, showError, processRecordingSegment]);
   
   // Update the function ref
   useEffect(() => {

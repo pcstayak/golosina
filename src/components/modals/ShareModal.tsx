@@ -282,7 +282,7 @@ export default function ShareModal({ onClose, currentSessionPieces, getCurrentEx
           {/* Help Text */}
           <div className="mt-6 p-3 bg-blue-50 rounded-lg">
             <p className="text-xs text-blue-800">
-              💡 <strong>Tip:</strong> Use "Upload & Get Shareable Link" to create a permanent link that others can access to listen to your recordings and view your session details. Other options work for quick local sharing.
+              💡 <strong>Tip:</strong> Use &quot;Upload &amp; Get Shareable Link&quot; to create a permanent link that others can access to listen to your recordings and view your session details. Other options work for quick local sharing.
             </p>
           </div>
         </div>

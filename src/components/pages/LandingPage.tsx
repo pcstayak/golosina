@@ -2,9 +2,10 @@
 
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/Button';
-import { Settings } from 'lucide-react';
+import { Settings, Shield } from 'lucide-react';
 import { useState } from 'react';
 import SettingsModal from '@/components/modals/SettingsModal';
+import Link from 'next/link';
 
 export default function LandingPage() {
   const { state, dispatch } = useApp();
@@ -38,7 +39,16 @@ export default function LandingPage() {
       {/* Header */}
       <div className="text-center mb-12">
         <div className="flex items-center justify-between mb-8">
-          <div></div>
+          <Link href="/admin">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Shield className="w-4 h-4" />
+              Admin
+            </Button>
+          </Link>
           <h1 className="text-5xl font-bold text-white">
             🎵 Golosina
           </h1>

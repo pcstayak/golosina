@@ -3,14 +3,15 @@
 import React, { useState } from 'react';
 import { MediaContent as MediaContentType } from '@/contexts/AppContext';
 import MediaContent from './MediaContent';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 interface MediaGalleryProps {
   mediaItems: MediaContentType[];
+  onRemoveMedia?: (mediaId: string) => void;
   className?: string;
 }
 
-export default function MediaGallery({ mediaItems, className = '' }: MediaGalleryProps) {
+export default function MediaGallery({ mediaItems, onRemoveMedia, className = '' }: MediaGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   if (!mediaItems || mediaItems.length === 0) {
@@ -25,8 +26,18 @@ export default function MediaGallery({ mediaItems, className = '' }: MediaGaller
     setCurrentIndex((prev) => (prev - 1 + mediaItems.length) % mediaItems.length);
   };
 
+  const handleRemoveMedia = (mediaId: string) => {
+    if (onRemoveMedia && confirm('Are you sure you want to remove this media?')) {
+      onRemoveMedia(mediaId);
+      // Adjust current index if necessary
+      if (currentIndex >= mediaItems.length - 1) {
+        setCurrentIndex(Math.max(0, mediaItems.length - 2));
+      }
+    }
+  };
+
   const renderCarousel = () => (
-    <div className="relative">
+    <div className="relative group">
       <div className="overflow-hidden rounded-lg">
         <MediaContent 
           media={mediaItems[currentIndex]} 
@@ -34,6 +45,17 @@ export default function MediaGallery({ mediaItems, className = '' }: MediaGaller
           priority={true}
         />
       </div>
+
+      {/* Remove button - only show in admin mode */}
+      {onRemoveMedia && (
+        <button
+          onClick={() => handleRemoveMedia(mediaItems[currentIndex].id)}
+          className="absolute top-2 left-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+          title="Remove this media"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
       
       {mediaItems.length > 1 && (
         <>
