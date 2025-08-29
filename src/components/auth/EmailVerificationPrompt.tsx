@@ -99,7 +99,7 @@ export const EmailVerificationPrompt: React.FC<EmailVerificationPromptProps> = (
         <Button
           onClick={handleResendEmail}
           disabled={!canResend || resendLoading}
-          variant="outline"
+          variant="secondary"
           className="w-full"
         >
           {resendLoading 
@@ -122,7 +122,7 @@ export const EmailVerificationPrompt: React.FC<EmailVerificationPromptProps> = (
         {onChangeEmail && (
           <Button
             onClick={onChangeEmail}
-            variant="ghost"
+            variant="secondary"
             className="w-full"
           >
             Use different email address

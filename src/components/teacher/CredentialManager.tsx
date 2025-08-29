@@ -372,7 +372,7 @@ export const CredentialManager: React.FC<CredentialManagerProps> = ({
                   setShowAddForm(false)
                   setErrors({})
                 }}
-                variant="outline"
+                variant="secondary"
                 disabled={loading}
               >
                 Cancel
@@ -452,7 +452,7 @@ export const CredentialManager: React.FC<CredentialManagerProps> = ({
 
                 <Button
                   onClick={() => handleDelete(credential.id)}
-                  variant="ghost"
+                  variant="secondary"
                   disabled={loading}
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >

@@ -106,8 +106,8 @@ export class AuthService {
 
       return {
         success: true,
-        user: authData.user,
-        session: authData.session
+        user: authData.user || undefined,
+        session: authData.session || undefined
       }
     } catch (error) {
       console.error('Registration error:', error)
@@ -175,8 +175,8 @@ export class AuthService {
 
       return {
         success: true,
-        user: authData.user,
-        session: authData.session
+        user: authData.user || undefined,
+        session: authData.session || undefined
       }
     } catch (error) {
       console.error('Login error:', error)
@@ -395,8 +395,8 @@ export class AuthService {
 
       return {
         success: true,
-        user: data.user,
-        session: data.session
+        user: data.user || undefined,
+        session: data.session || undefined
       }
     } catch (error) {
       console.error('Email verification error:', error)

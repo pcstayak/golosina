@@ -76,7 +76,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
               setSuccess(false)
               setEmail('')
             }}
-            variant="outline"
+            variant="secondary"
             className="w-full"
           >
             Try different email
@@ -84,7 +84,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
 
           <Button
             onClick={onBackToLogin}
-            variant="ghost"
+            variant="secondary"
             className="w-full"
           >
             Back to sign in

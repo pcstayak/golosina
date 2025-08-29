@@ -23,7 +23,7 @@ class RateLimiter {
 
   private cleanupExpired(): void {
     const now = this.now()
-    for (const [key, entry] of this.storage.entries()) {
+    for (const [key, entry] of Array.from(this.storage.entries())) {
       // Clean up entries that are older than our window and not blocked
       if (!entry.blockedUntil && (now - entry.lastAttempt) > this.WINDOW_MS) {
         this.storage.delete(key)

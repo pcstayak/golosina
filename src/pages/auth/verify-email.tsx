@@ -92,7 +92,7 @@ export default function VerifyEmailPage() {
             
             <Button 
               onClick={() => router.push('/auth')} 
-              variant="outline" 
+              variant="secondary" 
               className="w-full"
             >
               Back to sign in

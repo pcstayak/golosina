@@ -300,7 +300,7 @@ export const SkillAssessment: React.FC<SkillAssessmentProps> = ({
           {currentStep > 0 && (
             <Button
               onClick={handlePrevious}
-              variant="outline"
+              variant="secondary"
               disabled={loading}
             >
               Previous
@@ -312,7 +312,7 @@ export const SkillAssessment: React.FC<SkillAssessmentProps> = ({
           {onCancel && (
             <Button
               onClick={onCancel}
-              variant="ghost"
+              variant="secondary"
               disabled={loading}
             >
               Skip Assessment

@@ -8,7 +8,8 @@ import { SharedLessonService, type SharedLessonData } from '@/services/sharedLes
 import Link from 'next/link'
 
 export default function SharedLessonPage() {
-  const { sessionId } = useParams()
+  const params = useParams<{ sessionId: string }>()
+  const sessionId = params?.sessionId
   const [lessonData, setLessonData] = useState<SharedLessonData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

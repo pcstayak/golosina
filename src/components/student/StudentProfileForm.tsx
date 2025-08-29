@@ -521,7 +521,7 @@ export const StudentProfileForm: React.FC<StudentProfileFormProps> = ({
           <Button
             type="button"
             onClick={onCancel}
-            variant="outline"
+            variant="secondary"
             disabled={loading}
           >
             Cancel

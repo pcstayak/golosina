@@ -379,7 +379,7 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({
           <Button
             type="button"
             onClick={handleAddCustomLanguage}
-            variant="outline"
+            variant="secondary"
             disabled={!customLanguage.trim()}
           >
             Add
@@ -499,7 +499,7 @@ export const TeacherProfileForm: React.FC<TeacherProfileFormProps> = ({
           <Button
             type="button"
             onClick={onCancel}
-            variant="outline"
+            variant="secondary"
             disabled={loading}
           >
             Cancel

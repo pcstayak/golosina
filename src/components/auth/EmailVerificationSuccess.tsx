@@ -58,7 +58,7 @@ export const EmailVerificationSuccess: React.FC<EmailVerificationSuccessProps> =
         {onContinueToDashboard && (
           <Button
             onClick={onContinueToDashboard}
-            variant="outline"
+            variant="secondary"
             className="w-full"
           >
             Skip for now - Go to dashboard
