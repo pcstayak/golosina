@@ -8,13 +8,32 @@ interface MediaContentProps {
   media: MediaContentType;
   className?: string;
   priority?: boolean; // For Next.js Image priority loading
+  showCaptionOverlay?: boolean; // Whether to show caption as overlay or below
 }
 
-export default function MediaContent({ media, className = '', priority = false }: MediaContentProps) {
+export default function MediaContent({ media, className = '', priority = false, showCaptionOverlay = true }: MediaContentProps) {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [youtubeError, setYoutubeError] = useState(false);
+
+  // Convert YouTube URL to embed format
+  const getYouTubeEmbedUrl = (url: string): string | null => {
+    try {
+      // Handle different YouTube URL formats
+      const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+      const match = url.match(regex);
+      
+      if (match && match[1]) {
+        return `https://www.youtube.com/embed/${match[1]}?rel=0&modestbranding=1`;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error parsing YouTube URL:', error);
+      return null;
+    }
+  };
 
   const handleVideoPlay = () => {
     setIsVideoPlaying(true);
@@ -64,7 +83,7 @@ export default function MediaContent({ media, className = '', priority = false }
           style={{ aspectRatio: 'auto' }}
         />
       )}
-      {media.caption && (
+      {media.caption && showCaptionOverlay && (
         <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white p-2 text-sm">
           {media.caption}
         </div>
@@ -72,7 +91,46 @@ export default function MediaContent({ media, className = '', priority = false }
     </div>
   );
 
-  const renderVideo = () => (
+  const renderYouTubeVideo = () => {
+    const embedUrl = getYouTubeEmbedUrl(media.url);
+    
+    if (!embedUrl || youtubeError) {
+      return (
+        <div className="flex items-center justify-center bg-gray-100 min-h-[200px] text-gray-500">
+          <div className="text-center">
+            <div className="text-2xl mb-2">🎥</div>
+            <p className="text-sm">YouTube video failed to load</p>
+            <p className="text-xs mt-1">Please check the video URL</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`relative overflow-hidden rounded-lg ${className}`}>
+        <div className="relative w-full" style={{ paddingBottom: '56.25%' /* 16:9 aspect ratio */ }}>
+          <iframe
+            src={embedUrl}
+            title={media.altText}
+            className="absolute top-0 left-0 w-full h-full rounded-lg"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            onError={() => setYoutubeError(true)}
+            loading={priority ? 'eager' : 'lazy'}
+          />
+        </div>
+        
+        {media.caption && showCaptionOverlay && (
+          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white p-2 text-sm rounded-b-lg">
+            {media.caption}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderLocalVideo = () => (
     <div className={`relative overflow-hidden rounded-lg ${className}`}>
       {videoError ? (
         <div className="flex items-center justify-center bg-gray-100 min-h-[200px] text-gray-500">
@@ -127,13 +185,23 @@ export default function MediaContent({ media, className = '', priority = false }
         </>
       )}
       
-      {media.caption && (
+      {media.caption && showCaptionOverlay && (
         <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white p-2 text-sm">
           {media.caption}
         </div>
       )}
     </div>
   );
+
+  const renderVideo = () => {
+    // Check if it's a YouTube video
+    if (media.videoType === 'youtube') {
+      return renderYouTubeVideo();
+    }
+    
+    // Default to local video for backward compatibility
+    return renderLocalVideo();
+  };
 
   switch (media.type) {
     case 'image':

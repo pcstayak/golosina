@@ -10,6 +10,7 @@ export interface MediaContent {
   altText: string;
   caption?: string;
   thumbnailUrl?: string; // For videos
+  videoType?: 'local' | 'youtube'; // Distinguish between local and YouTube videos
 }
 
 export interface Exercise {
@@ -164,10 +165,11 @@ const defaultExerciseSets: ExerciseSet[] = [
           {
             id: "humming-demo-1",
             type: "video",
-            url: "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4",
+            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
             altText: "Video demonstration of proper humming technique for vocal warm-up",
             caption: "Notice how the mouth stays closed and vibrations are felt throughout the face",
-            thumbnailUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+            thumbnailUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+            videoType: "youtube"
           }
         ]
       },
