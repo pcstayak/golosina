@@ -42,35 +42,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // Get initial session
     const getSession = async () => {
-      const session = await AuthService.getCurrentSession()
-      const user = await AuthService.getCurrentUser()
-      
-      setSession(session)
-      setUser(user)
+      try {
+        const session = await AuthService.getCurrentSession()
+        const user = await AuthService.getCurrentUser()
+        
+        setSession(session)
+        setUser(user)
 
-      if (user) {
-        const profile = await AuthService.getUserProfile(user.id)
-        setProfile(profile)
+        if (user) {
+          const profile = await AuthService.getUserProfile(user.id)
+          setProfile(profile)
+          
+          // If user exists but no profile, sign them out (incomplete registration)
+          if (!profile) {
+            console.log('User exists but no profile found - signing out incomplete session')
+            await AuthService.logout()
+            setUser(null)
+            setSession(null)
+            setProfile(null)
+          }
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error)
+      } finally {
+        setLoading(false)
       }
-
-      setLoading(false)
     }
 
     getSession()
 
     // Listen for auth changes
     const { data: { subscription } } = AuthService.onAuthStateChange(async (session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
+      try {
+        setSession(session)
+        setUser(session?.user ?? null)
 
-      if (session?.user) {
-        const profile = await AuthService.getUserProfile(session.user.id)
-        setProfile(profile)
-      } else {
-        setProfile(null)
+        if (session?.user) {
+          const profile = await AuthService.getUserProfile(session.user.id)
+          setProfile(profile)
+          
+          // If user exists but no profile, sign them out (incomplete registration)
+          if (!profile) {
+            console.log('User exists but no profile found - signing out incomplete session')
+            await AuthService.logout()
+            setUser(null)
+            setSession(null)
+            setProfile(null)
+          }
+        } else {
+          setProfile(null)
+        }
+      } catch (error) {
+        console.error('Error handling auth state change:', error)
+      } finally {
+        setLoading(false)
       }
-      
-      setLoading(false)
     })
 
     return () => subscription.unsubscribe()

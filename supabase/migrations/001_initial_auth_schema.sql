@@ -214,7 +214,7 @@ CREATE POLICY "Teachers can view student profiles of their students" ON public.s
   FOR SELECT USING (
     auth.uid() = id OR 
     auth.uid() IN (
-      SELECT teacher_id FROM public.teacher_profiles WHERE id = auth.uid()
+      SELECT id FROM public.teacher_profiles WHERE id = auth.uid()
     )
   );
 

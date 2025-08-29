@@ -70,6 +70,7 @@ export class AuthService {
         email: data.email,
         password: data.password,
         options: {
+          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/callback`,
           data: {
             first_name: data.firstName,
             last_name: data.lastName,
@@ -301,7 +302,7 @@ export class AuthService {
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
-        .single()
+        .maybeSingle()
 
       if (error) {
         console.error('Error fetching user profile:', error)
@@ -419,7 +420,10 @@ export class AuthService {
 
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: email
+        email: email,
+        options: {
+          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/callback`
+        }
       })
 
       if (error) {

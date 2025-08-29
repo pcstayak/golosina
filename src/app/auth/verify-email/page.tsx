@@ -1,20 +1,40 @@
+'use client'
+
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/router'
-import { AuthService } from '../../lib/auth'
-import { EmailVerificationSuccess } from '../../components/auth/EmailVerificationSuccess'
-import { Button } from '../../components/ui/Button'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { AuthService } from '../../../lib/auth'
+import { EmailVerificationSuccess } from '../../../components/auth/EmailVerificationSuccess'
+import { Button } from '../../../components/ui/Button'
 
 export default function VerifyEmailPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [error, setError] = useState('')
   const [userRole, setUserRole] = useState<string>('')
 
   useEffect(() => {
-    const verifyEmail = async () => {
-      const { token } = router.query
+    const handleVerification = async () => {
+      const token = searchParams.get('token')
+      const verified = searchParams.get('verified')
+      const user_id = searchParams.get('user_id')
 
-      if (!token || typeof token !== 'string') {
+      // If already verified via callback, just get user profile
+      if (verified === 'true' && user_id) {
+        try {
+          const profile = await AuthService.getUserProfile(user_id)
+          setUserRole(profile?.role || 'student')
+          setStatus('success')
+        } catch (error) {
+          console.error('Error fetching user profile:', error)
+          setStatus('error')
+          setError('Failed to load user profile')
+        }
+        return
+      }
+
+      // Legacy token-based verification
+      if (!token) {
         setStatus('error')
         setError('Invalid verification link')
         return
@@ -39,10 +59,8 @@ export default function VerifyEmailPage() {
       }
     }
 
-    if (router.isReady) {
-      verifyEmail()
-    }
-  }, [router.isReady, router.query])
+    handleVerification()
+  }, [searchParams])
 
   const handleContinueToProfile = () => {
     router.push('/profile/setup')
@@ -53,7 +71,7 @@ export default function VerifyEmailPage() {
   }
 
   const handleRetryVerification = () => {
-    router.reload()
+    window.location.reload()
   }
 
   if (status === 'loading') {
@@ -100,7 +118,7 @@ export default function VerifyEmailPage() {
           </div>
 
           <div className="text-sm text-gray-500">
-            <p>Need help? Contact support at support@{window.location.hostname}</p>
+            <p>Need help? Contact support at support@{typeof window !== 'undefined' ? window.location.hostname : 'golosina.app'}</p>
           </div>
         </div>
       </div>

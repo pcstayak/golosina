@@ -1,11 +1,14 @@
+'use client'
+
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/router'
-import { AuthService } from '../../lib/auth'
-import { validatePassword } from '../../lib/auth'
-import { Button } from '../../components/ui/Button'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { AuthService } from '../../../lib/auth'
+import { validatePassword } from '../../../lib/auth'
+import { Button } from '../../../components/ui/Button'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'form' | 'success' | 'error'>('loading')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -14,17 +17,16 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     // Check if we have the necessary query parameters
-    if (router.isReady) {
-      const { access_token, refresh_token } = router.query
-      
-      if (access_token && refresh_token) {
-        setStatus('form')
-      } else {
-        setStatus('error')
-        setErrors({ general: 'Invalid password reset link' })
-      }
+    const access_token = searchParams.get('access_token')
+    const refresh_token = searchParams.get('refresh_token')
+    
+    if (access_token && refresh_token) {
+      setStatus('form')
+    } else {
+      setStatus('error')
+      setErrors({ general: 'Invalid password reset link' })
     }
-  }, [router.isReady, router.query])
+  }, [searchParams])
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
@@ -103,7 +105,7 @@ export default function ResetPasswordPage() {
           </div>
 
           <Button 
-            onClick={() => router.push('/auth')} 
+            onClick={() => router.push('/')} 
             className="w-full"
           >
             Sign in to your account
@@ -131,10 +133,10 @@ export default function ResetPasswordPage() {
           </div>
 
           <Button 
-            onClick={() => router.push('/auth?mode=forgot-password')} 
+            onClick={() => router.push('/')} 
             className="w-full"
           >
-            Request new reset link
+            Back to sign in
           </Button>
         </div>
       </div>
