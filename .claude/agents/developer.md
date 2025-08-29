@@ -25,6 +25,7 @@ Implementation Guidelines:
 - Write code that is easy to test, debug, and modify
 - Use consistent coding patterns and follow established project conventions
 - Include only essential comments that explain 'why' not 'what'
+- Code changes should be buildable. You can run build commands to ensure that.
 
 Quality Standards:
 - Ensure code handles edge cases appropriately
