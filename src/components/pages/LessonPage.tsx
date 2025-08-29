@@ -84,7 +84,7 @@ export default function LessonPage() {
             <h2 className="text-2xl font-bold mb-2 text-gray-800">
               Shared Lesson
             </h2>
-            <p className="text-gray-600">Reviewing someone's lesson recordings</p>
+            <p className="text-gray-600">Reviewing someone&apos;s lesson recordings</p>
           </div>
         )}
       </div>

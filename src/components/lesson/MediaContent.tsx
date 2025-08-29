@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { MediaContent as MediaContentType } from '@/contexts/AppContext';
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
 
@@ -74,13 +75,15 @@ export default function MediaContent({ media, className = '', priority = false, 
           </div>
         </div>
       ) : (
-        <img
+        <Image
           src={media.url}
-          alt={media.altText}
+          alt={media.altText || 'Exercise media'}
           onError={handleImageError}
           className="w-full h-auto object-cover transition-transform hover:scale-105"
-          loading={priority ? 'eager' : 'lazy'}
-          style={{ aspectRatio: 'auto' }}
+          priority={priority}
+          width={800}
+          height={600}
+          style={{ width: '100%', height: 'auto' }}
         />
       )}
       {media.caption && showCaptionOverlay && (
