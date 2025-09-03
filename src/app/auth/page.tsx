@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { AuthModal } from '../../components/auth/AuthModal'
 import { Button } from '../../components/ui/Button'
 
-export default function AuthPage() {
+// Component that uses useSearchParams - needs to be wrapped in Suspense
+function AuthContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [showAuthModal, setShowAuthModal] = useState(true)
@@ -82,5 +83,38 @@ export default function AuthPage() {
         initialMode="login"
       />
     </div>
+  )
+}
+
+// Loading fallback component
+function AuthPageLoading() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center">
+      <div className="text-center max-w-md mx-auto px-4">
+        <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+        <h1 className="text-4xl font-bold text-white mb-4">
+          Welcome to Golosina
+        </h1>
+        <p className="text-white/90 text-lg mb-8">
+          Your AI-powered voice training assistant with real-time feedback and progress tracking
+        </p>
+        <div className="space-y-4">
+          <div className="w-full bg-white/20 text-transparent px-8 py-3 rounded-lg font-semibold animate-pulse">
+            Get Started
+          </div>
+          <p className="text-white/70 text-sm">
+            Start your voice training journey today
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<AuthPageLoading />}>
+      <AuthContent />
+    </Suspense>
   )
 }
