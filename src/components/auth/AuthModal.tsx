@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { LoginForm } from './LoginForm'
 import { EnhancedRegistrationFlow } from './EnhancedRegistrationFlow'
 import { ForgotPasswordForm } from './ForgotPasswordForm'
@@ -21,6 +21,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSuccess
 }) => {
   const [mode, setMode] = useState<AuthMode>(initialMode)
+
+  // Sync internal mode state with initialMode prop changes
+  useEffect(() => {
+    setMode(initialMode)
+  }, [initialMode])
 
   const handleSuccess = () => {
     onSuccess?.()
