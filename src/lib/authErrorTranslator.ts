@@ -55,6 +55,10 @@ const ERROR_TRANSLATIONS: Record<string, FriendlyAuthError> = {
     actionable: true,
     suggestedAction: 'register'
   },
+  'missing email or phone': {
+    message: 'Please enter both email and password to continue.',
+    actionable: true
+  },
 
   // Password reset errors
   'User not found - password_reset': {
@@ -103,6 +107,26 @@ const ERROR_TRANSLATIONS: Record<string, FriendlyAuthError> = {
     message: 'This verification link has expired or is invalid. Please request a new verification email.',
     actionable: true,
     suggestedAction: 'resend_verification'
+  },
+  'Signup requires email confirmation': {
+    message: 'Please verify your email address before signing in. Check your inbox for the verification link.',
+    actionable: true,
+    suggestedAction: 'verify_email'
+  },
+  'email_not_confirmed': {
+    message: 'Please verify your email address before signing in. Check your inbox for the verification link.',
+    actionable: true,
+    suggestedAction: 'verify_email'
+  },
+  'Email address not confirmed': {
+    message: 'Please verify your email address before signing in. Check your inbox for the verification link.',
+    actionable: true,
+    suggestedAction: 'verify_email'
+  },
+  'Confirm your email address': {
+    message: 'Please verify your email address before signing in. Check your inbox for the verification link.',
+    actionable: true,
+    suggestedAction: 'verify_email'
   }
 }
 
@@ -144,7 +168,11 @@ export function translateAuthError(
   }
 
   if (cleanError.toLowerCase().includes('email not confirmed') ||
-      cleanError.toLowerCase().includes('email not verified')) {
+      cleanError.toLowerCase().includes('email not verified') ||
+      cleanError.toLowerCase().includes('email_not_confirmed') ||
+      cleanError.toLowerCase().includes('signup requires email confirmation') ||
+      cleanError.toLowerCase().includes('confirm your email') ||
+      cleanError.toLowerCase().includes('email confirmation required')) {
     const contextKey = `Email not confirmed - ${context}`
     return ERROR_TRANSLATIONS[contextKey] || ERROR_TRANSLATIONS['Email not confirmed - register']
   }
@@ -178,6 +206,11 @@ export function translateAuthError(
 
   if (cleanError.toLowerCase().includes('invalid email')) {
     return ERROR_TRANSLATIONS['Invalid email']
+  }
+
+  if (cleanError.toLowerCase().includes('missing email') || 
+      cleanError.toLowerCase().includes('missing phone')) {
+    return ERROR_TRANSLATIONS['missing email or phone']
   }
 
   // Context-specific fallbacks

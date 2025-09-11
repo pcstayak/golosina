@@ -11,7 +11,6 @@ import {
   recordEmailVerificationAttempt,
   formatRemainingTime
 } from './rateLimiting'
-import { getAuthErrorMessage } from './authErrorTranslator'
 
 // Utility function to get the correct site URL for email redirects
 function getSiteUrl(): string {
@@ -114,8 +113,7 @@ export class AuthService {
 
       if (authError) {
         recordRegistrationAttempt(data.email, false)
-        const friendlyError = getAuthErrorMessage(authError.message, 'register')
-        return { success: false, error: friendlyError }
+        return { success: false, error: authError.message }
       }
 
       if (!authData.user) {
@@ -178,8 +176,7 @@ export class AuthService {
           { email: data.email },
           false
         )
-        const friendlyError = getAuthErrorMessage(authError.message, 'login')
-        return { success: false, error: friendlyError }
+        return { success: false, error: authError.message }
       }
 
       if (!authData.user || !authData.session) {
@@ -227,8 +224,7 @@ export class AuthService {
       const { error } = await supabase.auth.signOut()
 
       if (error) {
-        const friendlyError = getAuthErrorMessage(error.message, 'login')
-        return { success: false, error: friendlyError }
+        return { success: false, error: error.message }
       }
 
       return { success: true }
@@ -257,8 +253,7 @@ export class AuthService {
 
       if (error) {
         recordPasswordResetAttempt(email, false)
-        const friendlyError = getAuthErrorMessage(error.message, 'password_reset')
-        return { success: false, error: friendlyError }
+        return { success: false, error: error.message }
       }
 
       // Success - record attempt
@@ -282,8 +277,7 @@ export class AuthService {
       })
 
       if (error) {
-        const friendlyError = getAuthErrorMessage(error.message, 'password_reset')
-        return { success: false, error: friendlyError }
+        return { success: false, error: error.message }
       }
 
       // Log password change
@@ -426,8 +420,7 @@ export class AuthService {
       })
 
       if (error) {
-        const friendlyError = getAuthErrorMessage(error.message, 'email_verification')
-        return { success: false, error: friendlyError }
+        return { success: false, error: error.message }
       }
 
       return {
@@ -464,8 +457,7 @@ export class AuthService {
 
       if (error) {
         recordEmailVerificationAttempt(email, false)
-        const friendlyError = getAuthErrorMessage(error.message, 'email_verification')
-        return { success: false, error: friendlyError }
+        return { success: false, error: error.message }
       }
 
       // Success - record attempt
