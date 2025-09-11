@@ -11,6 +11,36 @@ import {
   recordEmailVerificationAttempt,
   formatRemainingTime
 } from './rateLimiting'
+import { getAuthErrorMessage } from './authErrorTranslator'
+
+// Utility function to get the correct site URL for email redirects
+function getSiteUrl(): string {
+  // If we're in the browser, use the current origin
+  if (typeof window !== 'undefined') {
+    return window.location.origin
+  }
+
+  // Server-side logic
+  // Check for production environment variables first
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || process.env.SITE_URL
+
+  if (siteUrl) {
+    // Ensure HTTPS for production URLs (but not localhost)
+    if (siteUrl.startsWith('http://') && !siteUrl.includes('localhost')) {
+      return siteUrl.replace('http://', 'https://')
+    }
+    
+    // If it's a Vercel URL without protocol, add https
+    if (siteUrl.includes('.vercel.app') && !siteUrl.startsWith('http')) {
+      return `https://${siteUrl}`
+    }
+    
+    return siteUrl
+  }
+
+  // Default to localhost only in development
+  return 'http://localhost:3000'
+}
 
 export interface AuthResponse {
   success: boolean
@@ -70,7 +100,7 @@ export class AuthService {
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/callback`,
+          emailRedirectTo: `${getSiteUrl()}/api/auth/callback`,
           data: {
             first_name: data.firstName,
             last_name: data.lastName,
@@ -84,7 +114,8 @@ export class AuthService {
 
       if (authError) {
         recordRegistrationAttempt(data.email, false)
-        return { success: false, error: authError.message }
+        const friendlyError = getAuthErrorMessage(authError.message, 'register')
+        return { success: false, error: friendlyError }
       }
 
       if (!authData.user) {
@@ -147,7 +178,8 @@ export class AuthService {
           { email: data.email },
           false
         )
-        return { success: false, error: authError.message }
+        const friendlyError = getAuthErrorMessage(authError.message, 'login')
+        return { success: false, error: friendlyError }
       }
 
       if (!authData.user || !authData.session) {
@@ -195,7 +227,8 @@ export class AuthService {
       const { error } = await supabase.auth.signOut()
 
       if (error) {
-        return { success: false, error: error.message }
+        const friendlyError = getAuthErrorMessage(error.message, 'login')
+        return { success: false, error: friendlyError }
       }
 
       return { success: true }
@@ -219,12 +252,13 @@ export class AuthService {
       }
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`
+        redirectTo: `${getSiteUrl()}/auth/reset-password`
       })
 
       if (error) {
         recordPasswordResetAttempt(email, false)
-        return { success: false, error: error.message }
+        const friendlyError = getAuthErrorMessage(error.message, 'password_reset')
+        return { success: false, error: friendlyError }
       }
 
       // Success - record attempt
@@ -248,7 +282,8 @@ export class AuthService {
       })
 
       if (error) {
-        return { success: false, error: error.message }
+        const friendlyError = getAuthErrorMessage(error.message, 'password_reset')
+        return { success: false, error: friendlyError }
       }
 
       // Log password change
@@ -391,7 +426,8 @@ export class AuthService {
       })
 
       if (error) {
-        return { success: false, error: error.message }
+        const friendlyError = getAuthErrorMessage(error.message, 'email_verification')
+        return { success: false, error: friendlyError }
       }
 
       return {
@@ -422,13 +458,14 @@ export class AuthService {
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/callback`
+          emailRedirectTo: `${getSiteUrl()}/api/auth/callback`
         }
       })
 
       if (error) {
         recordEmailVerificationAttempt(email, false)
-        return { success: false, error: error.message }
+        const friendlyError = getAuthErrorMessage(error.message, 'email_verification')
+        return { success: false, error: friendlyError }
       }
 
       // Success - record attempt
