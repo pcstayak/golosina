@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AuthService } from '../../../lib/auth'
 import { EmailVerificationSuccess } from '../../../components/auth/EmailVerificationSuccess'
 import { Button } from '../../../components/ui/Button'
 
-export default function VerifyEmailPage() {
+// Component that uses useSearchParams - needs to be wrapped in Suspense
+function VerifyEmailContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
@@ -133,5 +134,28 @@ export default function VerifyEmailPage() {
         onSkipProfileSetup={handleSkipProfileSetup}
       />
     </div>
+  )
+}
+
+// Loading fallback component
+function VerifyEmailLoading() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="max-w-md w-full text-center space-y-6">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Verifying your email</h1>
+          <p className="text-gray-600 mt-2">Please wait while we confirm your email address...</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<VerifyEmailLoading />}>
+      <VerifyEmailContent />
+    </Suspense>
   )
 }

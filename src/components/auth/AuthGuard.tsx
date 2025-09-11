@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { AuthModal } from './AuthModal'
+import { MarketingLandingPage } from '@/components/pages/MarketingLandingPage'
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -10,7 +10,6 @@ interface AuthGuardProps {
 
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const { user, loading, session, profile } = useAuth()
-  const [showAuthModal, setShowAuthModal] = useState(false)
 
   // Show loading spinner while checking authentication
   if (loading) {
@@ -29,36 +28,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const isSessionValid = session && session.expires_at && new Date(session.expires_at * 1000) > new Date()
   
   if (!user || !session || !isSessionValid || !profile) {
-    return (
-      <>
-        <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto px-4">
-            <h1 className="text-4xl font-bold text-white mb-4">
-              Welcome to Golosina
-            </h1>
-            <p className="text-white/90 text-lg mb-8">
-              Your AI-powered voice training assistant with real-time feedback and progress tracking
-            </p>
-            <div className="space-y-4">
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="w-full bg-white text-purple-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
-              >
-                Get Started
-              </button>
-              <p className="text-white/70 text-sm">
-                Start your voice training journey today
-              </p>
-            </div>
-          </div>
-        </div>
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          initialMode="login"
-        />
-      </>
-    )
+    return <MarketingLandingPage />
   }
 
   // User is authenticated, show the main app

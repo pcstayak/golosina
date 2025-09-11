@@ -3,12 +3,23 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 
 // Types
+export interface MediaContent {
+  id: string;
+  type: 'image' | 'gif' | 'video';
+  url: string;
+  altText: string;
+  caption?: string;
+  thumbnailUrl?: string; // For videos
+  videoType?: 'local' | 'youtube'; // Distinguish between local and YouTube videos
+}
+
 export interface Exercise {
   id: number;
   name: string;
   instructions: string;
   duration?: string;
   tips?: string;
+  media?: MediaContent[];
 }
 
 export interface ExerciseSet {
@@ -104,7 +115,23 @@ const defaultExerciseSets: ExerciseSet[] = [
         name: "Diaphragmatic Breathing",
         instructions: "Place one hand on your chest and one on your stomach. Breathe slowly so that only the lower hand moves. Focus on expanding your diaphragm.",
         duration: "5-10 minutes",
-        tips: "Practice daily for improved breath control"
+        tips: "Practice daily for improved breath control",
+        media: [
+          {
+            id: "diaphragm-demo-1",
+            type: "image",
+            url: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+            altText: "Person demonstrating proper hand placement for diaphragmatic breathing exercise",
+            caption: "Correct hand placement: One hand on chest, one on diaphragm"
+          },
+          {
+            id: "diaphragm-demo-2",
+            type: "gif",
+            url: "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif",
+            altText: "Animation showing proper diaphragmatic breathing technique",
+            caption: "Watch the movement pattern - stomach should expand, chest remains still"
+          }
+        ]
       },
       {
         id: 2,
@@ -133,7 +160,18 @@ const defaultExerciseSets: ExerciseSet[] = [
         name: "Humming",
         instructions: "Hum gently with mouth closed, feeling vibrations in your face and chest. Start low and gradually go higher.",
         duration: "5 minutes",
-        tips: "Keep jaw relaxed and tongue resting at bottom of mouth"
+        tips: "Keep jaw relaxed and tongue resting at bottom of mouth",
+        media: [
+          {
+            id: "humming-demo-1",
+            type: "video",
+            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            altText: "Video demonstration of proper humming technique for vocal warm-up",
+            caption: "Notice how the mouth stays closed and vibrations are felt throughout the face",
+            thumbnailUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+            videoType: "youtube"
+          }
+        ]
       },
       {
         id: 5,
@@ -162,7 +200,23 @@ const defaultExerciseSets: ExerciseSet[] = [
         name: "Scale Practice",
         instructions: "Sing major scales using 'do-re-mi-fa-sol-la-ti-do'. Start in comfortable key and move up/down by semitones.",
         duration: "10-15 minutes",
-        tips: "Use piano or app for reference pitch"
+        tips: "Use piano or app for reference pitch",
+        media: [
+          {
+            id: "scale-practice-1",
+            type: "image",
+            url: "https://images.unsplash.com/photo-1507838153414-b4b713384a76?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+            altText: "Piano keyboard showing major scale pattern with do-re-mi labels",
+            caption: "Major scale pattern: Do-Re-Mi-Fa-Sol-La-Ti-Do"
+          },
+          {
+            id: "scale-practice-2",
+            type: "image",
+            url: "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+            altText: "Musical staff notation showing C major scale with solfege syllables",
+            caption: "C Major scale notation with solfege syllables"
+          }
+        ]
       },
       {
         id: 8,
