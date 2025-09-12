@@ -63,12 +63,12 @@ function VerifyEmailContent() {
     handleVerification()
   }, [searchParams])
 
-  const handleContinueToProfile = () => {
-    router.push('/profile/setup')
+  const handleContinueToApp = () => {
+    router.push('/')
   }
 
-  const handleContinueToDashboard = () => {
-    router.push('/dashboard')
+  const handleSkipProfileSetup = () => {
+    router.push('/')
   }
 
   const handleRetryVerification = () => {
@@ -130,8 +130,8 @@ function VerifyEmailContent() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <EmailVerificationSuccess
         userRole={userRole}
-        onContinueToProfile={handleContinueToProfile}
-        onContinueToDashboard={handleContinueToDashboard}
+        onContinueToApp={handleContinueToApp}
+        onSkipProfileSetup={handleSkipProfileSetup}
       />
     </div>
   )

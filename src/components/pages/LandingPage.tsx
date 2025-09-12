@@ -3,13 +3,13 @@
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
-import { Settings, LogOut } from 'lucide-react';
+import { Settings, LogOut, Home } from 'lucide-react';
 import { useState } from 'react';
 import SettingsModal from '@/components/modals/SettingsModal';
 
 export default function LandingPage() {
   const { state, dispatch } = useApp();
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -41,6 +41,14 @@ export default function LandingPage() {
     }
   };
 
+  const handleReturnToDashboard = () => {
+    if (profile?.role === 'admin') {
+      dispatch({ type: 'SET_CURRENT_VIEW', payload: 'admin-dashboard' });
+    } else if (profile?.role === 'teacher') {
+      dispatch({ type: 'SET_CURRENT_VIEW', payload: 'teacher-dashboard' });
+    }
+  };
+
   const getSetRecordingsCount = (setId: number): number => {
     let count = 0;
     Object.keys(state.audioPieces).forEach(exerciseKey => {
@@ -61,6 +69,17 @@ export default function LandingPage() {
             🎵 Golosina
           </h1>
           <div className="flex items-center gap-2">
+            {(profile?.role === 'admin' || profile?.role === 'teacher') && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleReturnToDashboard}
+                className="flex items-center gap-2"
+              >
+                <Home className="w-4 h-4" />
+                Dashboard
+              </Button>
+            )}
             <Button
               variant="secondary"
               size="sm"

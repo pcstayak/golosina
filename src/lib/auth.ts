@@ -12,6 +12,35 @@ import {
   formatRemainingTime
 } from './rateLimiting'
 
+// Utility function to get the correct site URL for email redirects
+function getSiteUrl(): string {
+  // If we're in the browser, use the current origin
+  if (typeof window !== 'undefined') {
+    return window.location.origin
+  }
+
+  // Server-side logic
+  // Check for production environment variables first
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || process.env.SITE_URL
+
+  if (siteUrl) {
+    // Ensure HTTPS for production URLs (but not localhost)
+    if (siteUrl.startsWith('http://') && !siteUrl.includes('localhost')) {
+      return siteUrl.replace('http://', 'https://')
+    }
+    
+    // If it's a Vercel URL without protocol, add https
+    if (siteUrl.includes('.vercel.app') && !siteUrl.startsWith('http')) {
+      return `https://${siteUrl}`
+    }
+    
+    return siteUrl
+  }
+
+  // Default to localhost only in development
+  return 'http://localhost:3000'
+}
+
 export interface AuthResponse {
   success: boolean
   error?: string
@@ -70,7 +99,7 @@ export class AuthService {
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/callback`,
+          emailRedirectTo: `${getSiteUrl()}/api/auth/callback`,
           data: {
             first_name: data.firstName,
             last_name: data.lastName,
@@ -219,7 +248,7 @@ export class AuthService {
       }
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`
+        redirectTo: `${getSiteUrl()}/auth/reset-password`
       })
 
       if (error) {
@@ -422,7 +451,7 @@ export class AuthService {
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/callback`
+          emailRedirectTo: `${getSiteUrl()}/api/auth/callback`
         }
       })
 
