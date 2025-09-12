@@ -72,7 +72,7 @@ interface AppState {
   currentSessionPieces: Record<string, AudioPiece[]>;
   
   // UI state
-  currentView: 'landing' | 'lesson' | 'recap';
+  currentView: 'landing' | 'lesson' | 'recap' | 'teacher-dashboard' | 'admin-dashboard';
   sessionActive: boolean;
   
   // Permissions and settings
@@ -91,7 +91,7 @@ type AppAction =
   | { type: 'SET_MEDIA_RECORDER'; payload: MediaRecorder | null }
   | { type: 'SET_AUDIO_STREAM'; payload: MediaStream | null }
   | { type: 'SET_RECORDED_CHUNKS'; payload: BlobPart[] }
-  | { type: 'SET_CURRENT_VIEW'; payload: 'landing' | 'lesson' | 'recap' }
+  | { type: 'SET_CURRENT_VIEW'; payload: 'landing' | 'lesson' | 'recap' | 'teacher-dashboard' | 'admin-dashboard' }
   | { type: 'SET_SESSION_ACTIVE'; payload: boolean }
   | { type: 'SET_MICROPHONE_PERMISSION'; payload: boolean }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<Settings> }
