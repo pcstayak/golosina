@@ -6,6 +6,7 @@ import { validateEmail, validatePassword } from '../../lib/auth'
 import { translateAuthError } from '../../lib/authErrorTranslator'
 import { UserRole } from '../../lib/supabase'
 import { Button } from '../ui/Button'
+import { GoogleSignInButton } from './GoogleSignInButton'
 
 interface RegisterFormProps {
   onSuccess?: (email: string) => void
@@ -145,6 +146,25 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       <div className="text-center">
         <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
         <p className="text-gray-600 mt-2">Start your voice training journey</p>
+      </div>
+
+      {/* Google Sign-In */}
+      <div className="space-y-3">
+        <GoogleSignInButton
+          text="Sign up with Google"
+          onSuccess={() => onSuccess?.('')}
+          onError={(error) => setErrors({ general: error })}
+          disabled={loading}
+        />
+        
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or sign up with email</span>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

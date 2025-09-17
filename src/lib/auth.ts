@@ -65,6 +65,54 @@ export interface LoginData {
 }
 
 export class AuthService {
+  static async signInWithGoogle(): Promise<AuthResponse> {
+    if (!supabase) {
+      return { success: false, error: 'Supabase not configured' }
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${getSiteUrl()}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
+        }
+      })
+
+      if (error) {
+        // Log failed OAuth attempt
+        await this.logAuthEvent(
+          null,
+          'oauth_login',
+          null,
+          null,
+          { provider: 'google', error: error.message },
+          false
+        )
+        return { success: false, error: error.message }
+      }
+
+      // OAuth success - the actual user data will be handled by the auth state change listener
+      // Log successful OAuth initiation
+      await this.logAuthEvent(
+        null,
+        'oauth_login',
+        null,
+        null,
+        { provider: 'google' },
+        true
+      )
+
+      return { success: true }
+    } catch (error) {
+      console.error('Google OAuth error:', error)
+      return { success: false, error: 'An unexpected error occurred during Google sign-in' }
+    }
+  }
+
   static async register(data: RegistrationData): Promise<AuthResponse> {
     if (!supabase) {
       return { success: false, error: 'Supabase not configured' }
@@ -99,7 +147,7 @@ export class AuthService {
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: `${getSiteUrl()}/api/auth/callback`,
+          emailRedirectTo: `${getSiteUrl()}/auth/callback`,
           data: {
             first_name: data.firstName,
             last_name: data.lastName,
@@ -323,6 +371,80 @@ export class AuthService {
     }
   }
 
+  static async createOAuthUserProfile(userId: string, userData: {
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    displayName: string;
+    provider: string;
+  }): Promise<AuthResponse> {
+    if (!supabase) {
+      return { success: false, error: 'Supabase not configured' }
+    }
+
+    try {
+      console.log('Creating OAuth user profile:', {
+        userId,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        displayName: userData.displayName,
+        provider: userData.provider
+      })
+
+      const { data: profile, error } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          email: userData.email,
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          display_name: userData.displayName,
+          role: 'student', // Default role for OAuth users
+          terms_accepted: true, // Assumed for OAuth users who completed the flow
+          privacy_policy_accepted: true, // Assumed for OAuth users who completed the flow
+          marketing_emails_consent: false, // Default to false, user can opt-in later
+          profile_completion: (userData.firstName && userData.lastName) ? 'basic' : 'incomplete'
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating OAuth user profile:', error)
+        return { success: false, error: error.message }
+      }
+
+      // Also create student profile since we default to student role
+      const { error: studentError } = await supabase
+        .from('student_profiles')
+        .insert({
+          id: userId,
+          experience_level: 'beginner'
+        })
+
+      if (studentError) {
+        console.warn('Warning: Could not create student profile for OAuth user:', studentError)
+        // Don't fail the whole operation for this
+      }
+
+      // Log the profile creation
+      await this.logAuthEvent(
+        userId,
+        'oauth_profile_created',
+        null,
+        null,
+        { provider: userData.provider, profile_completion: profile.profile_completion },
+        true
+      )
+
+      console.log('OAuth user profile created successfully:', profile)
+      return { success: true }
+    } catch (error) {
+      console.error('Error creating OAuth user profile:', error)
+      return { success: false, error: 'Failed to create user profile' }
+    }
+  }
+
   static async getUserProfile(userId: string): Promise<UserProfile | null> {
     if (!supabase) return null
 
@@ -451,7 +573,7 @@ export class AuthService {
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: `${getSiteUrl()}/api/auth/callback`
+          emailRedirectTo: `${getSiteUrl()}/auth/callback`
         }
       })
 

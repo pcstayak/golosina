@@ -6,10 +6,16 @@ Claude acts solely as an orchestrator and coordinator. It must **never** write c
 
 ## Development Commands
 
-- **Development server**: `npm run dev` - Start Next.js development server on http://localhost:3000
+- **Development server**: `npm run dev` - Start Next.js development server on http://localhost:3000 (NEVER auto-start - user manages this)
 - **Build**: `npm run build` - Build production version
 - **Start production**: `npm start` - Run production build  
 - **Lint**: `npm run lint` - Run ESLint checks
+
+## Important Development Rules
+
+- **NEVER automatically start `npm run dev`** - The user manages the development server themselves
+- Only suggest running development commands when explicitly requested by the user
+- Always kill/stop running development servers when asked by the user
 
 ## Project Architecture
 

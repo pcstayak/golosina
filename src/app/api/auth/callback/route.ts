@@ -39,6 +39,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'user_not_found' }, { status: 400 })
     }
 
+    // Check if this is a new OAuth user who needs profile setup
+    const isOAuthUser = user.app_metadata?.provider !== 'email'
+    let needsProfileSetup = false
+    
+    if (isOAuthUser) {
+      // Check if user has a profile
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle()
+      
+      needsProfileSetup = !profile
+    }
+
     // Return success with redirect URL based on callback type
     let redirectUrl = '/'
     switch (type) {
@@ -48,6 +63,10 @@ export async function POST(request: NextRequest) {
       case 'recovery':
         redirectUrl = '/auth/reset-password'
         break
+      default:
+        // For OAuth users who need profile setup, redirect to main app
+        // The AuthContext will handle the incomplete profile flow
+        redirectUrl = needsProfileSetup ? '/?setup=profile' : '/'
     }
 
     return NextResponse.json({ 
