@@ -10,6 +10,7 @@ interface AuthContextType {
   session: Session | null
   profile: UserProfile | null
   loading: boolean
+  authOperationLoading: boolean
   signUp: (data: any) => Promise<any>
   signIn: (email: string, password: string) => Promise<any>
   signInWithGoogle: () => Promise<any>
@@ -38,7 +39,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true) // Initial app authentication check
+  const [authOperationLoading, setAuthOperationLoading] = useState(false) // Active auth operations
 
   useEffect(() => {
     // Get initial session
@@ -193,7 +195,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [])
 
   const signUp = async (data: any) => {
-    setLoading(true)
+    setAuthOperationLoading(true)
     try {
       const result = await AuthService.register(data)
       if (result.success && result.user) {
@@ -202,12 +204,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       return result
     } finally {
-      setLoading(false)
+      setAuthOperationLoading(false)
     }
   }
 
   const signIn = async (email: string, password: string) => {
-    setLoading(true)
+    setAuthOperationLoading(true)
     try {
       const result = await AuthService.login({ email, password })
       if (result.success && result.user) {
@@ -216,21 +218,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       return result
     } finally {
-      setLoading(false)
+      setAuthOperationLoading(false)
     }
   }
 
   const signInWithGoogle = async () => {
-    setLoading(true)
+    setAuthOperationLoading(true)
     try {
       return await AuthService.signInWithGoogle()
     } finally {
-      setLoading(false)
+      setAuthOperationLoading(false)
     }
   }
 
   const signOut = async () => {
-    setLoading(true)
+    setAuthOperationLoading(true)
     try {
       const result = await AuthService.logout()
       if (result.success) {
@@ -240,7 +242,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       return result
     } finally {
-      setLoading(false)
+      setAuthOperationLoading(false)
     }
   }
 
@@ -273,6 +275,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     session,
     profile,
     loading,
+    authOperationLoading,
     signUp,
     signIn,
     signInWithGoogle,
