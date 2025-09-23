@@ -252,17 +252,26 @@ CREATE TRIGGER handle_user_profiles_updated_at
   FOR EACH ROW
   EXECUTE PROCEDURE public.handle_updated_at();
 
--- Function to create user profile on auth signup
+-- Function to create user profile on auth signup (for email users only)
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  user_provider TEXT;
 BEGIN
-  INSERT INTO public.user_profiles (id, email, first_name, last_name)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    NEW.raw_user_meta_data->>'first_name',
-    NEW.raw_user_meta_data->>'last_name'
-  );
+  -- Get the authentication provider
+  user_provider := COALESCE(NEW.app_metadata->>'provider', 'email');
+
+  -- Only handle email users in this function
+  IF user_provider = 'email' THEN
+    INSERT INTO public.user_profiles (id, email, first_name, last_name)
+    VALUES (
+      NEW.id,
+      NEW.email,
+      NEW.raw_user_meta_data->>'first_name',
+      NEW.raw_user_meta_data->>'last_name'
+    );
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

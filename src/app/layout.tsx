@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   description: 'Transform your voice with AI-powered training. Perfect for singers, speakers, and performers. Get real-time feedback, personalized exercises, and track your progress. Start free today!',
   keywords: [
     'voice training',
-    'AI voice coach',
+    'AI voice coach', 
     'singing lessons',
     'speech training',
     'vocal exercises',
@@ -89,7 +90,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <div id="app">
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </div>
       </body>
     </html>

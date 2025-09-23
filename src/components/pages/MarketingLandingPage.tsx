@@ -260,6 +260,12 @@ export const MarketingLandingPage: React.FC = () => {
               >
                 Start Training Free
               </Button>
+              <Button
+                onClick={handleLogin}
+                className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-purple-600 px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300 transform hover:scale-105"
+              >
+                Sign In
+              </Button>
               <button
                 onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
                 className="flex items-center gap-2 text-white/90 hover:text-white px-8 py-4 text-lg font-medium transition-colors"

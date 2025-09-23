@@ -12,6 +12,7 @@ interface AuthContextType {
   loading: boolean
   signUp: (data: any) => Promise<any>
   signIn: (email: string, password: string) => Promise<any>
+  signInWithGoogle: () => Promise<any>
   signOut: () => Promise<any>
   resetPassword: (email: string) => Promise<any>
   updatePassword: (newPassword: string) => Promise<any>
@@ -53,13 +54,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const profile = await AuthService.getUserProfile(user.id)
           setProfile(profile)
           
-          // If user exists but no profile, sign them out (incomplete registration)
+          // If user exists but no profile, check if it's an OAuth user
           if (!profile) {
-            console.log('User exists but no profile found - signing out incomplete session')
-            await AuthService.logout()
-            setUser(null)
-            setSession(null)
-            setProfile(null)
+            // For OAuth users, we might need to create a basic profile
+            const isOAuthUser = user.app_metadata?.provider !== 'email'
+            
+            if (isOAuthUser) {
+              console.log('OAuth user without profile - creating basic profile')
+              
+              try {
+                // Extract user data from OAuth metadata
+                const displayName = user.user_metadata?.full_name || 
+                                  user.user_metadata?.name || 
+                                  `${user.user_metadata?.given_name || ''} ${user.user_metadata?.family_name || ''}`.trim() ||
+                                  user.email?.split('@')[0]
+                
+                const firstName = user.user_metadata?.given_name || 
+                                user.user_metadata?.first_name ||
+                                (user.user_metadata?.full_name || '').split(' ')[0]
+                
+                const lastName = user.user_metadata?.family_name || 
+                               user.user_metadata?.last_name ||
+                               (user.user_metadata?.full_name || '').split(' ').slice(1).join(' ')
+                
+                const createResult = await AuthService.createOAuthUserProfile(user.id, {
+                  email: user.email!,
+                  firstName: firstName || null,
+                  lastName: lastName || null,
+                  displayName: displayName,
+                  provider: user.app_metadata?.provider || 'unknown'
+                })
+                
+                if (createResult.success) {
+                  console.log('OAuth user profile created successfully')
+                  const newProfile = await AuthService.getUserProfile(user.id)
+                  setProfile(newProfile)
+                } else {
+                  console.error('Failed to create OAuth user profile:', createResult.error)
+                  // Don't sign them out, let them proceed to complete setup manually
+                }
+              } catch (error) {
+                console.error('Error creating OAuth user profile:', error)
+                // Don't sign them out, let them proceed to complete setup manually
+              }
+            } else {
+              // For email users, incomplete registration should sign them out
+              console.log('Email user exists but no profile found - signing out incomplete session')
+              await AuthService.logout()
+              setUser(null)
+              setSession(null)
+              setProfile(null)
+            }
           }
         }
       } catch (error) {
@@ -81,13 +126,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const profile = await AuthService.getUserProfile(session.user.id)
           setProfile(profile)
           
-          // If user exists but no profile, sign them out (incomplete registration)
+          // If user exists but no profile, check if it's an OAuth user
           if (!profile) {
-            console.log('User exists but no profile found - signing out incomplete session')
-            await AuthService.logout()
-            setUser(null)
-            setSession(null)
-            setProfile(null)
+            // For OAuth users, we might need to create a basic profile
+            const isOAuthUser = session.user.app_metadata?.provider !== 'email'
+            
+            if (isOAuthUser) {
+              console.log('OAuth user without profile in auth state change - creating basic profile')
+              
+              try {
+                // Extract user data from OAuth metadata
+                const user = session.user
+                const displayName = user.user_metadata?.full_name || 
+                                  user.user_metadata?.name || 
+                                  `${user.user_metadata?.given_name || ''} ${user.user_metadata?.family_name || ''}`.trim() ||
+                                  user.email?.split('@')[0]
+                
+                const firstName = user.user_metadata?.given_name || 
+                                user.user_metadata?.first_name ||
+                                (user.user_metadata?.full_name || '').split(' ')[0]
+                
+                const lastName = user.user_metadata?.family_name || 
+                               user.user_metadata?.last_name ||
+                               (user.user_metadata?.full_name || '').split(' ').slice(1).join(' ')
+                
+                const createResult = await AuthService.createOAuthUserProfile(user.id, {
+                  email: user.email!,
+                  firstName: firstName || null,
+                  lastName: lastName || null,
+                  displayName: displayName,
+                  provider: user.app_metadata?.provider || 'unknown'
+                })
+                
+                if (createResult.success) {
+                  console.log('OAuth user profile created successfully in auth state change')
+                  const newProfile = await AuthService.getUserProfile(user.id)
+                  setProfile(newProfile)
+                } else {
+                  console.error('Failed to create OAuth user profile in auth state change:', createResult.error)
+                  // Don't sign them out, let them proceed to complete setup manually
+                }
+              } catch (error) {
+                console.error('Error creating OAuth user profile in auth state change:', error)
+                // Don't sign them out, let them proceed to complete setup manually
+              }
+            } else {
+              // For email users, incomplete registration should sign them out
+              console.log('Email user exists but no profile found - signing out incomplete session')
+              await AuthService.logout()
+              setUser(null)
+              setSession(null)
+              setProfile(null)
+            }
           }
         } else {
           setProfile(null)
@@ -125,6 +215,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setProfile(profile)
       }
       return result
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signInWithGoogle = async () => {
+    setLoading(true)
+    try {
+      return await AuthService.signInWithGoogle()
     } finally {
       setLoading(false)
     }
@@ -176,6 +275,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     resetPassword,
     updatePassword,

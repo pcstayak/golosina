@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { validateEmail } from '../../lib/auth'
 import { translateAuthError } from '../../lib/authErrorTranslator'
 import { Button } from '../ui/Button'
+import { GoogleSignInButton } from './GoogleSignInButton'
 
 interface LoginFormProps {
   onSuccess?: () => void
@@ -84,6 +85,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       <div className="text-center">
         <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
         <p className="text-gray-600 mt-2">Sign in to your account</p>
+      </div>
+
+      {/* Google Sign-In */}
+      <div className="space-y-3">
+        <GoogleSignInButton
+          onSuccess={onSuccess}
+          onError={(error) => setErrors({ general: error })}
+          disabled={loading}
+        />
+        
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
