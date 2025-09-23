@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Head from 'next/head'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { AuthModal } from '@/components/auth/AuthModal'
 import { 
@@ -19,10 +20,38 @@ import {
   ChevronUp
 } from 'lucide-react'
 
-export const MarketingLandingPage: React.FC = () => {
+const MarketingLandingPageComponent: React.FC = () => {
+  const searchParams = useSearchParams()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'register'>('register')
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string>('')
+
+  useEffect(() => {
+    const error = searchParams.get('error')
+
+    if (error) {
+      switch (error) {
+        case 'invalid_token':
+          setErrorMessage('The verification link is invalid or has expired.')
+          break
+        case 'configuration_error':
+          setErrorMessage('Authentication service is not properly configured.')
+          break
+        case 'authentication_failed':
+          setErrorMessage('Authentication failed. Please try again.')
+          break
+        case 'user_not_found':
+          setErrorMessage('User account could not be found.')
+          break
+        case 'unexpected_error':
+          setErrorMessage('An unexpected error occurred. Please try again.')
+          break
+        default:
+          setErrorMessage('An authentication error occurred.')
+      }
+    }
+  }, [searchParams])
 
   const handleGetStarted = () => {
     setAuthMode('register')
@@ -600,8 +629,12 @@ export const MarketingLandingPage: React.FC = () => {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         initialMode={authMode}
+        errorMessage={errorMessage}
       />
       </div>
     </>
   )
 }
+
+export const MarketingLandingPage = React.memo(MarketingLandingPageComponent)
+MarketingLandingPage.displayName = 'MarketingLandingPage'
