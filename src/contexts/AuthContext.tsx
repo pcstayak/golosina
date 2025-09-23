@@ -231,15 +231,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
-  const signInWithGoogle = async () => {
-    setLoading(true)
-    try {
-      return await AuthService.signInWithGoogle()
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const signOut = async () => {
     setAuthOperationLoading(true)
     try {
