@@ -204,79 +204,26 @@ export default function AuthCallback() {
           })
           
           if (!profile) {
-            console.log('OAuth user has no profile - may have been created by trigger, waiting...')
+            console.log('OAuth user has no profile - waiting for database trigger to complete...')
             // Wait a moment and try again - the trigger might still be creating the profile
             await new Promise(resolve => setTimeout(resolve, 1000))
-            
+
             const { data: retryProfile, error: retryError } = await supabase
               .from('user_profiles')
               .select('*')
               .eq('id', currentUser.id)
               .maybeSingle()
-            
+
             if (retryError) {
               console.error('Error on profile retry:', retryError)
+              needsProfileSetup = true
             } else if (retryProfile) {
               console.log('Profile found on retry:', retryProfile)
               userProfile = retryProfile
               profile = retryProfile
             } else {
-              console.log('No profile found on retry - creating profile manually')
-              // Create a basic profile for the OAuth user
-              try {
-                const displayName = currentUser.user_metadata?.full_name || 
-                                  currentUser.user_metadata?.name || 
-                                  `${currentUser.user_metadata?.given_name || ''} ${currentUser.user_metadata?.family_name || ''}`.trim() ||
-                                  currentUser.email?.split('@')[0]
-                
-                const firstName = currentUser.user_metadata?.given_name || 
-                                currentUser.user_metadata?.first_name ||
-                                (currentUser.user_metadata?.full_name || '').split(' ')[0]
-                
-                const lastName = currentUser.user_metadata?.family_name || 
-                               currentUser.user_metadata?.last_name ||
-                               (currentUser.user_metadata?.full_name || '').split(' ').slice(1).join(' ')
-                
-                console.log('Creating OAuth user profile with data:', {
-                  user_id: currentUser.id,
-                  email: currentUser.email,
-                  firstName,
-                  lastName,
-                  displayName,
-                  provider: currentUser.app_metadata?.provider
-                })
-                
-                const { data: newProfile, error: createError } = await supabase
-                  .from('user_profiles')
-                  .insert({
-                    id: currentUser.id,
-                    email: currentUser.email,
-                    first_name: firstName || null,
-                    last_name: lastName || null,
-                    display_name: displayName,
-                    role: 'student', // Default role for OAuth users
-                    terms_accepted: true, // Assumed for OAuth users
-                    privacy_policy_accepted: true, // Assumed for OAuth users
-                    marketing_emails_consent: false, // Default to false for OAuth
-                    profile_completion: (firstName && lastName) ? 'basic' : 'incomplete'
-                  })
-                  .select()
-                  .single()
-                
-                if (createError) {
-                  console.error('Failed to create OAuth user profile:', createError)
-                  // Continue anyway - the user can complete setup later
-                  needsProfileSetup = true
-                } else {
-                  console.log('OAuth user profile created successfully:', newProfile)
-                  userProfile = newProfile
-                  profile = newProfile
-                  needsProfileSetup = newProfile.profile_completion === 'incomplete'
-                }
-              } catch (createProfileError) {
-                console.error('Error creating OAuth user profile:', createProfileError)
-                needsProfileSetup = true
-              }
+              console.log('No profile found after retry - profile setup will be needed')
+              needsProfileSetup = true
             }
           }
           
