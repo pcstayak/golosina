@@ -35,6 +35,18 @@
   .record-btn.recording {
     @apply bg-red-500 text-white animate-pulse-recording focus:ring-red-300;
   }
+
+  .record-btn-compact {
+    @apply w-12 h-12 rounded-full text-lg transition-all duration-300 focus:outline-none focus:ring-2 flex items-center justify-center;
+  }
+
+  .record-btn-compact:not(.recording) {
+    @apply bg-primary text-white hover:bg-primary/90 focus:ring-primary/30;
+  }
+
+  .record-btn-compact.recording {
+    @apply bg-red-500 text-white animate-pulse-recording focus:ring-red-300;
+  }
   
   .set-card {
     @apply bg-white rounded-xl shadow-lg overflow-hidden transition-transform duration-200 hover:scale-105;
