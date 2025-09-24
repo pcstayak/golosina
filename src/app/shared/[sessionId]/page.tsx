@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
-import { Play, Pause, Download, ArrowLeft, Clock, Mic, Calendar } from 'lucide-react'
+import { ArrowLeft, Clock, Mic, Calendar } from 'lucide-react'
 import { SharedLessonService, type SharedLessonData } from '@/services/sharedLessonService'
+import AudioPlayer from '@/components/lesson/AudioPlayer'
+import { AudioPiece } from '@/contexts/AppContext'
 import Link from 'next/link'
 
 export default function SharedLessonPage() {
@@ -14,7 +16,7 @@ export default function SharedLessonPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null)
-  const [audioElements, setAudioElements] = useState<{ [key: string]: HTMLAudioElement }>({})
+  const [convertedAudioPieces, setConvertedAudioPieces] = useState<Record<string, AudioPiece[]>>({})
 
   useEffect(() => {
     const fetchLessonData = async () => {
@@ -58,99 +60,83 @@ export default function SharedLessonPage() {
     })
   }
 
-  const handlePlayPause = async (audioUrl: string, audioId: string) => {
-    console.log('Attempting to play audio:', { audioUrl, audioId })
-    
-    // Stop any currently playing audio
-    if (currentlyPlaying && currentlyPlaying !== audioId) {
-      const currentAudio = audioElements[currentlyPlaying]
-      if (currentAudio) {
-        currentAudio.pause()
-        currentAudio.currentTime = 0
-      }
-    }
+  // Convert shared lesson file data to AudioPiece format
+  const convertToAudioPiece = useCallback(async (file: any, exerciseId: string, exerciseName: string, index: number): Promise<AudioPiece> => {
+    // Create a blob from the audio URL for waveform analysis
+    const response = await fetch(file.url)
+    const blob = await response.blob()
 
-    let audio = audioElements[audioId]
-    
-    if (!audio) {
-      console.log('Creating new audio element for:', audioUrl)
-      audio = new Audio()
-      
-      // Set crossOrigin to handle CORS
-      audio.crossOrigin = 'anonymous'
-      
-      audio.addEventListener('loadstart', () => {
-        console.log('Audio loading started')
-      })
-      
-      audio.addEventListener('canplay', () => {
-        console.log('Audio can play')
-      })
-      
-      audio.addEventListener('ended', () => {
-        console.log('Audio ended')
-        setCurrentlyPlaying(null)
-      })
-      
-      audio.addEventListener('error', (e) => {
-        console.error('Audio playback error:', e)
-        console.error('Audio error details:', audio.error)
-        
-        // Provide user-friendly error message
-        const errorMessage = audio.error ? 
-          `Audio error ${audio.error.code}: ${getAudioErrorMessage(audio.error.code)}` :
-          'Failed to load audio file'
-        
-        alert(`Could not play audio: ${errorMessage}\n\nTry downloading the file instead.`)
-        setCurrentlyPlaying(null)
-      })
-      
-      setAudioElements(prev => ({ ...prev, [audioId]: audio }))
-      
-      // Set source after setting up event listeners
-      audio.src = audioUrl
+    return {
+      id: `${exerciseId}-${index}`,
+      blob,
+      timestamp: file.timestamp,
+      duration: file.duration,
+      exerciseId: parseInt(exerciseId),
+      exerciseName,
+      customTitle: file.name
     }
+  }, [])
 
-    if (currentlyPlaying === audioId) {
-      console.log('Pausing audio')
-      audio.pause()
-      setCurrentlyPlaying(null)
+  const handlePlayStateChange = useCallback((pieceId: string, playing: boolean) => {
+    if (playing) {
+      setCurrentlyPlaying(pieceId)
     } else {
-      try {
-        console.log('Starting audio playback')
-        
-        // Load the audio if not already loaded
-        if (audio.readyState === 0) {
-          audio.load()
-        }
-        
-        await audio.play()
-        console.log('Audio playback started successfully')
-        setCurrentlyPlaying(audioId)
-      } catch (error) {
-        console.error('Playback failed:', error)
-        alert('Could not play audio. This may be due to browser restrictions or unsupported format. Try downloading the file instead.')
+      if (currentlyPlaying === pieceId) {
         setCurrentlyPlaying(null)
       }
     }
-  }
+  }, [currentlyPlaying])
 
-  const getAudioErrorMessage = (errorCode: number): string => {
-    switch (errorCode) {
-      case 1: return 'Audio loading was aborted'
-      case 2: return 'Network error occurred'
-      case 3: return 'Audio decoding failed'
-      case 4: return 'Audio format not supported'
-      default: return 'Unknown error'
+  const downloadPiece = useCallback((piece: AudioPiece) => {
+    // For shared lessons, we'll download directly from the URL
+    // Find the original file data to get the URL
+    if (!lessonData) return
+
+    for (const [exerciseId, exercise] of Object.entries(lessonData.files)) {
+      const file = exercise.files.find((_, index) => `${exerciseId}-${index}` === piece.id)
+      if (file) {
+        const a = document.createElement('a')
+        a.href = file.url
+        a.download = `${file.name}.webm`
+        a.click()
+        break
+      }
     }
-  }
+  }, [lessonData])
 
-  const downloadAudio = (audioUrl: string, filename: string) => {
-    const a = document.createElement('a')
-    a.href = audioUrl
-    a.download = filename
-    a.click()
-  }
+  // Convert lesson data to AudioPieces when data loads
+  useEffect(() => {
+    const convertLessonData = async () => {
+      if (!lessonData) {
+        setConvertedAudioPieces({})
+        return
+      }
+
+      const converted: Record<string, AudioPiece[]> = {}
+
+      for (const [exerciseId, exercise] of Object.entries(lessonData.files)) {
+        const pieces: AudioPiece[] = []
+
+        for (let index = 0; index < exercise.files.length; index++) {
+          const file = exercise.files[index]
+          try {
+            const audioPiece = await convertToAudioPiece(file, exerciseId, exercise.name, index)
+            pieces.push(audioPiece)
+          } catch (error) {
+            console.error('Error converting audio file:', error)
+          }
+        }
+
+        if (pieces.length > 0) {
+          converted[`exercise_${exerciseId}`] = pieces
+        }
+      }
+
+      setConvertedAudioPieces(converted)
+    }
+
+    convertLessonData()
+  }, [lessonData, convertToAudioPiece])
 
   if (loading) {
     return (
@@ -241,66 +227,54 @@ export default function SharedLessonPage() {
           </div>
         </div>
 
-        {/* Exercises */}
+        {/* Exercises with AudioPlayer */}
         <div className="space-y-6">
-          {Object.entries(lessonData.files).map(([exerciseId, exercise]) => (
-            <div key={exerciseId} className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">{exercise.name}</h2>
-              
-              <div className="space-y-3">
-                {exercise.files.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-800">{file.name}</h3>
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDuration(file.duration)}
-                        </span>
-                        <span>{formatDate(file.timestamp)}</span>
-                        <span className="px-2 py-1 bg-gray-200 rounded text-xs">WebM</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handlePlayPause(file.url, `${exerciseId}-${index}`)}
-                        className="flex items-center gap-2"
-                      >
-                        {currentlyPlaying === `${exerciseId}-${index}` ? (
-                          <>
-                            <Pause className="w-4 h-4" />
-                            Pause
-                          </>
-                        ) : (
-                          <>
-                            <Play className="w-4 h-4" />
-                            Play
-                          </>
-                        )}
-                      </Button>
-                      
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => downloadAudio(file.url, `${file.name}.webm`)}
-                        className="flex items-center gap-2"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+          {Object.entries(convertedAudioPieces).map(([exerciseKey, pieces]) => {
+            if (pieces.length === 0) return null
+
+            const exerciseId = exerciseKey.split('_')[1]
+            const exercise = lessonData?.files[exerciseId]
+
+            if (!exercise) return null
+
+            return (
+              <div key={exerciseKey} className="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
+                  <h3 className="text-xl font-semibold text-white">
+                    {exercise.name}
+                  </h3>
+                  <p className="text-white/80">
+                    {pieces.length} recording{pieces.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+
+                <div className="p-4 space-y-3">
+                  {pieces.map((piece, index) => (
+                    <AudioPlayer
+                      key={piece.id}
+                      piece={piece}
+                      index={index}
+                      onDelete={() => {}} // No-op for shared lessons
+                      onDownload={downloadPiece}
+                      onTitleUpdate={undefined} // No title editing for shared lessons
+                      isPlaying={currentlyPlaying === piece.id}
+                      onPlayStateChange={handlePlayStateChange}
+                      exerciseName={exercise.name}
+                      showDeleteButton={false}
+                    />
+                  ))}
+                </div>
               </div>
-              
-              {exercise.files.length === 0 && (
-                <p className="text-gray-500 text-center py-8">No recordings for this exercise</p>
-              )}
+            )
+          })}
+
+          {Object.keys(convertedAudioPieces).length === 0 && !loading && (
+            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
+              <div className="text-6xl mb-4">🎤</div>
+              <h3 className="text-xl font-semibold mb-2">No recordings available</h3>
+              <p className="text-gray-600">This shared session doesn't contain any audio recordings.</p>
             </div>
-          ))}
+          )}
         </div>
 
         {/* Footer */}

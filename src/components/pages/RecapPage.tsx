@@ -159,13 +159,7 @@ export default function RecapPage() {
       if (result.success && result.sessionId) {
         const shareUrl = `${window.location.origin}/shared/${result.sessionId}`;
         dispatch({ type: 'SET_SHARE_URL', payload: shareUrl });
-
-        setAlertDialog({
-          show: true,
-          title: isUpdate ? 'Session Updated' : 'Session Shared',
-          message: `Your lesson has been ${isUpdate ? 'updated' : 'uploaded'}! The shareable link is now available above.`,
-          variant: 'success'
-        });
+        // Success - no popup needed, URL appears in UI
       } else {
         setAlertDialog({
           show: true,
@@ -194,12 +188,7 @@ export default function RecapPage() {
       await navigator.clipboard.writeText(state.shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      setAlertDialog({
-        show: true,
-        title: 'Copied!',
-        message: 'Shareable link copied to clipboard.',
-        variant: 'success'
-      });
+      // Success feedback shown by button state change, no popup needed
     } catch (error) {
       setAlertDialog({
         show: true,
@@ -308,6 +297,15 @@ export default function RecapPage() {
           </div>
         </div>
 
+        
+
+        <h2 className="text-2xl font-bold text-gray-800">
+          Session Recap
+        </h2>
+        <p className="text-gray-600">
+          Review your recorded exercises from this session
+        </p>
+
         {/* Share URL Display */}
         {state.shareUrl && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
@@ -332,13 +330,6 @@ export default function RecapPage() {
             </div>
           </div>
         )}
-
-        <h2 className="text-2xl font-bold text-gray-800">
-          Session Recap
-        </h2>
-        <p className="text-gray-600">
-          Review your recorded exercises from this session
-        </p>
       </div>
 
       {/* Recap Content */}
