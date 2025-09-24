@@ -112,6 +112,7 @@ export default function AudioPiecesDisplay() {
           isPlaying={currentlyPlaying === piece.id}
           onPlayStateChange={handlePlayStateChange}
           exerciseName={currentExercise.name}
+          showDeleteButton={true}
         />
       ))}
       

@@ -3,15 +3,17 @@
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft, Download, Share2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import ShareModal from '@/components/modals/ShareModal';
 import AlertDialog from '@/components/ui/AlertDialog';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
+import AudioPlayer from '@/components/lesson/AudioPlayer';
 
 export default function RecapPage() {
   const { state, dispatch, getCurrentExercises } = useApp();
   const { getFileExtensionFromMimeType } = useAudioRecording();
   const [showShareModal, setShowShareModal] = useState(false);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
   const [alertDialog, setAlertDialog] = useState<{
     show: boolean;
     title: string;
@@ -122,6 +124,55 @@ export default function RecapPage() {
     setShowShareModal(true);
   };
 
+  const handlePlayStateChange = useCallback((pieceId: string, playing: boolean) => {
+    if (playing) {
+      // Stop any currently playing audio
+      setCurrentlyPlaying(pieceId);
+    } else {
+      // Only clear if this piece was playing
+      if (currentlyPlaying === pieceId) {
+        setCurrentlyPlaying(null);
+      }
+    }
+  }, [currentlyPlaying]);
+
+  const downloadPiece = useCallback((piece: any) => {
+    const exerciseId = piece.exerciseId || 'recording';
+    try {
+      const url = URL.createObjectURL(piece.blob);
+      const fileExtension = getFileExtensionFromMimeType(piece.blob.type);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${exerciseId}_${piece.id}.${fileExtension}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading piece:', error);
+    }
+  }, [getFileExtensionFromMimeType]);
+
+  const updatePieceTitle = useCallback((pieceId: string, title: string) => {
+    // Find which exercise this piece belongs to
+    for (const [exerciseKey, pieces] of Object.entries(state.currentSessionPieces)) {
+      const piece = pieces.find(p => p.id === pieceId);
+      if (piece) {
+        dispatch({
+          type: 'UPDATE_AUDIO_PIECE_TITLE',
+          payload: { exerciseKey, pieceId, title }
+        });
+        break;
+      }
+    }
+  }, [dispatch, state.currentSessionPieces]);
+
+  // No-op delete function for recap (we don't allow deleting from recap)
+  const handleDelete = useCallback((pieceId: string) => {
+    // In recap view, we don't allow deletion
+    console.log('Delete not allowed in recap view');
+  }, []);
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
@@ -207,52 +258,18 @@ export default function RecapPage() {
                 
                 <div className="p-4 space-y-3">
                   {pieces.map((piece, index) => (
-                    <div 
+                    <AudioPlayer
                       key={piece.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-medium">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-800">
-                            Recording {index + 1}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {piece.duration.toFixed(1)}s • {new Date(piece.timestamp).toLocaleTimeString()}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            const audio = new Audio(URL.createObjectURL(piece.blob));
-                            audio.play();
-                          }}
-                        >
-                          ▶️ Play
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            const url = URL.createObjectURL(piece.blob);
-                            const fileExtension = getFileExtensionFromMimeType(piece.blob.type);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `${exercise.name}_${piece.id}.${fileExtension}`;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                          }}
-                        >
-                          💾 Download
-                        </Button>
-                      </div>
-                    </div>
+                      piece={piece}
+                      index={index}
+                      onDelete={handleDelete}
+                      onDownload={downloadPiece}
+                      onTitleUpdate={updatePieceTitle}
+                      isPlaying={currentlyPlaying === piece.id}
+                      onPlayStateChange={handlePlayStateChange}
+                      exerciseName={exercise.name}
+                      showDeleteButton={false}
+                    />
                   ))}
                 </div>
               </div>

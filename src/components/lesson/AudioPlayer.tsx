@@ -15,6 +15,7 @@ interface AudioPlayerProps {
   isPlaying: boolean;
   onPlayStateChange: (pieceId: string, playing: boolean) => void;
   exerciseName: string;
+  showDeleteButton?: boolean;
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({
@@ -25,7 +26,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   onTitleUpdate,
   isPlaying,
   onPlayStateChange,
-  exerciseName
+  exerciseName,
+  showDeleteButton = true
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const waveformRef = useRef<HTMLDivElement>(null);
@@ -388,15 +390,17 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           </Button>
 
           {/* Delete */}
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() => onDelete(piece.id)}
-            className="p-1.5"
-            title="Delete recording"
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
+          {showDeleteButton && (
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => onDelete(piece.id)}
+              className="p-1.5"
+              title="Delete recording"
+            >
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
