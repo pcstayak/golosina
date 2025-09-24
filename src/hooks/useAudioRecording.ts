@@ -15,6 +15,7 @@ export const useAudioRecording = () => {
   const currentRecorderRef = useRef<MediaRecorder | null>(null);
   const currentChunksRef = useRef<BlobPart[]>([]);
   const recordingStartTimeRef = useRef<number | null>(null);
+  const currentAudioFormatRef = useRef<{ mimeType: string; extension: string; audioBitsPerSecond?: number } | null>(null);
   
   // Refs to track current state for closures
   const isRecordingRef = useRef(false);
@@ -88,8 +89,12 @@ export const useAudioRecording = () => {
     }
 
     try {
-      const audioBlob = new Blob(chunks, { 
-        type: chunks.length > 0 && chunks[0] instanceof Blob ? (chunks[0] as Blob).type : 'audio/webm'
+      // Use the actual mime type from the recorder, or determine from the first chunk
+      const actualMimeType = currentAudioFormatRef.current?.mimeType ||
+        (chunks.length > 0 && chunks[0] instanceof Blob ? (chunks[0] as Blob).type : 'audio/webm');
+
+      const audioBlob = new Blob(chunks, {
+        type: actualMimeType
       });
 
       if (audioBlob.size === 0) {
@@ -128,7 +133,48 @@ export const useAudioRecording = () => {
       console.error('Error processing recording segment:', error);
       showError('Error processing recording: ' + error.message);
     }
-  }, [state.settings.minRecordingLength, state.settings.autoSplitEnabled, state.currentExerciseIndex, dispatch, getCurrentExercises, getCurrentSet, showError, showSuccess]);
+  }, [state.settings.minRecordingLength, state.settings.autoSplitEnabled, state.settings.autoSplitDuration, state.currentExerciseIndex, dispatch, getCurrentExercises, getCurrentSet, showError, showSuccess]);
+
+  // Helper function to get file extension from mime type
+  const getFileExtensionFromMimeType = useCallback((mimeType: string): string => {
+    const mimeToExtension: Record<string, string> = {
+      'audio/mpeg': 'mp3',
+      'audio/mp3': 'mp3',
+      'audio/mp4': 'mp4',
+      'audio/mp4;codecs=mp4a.40.2': 'mp4',
+      'audio/webm': 'webm',
+      'audio/webm;codecs=opus': 'webm',
+      'audio/wav': 'wav',
+      'audio/ogg': 'ogg'
+    };
+
+    return mimeToExtension[mimeType] || 'webm'; // Default fallback
+  }, []);
+
+  // Helper function to get the best available audio format
+  const getBestAudioFormat = useCallback((): { mimeType: string; extension: string; audioBitsPerSecond?: number } => {
+    // Priority order: MP3 > MP4 > WebM > WAV (as fallback)
+    const formats = [
+      { mimeType: 'audio/mpeg', extension: 'mp3', audioBitsPerSecond: 128000 },
+      { mimeType: 'audio/mp3', extension: 'mp3', audioBitsPerSecond: 128000 },
+      { mimeType: 'audio/mp4', extension: 'mp4', audioBitsPerSecond: 128000 },
+      { mimeType: 'audio/mp4;codecs=mp4a.40.2', extension: 'mp4', audioBitsPerSecond: 128000 },
+      { mimeType: 'audio/webm;codecs=opus', extension: 'webm', audioBitsPerSecond: 128000 },
+      { mimeType: 'audio/webm', extension: 'webm' },
+      { mimeType: 'audio/wav', extension: 'wav' },
+      { mimeType: '', extension: 'webm' } // Fallback with no mime type
+    ];
+
+    for (const format of formats) {
+      if (format.mimeType === '' || MediaRecorder.isTypeSupported(format.mimeType)) {
+        console.log('Selected audio format:', format);
+        return format;
+      }
+    }
+
+    // Ultimate fallback
+    return { mimeType: 'audio/webm', extension: 'webm' };
+  }, []);
 
   // Helper function to start a new recording segment
   const startNewRecordingSegment = useCallback(async (stream: MediaStream) => {
@@ -136,23 +182,16 @@ export const useAudioRecording = () => {
     const newSegment = isRecordingRef.current ? state.currentRecordingSegment + 1 : 1;
     dispatch({ type: 'SET_CURRENT_RECORDING_SEGMENT', payload: newSegment });
 
-    // Mobile device detection for codec selection
-    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
+    // Get the best available format
+    const audioFormat = getBestAudioFormat();
+    currentAudioFormatRef.current = audioFormat;
+
     let mediaRecorderOptions: MediaRecorderOptions = {};
-    if (isMobile) {
-      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-        mediaRecorderOptions.mimeType = 'audio/webm;codecs=opus';
-      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-        mediaRecorderOptions.mimeType = 'audio/webm';
-      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        mediaRecorderOptions.mimeType = 'audio/mp4';
-      }
-    } else {
-      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-        mediaRecorderOptions.mimeType = 'audio/webm;codecs=opus';
-        mediaRecorderOptions.audioBitsPerSecond = 128000;
-      }
+    if (audioFormat.mimeType) {
+      mediaRecorderOptions.mimeType = audioFormat.mimeType;
+    }
+    if (audioFormat.audioBitsPerSecond) {
+      mediaRecorderOptions.audioBitsPerSecond = audioFormat.audioBitsPerSecond;
     }
 
     const recorder = new MediaRecorder(stream, mediaRecorderOptions);
@@ -204,12 +243,12 @@ export const useAudioRecording = () => {
         dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: false });
       }, 2000); // Give 2 seconds for the "Auto-splitting active" message to be visible
     }
-  }, [state.currentRecordingSegment, dispatch, showError, processRecordingSegment]);
+  }, [state.currentRecordingSegment, state.isAutoSplitting, dispatch, showError, processRecordingSegment, getBestAudioFormat]);
   
   // Update the function ref
   useEffect(() => {
     startNewRecordingSegmentRef.current = startNewRecordingSegment;
-  }, [startNewRecordingSegment]);
+  }, [startNewRecordingSegment, getBestAudioFormat]);
 
   const ensureMicrophonePermission = useCallback(async () => {
     if (state.microphonePermissionGranted && state.audioStream && state.audioStream.active) {
@@ -341,9 +380,12 @@ export const useAudioRecording = () => {
     }
 
     try {
-      // Create blob from recorded chunks
-      const audioBlob = new Blob(chunks, { 
-        type: chunks.length > 0 && chunks[0] instanceof Blob ? (chunks[0] as Blob).type : 'audio/webm'
+      // Create blob from recorded chunks using the actual mime type
+      const actualMimeType = currentAudioFormatRef.current?.mimeType ||
+        (chunks.length > 0 && chunks[0] instanceof Blob ? (chunks[0] as Blob).type : 'audio/webm');
+
+      const audioBlob = new Blob(chunks, {
+        type: actualMimeType
       });
       
       if (audioBlob.size === 0) {
@@ -472,34 +514,108 @@ export const useAudioRecording = () => {
     return pieces;
   };
 
-  const audioBufferToBlob = async (audioBuffer: AudioBuffer): Promise<Blob> => {
+  const audioBufferToBlob = async (audioBuffer: AudioBuffer, preferredFormat?: string): Promise<Blob> => {
+    // Try to use MediaRecorder for better format support if available
+    if (preferredFormat && preferredFormat !== 'audio/wav' && typeof MediaRecorder !== 'undefined') {
+      try {
+        return await audioBufferToBlobUsingMediaRecorder(audioBuffer, preferredFormat);
+      } catch (error) {
+        console.warn('Failed to use MediaRecorder for conversion, falling back to WAV:', error);
+      }
+    }
+
+    // Fallback to WAV conversion
+    return await audioBufferToWavBlob(audioBuffer);
+  };
+
+  const audioBufferToBlobUsingMediaRecorder = async (audioBuffer: AudioBuffer, mimeType: string): Promise<Blob> => {
+    // Create an offline context to generate the audio
     const offlineContext = new OfflineAudioContext(
       audioBuffer.numberOfChannels,
       audioBuffer.length,
       audioBuffer.sampleRate
     );
-    
+
     const source = offlineContext.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(offlineContext.destination);
     source.start();
-    
+
+    // Create a MediaStreamDestination to capture the audio
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const destination = audioContext.createMediaStreamDestination();
+
+    // Create a buffer source from the rendered audio
+    const bufferSource = audioContext.createBufferSource();
+    bufferSource.buffer = audioBuffer;
+    bufferSource.connect(destination);
+
+    // Set up MediaRecorder with the preferred format
+    const format = getBestAudioFormat();
+    const mediaRecorder = new MediaRecorder(destination.stream, {
+      mimeType: format.mimeType,
+      audioBitsPerSecond: format.audioBitsPerSecond
+    });
+
+    const chunks: BlobPart[] = [];
+
+    return new Promise((resolve, reject) => {
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: format.mimeType });
+        audioContext.close();
+        resolve(blob);
+      };
+
+      mediaRecorder.onerror = (error) => {
+        audioContext.close();
+        reject(error);
+      };
+
+      // Start recording and playback
+      mediaRecorder.start();
+      bufferSource.start();
+
+      // Stop recording when audio buffer finishes playing
+      setTimeout(() => {
+        mediaRecorder.stop();
+      }, (audioBuffer.duration * 1000) + 100); // Add small buffer for timing
+    });
+  };
+
+  const audioBufferToWavBlob = async (audioBuffer: AudioBuffer): Promise<Blob> => {
+    const offlineContext = new OfflineAudioContext(
+      audioBuffer.numberOfChannels,
+      audioBuffer.length,
+      audioBuffer.sampleRate
+    );
+
+    const source = offlineContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(offlineContext.destination);
+    source.start();
+
     const renderedBuffer = await offlineContext.startRendering();
-    
+
     // Convert to WAV format
     const length = renderedBuffer.length;
     const numberOfChannels = renderedBuffer.numberOfChannels;
     const sampleRate = renderedBuffer.sampleRate;
     const arrayBuffer = new ArrayBuffer(44 + length * numberOfChannels * 2);
     const view = new DataView(arrayBuffer);
-    
+
     // Write WAV header
     const writeString = (offset: number, string: string) => {
       for (let i = 0; i < string.length; i++) {
         view.setUint8(offset + i, string.charCodeAt(i));
       }
     };
-    
+
     writeString(0, 'RIFF');
     view.setUint32(4, 36 + length * numberOfChannels * 2, true);
     writeString(8, 'WAVE');
@@ -513,7 +629,7 @@ export const useAudioRecording = () => {
     view.setUint16(34, 16, true);
     writeString(36, 'data');
     view.setUint32(40, length * numberOfChannels * 2, true);
-    
+
     // Write audio data
     let offset = 44;
     for (let i = 0; i < length; i++) {
@@ -524,7 +640,7 @@ export const useAudioRecording = () => {
         offset += 2;
       }
     }
-    
+
     return new Blob([arrayBuffer], { type: 'audio/wav' });
   };
 
@@ -542,5 +658,8 @@ export const useAudioRecording = () => {
     // Auto-splitting data
     currentAudioLevel,
     silenceDetection,
+    // Audio format utilities
+    getFileExtensionFromMimeType,
+    getCurrentAudioFormat: () => currentAudioFormatRef.current,
   };
 };

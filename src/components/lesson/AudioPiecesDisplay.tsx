@@ -4,9 +4,11 @@ import { useApp } from '@/contexts/AppContext';
 import { useState, useCallback } from 'react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import AudioPlayer from './AudioPlayer';
+import { useAudioRecording } from '@/hooks/useAudioRecording';
 
 export default function AudioPiecesDisplay() {
   const { state, dispatch, getCurrentExercise, getCurrentSet } = useApp();
+  const { getFileExtensionFromMimeType } = useAudioRecording();
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; pieceId: string | null }>({
     show: false,
     pieceId: null
@@ -34,9 +36,13 @@ export default function AudioPiecesDisplay() {
 
     try {
       const url = URL.createObjectURL(piece.blob);
+
+      // Get the proper file extension based on the blob's mime type
+      const fileExtension = getFileExtensionFromMimeType(piece.blob.type);
+
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${currentExercise.name}_${piece.id}.wav`;
+      a.download = `${currentExercise.name}_${piece.id}.${fileExtension}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -44,7 +50,7 @@ export default function AudioPiecesDisplay() {
     } catch (error) {
       console.error('Error downloading piece:', error);
     }
-  }, [currentExercise]);
+  }, [currentExercise, getFileExtensionFromMimeType]);
 
   const deletePiece = useCallback((pieceId: string) => {
     // Stop playback if this piece is currently playing

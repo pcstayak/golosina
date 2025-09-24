@@ -1,5 +1,21 @@
 import type { AudioPiece } from '@/contexts/AppContext';
 
+// Helper function to get file extension from mime type
+const getFileExtensionFromMimeType = (mimeType: string): string => {
+  const mimeToExtension: Record<string, string> = {
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/mp4': 'mp4',
+    'audio/mp4;codecs=mp4a.40.2': 'mp4',
+    'audio/webm': 'webm',
+    'audio/webm;codecs=opus': 'webm',
+    'audio/wav': 'wav',
+    'audio/ogg': 'ogg'
+  };
+
+  return mimeToExtension[mimeType] || 'webm'; // Default fallback
+};
+
 export interface ShareData {
   title: string;
   text: string;
@@ -160,7 +176,8 @@ export const createAudioFiles = async (currentSessionPieces: Record<string, Audi
     
     for (let i = 0; i < pieces.length; i++) {
       const piece = pieces[i];
-      const fileName = `${exercise.name.replace(/[^a-zA-Z0-9]/g, '_')}_${i + 1}.webm`;
+      const fileExtension = getFileExtensionFromMimeType(piece.blob.type);
+      const fileName = `${exercise.name.replace(/[^a-zA-Z0-9]/g, '_')}_${i + 1}.${fileExtension}`;
       const file = new File([piece.blob], fileName, { type: piece.blob.type });
       files.push(file);
     }

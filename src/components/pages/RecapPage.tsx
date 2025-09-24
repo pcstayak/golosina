@@ -6,9 +6,11 @@ import { ArrowLeft, Download, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import ShareModal from '@/components/modals/ShareModal';
 import AlertDialog from '@/components/ui/AlertDialog';
+import { useAudioRecording } from '@/hooks/useAudioRecording';
 
 export default function RecapPage() {
   const { state, dispatch, getCurrentExercises } = useApp();
+  const { getFileExtensionFromMimeType } = useAudioRecording();
   const [showShareModal, setShowShareModal] = useState(false);
   const [alertDialog, setAlertDialog] = useState<{
     show: boolean;
@@ -63,8 +65,9 @@ export default function RecapPage() {
         
         for (let i = 0; i < pieces.length; i++) {
           const piece = pieces[i];
-          const fileName = `recording_${i + 1}_${piece.id}.webm`;
-          
+          const fileExtension = getFileExtensionFromMimeType(piece.blob.type);
+          const fileName = `recording_${i + 1}_${piece.id}.${fileExtension}`;
+
           // Add blob directly to zip folder
           exerciseFolder?.file(fileName, piece.blob);
           fileCount++;
@@ -238,9 +241,10 @@ export default function RecapPage() {
                           variant="secondary"
                           onClick={() => {
                             const url = URL.createObjectURL(piece.blob);
+                            const fileExtension = getFileExtensionFromMimeType(piece.blob.type);
                             const a = document.createElement('a');
                             a.href = url;
-                            a.download = `${exercise.name}_${piece.id}.wav`;
+                            a.download = `${exercise.name}_${piece.id}.${fileExtension}`;
                             a.click();
                             URL.revokeObjectURL(url);
                           }}

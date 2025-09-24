@@ -1,6 +1,22 @@
 import { supabase } from '@/lib/supabase'
 import type { AudioPiece, Exercise } from '@/contexts/AppContext'
 
+// Helper function to get file extension from mime type
+const getFileExtensionFromMimeType = (mimeType: string): string => {
+  const mimeToExtension: Record<string, string> = {
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/mp4': 'mp4',
+    'audio/mp4;codecs=mp4a.40.2': 'mp4',
+    'audio/webm': 'webm',
+    'audio/webm;codecs=opus': 'webm',
+    'audio/wav': 'wav',
+    'audio/ogg': 'ogg'
+  };
+
+  return mimeToExtension[mimeType] || 'webm'; // Default fallback
+};
+
 export interface SharedLessonData {
   session_id: string
   set_name: string
@@ -101,7 +117,8 @@ export class SharedLessonService {
         // Upload each recording for this exercise
         for (let i = 0; i < pieces.length; i++) {
           const piece = pieces[i]
-          const fileName = `${sessionId}/${exerciseId}/${piece.id}.webm`
+          const fileExtension = getFileExtensionFromMimeType(piece.blob.type)
+          const fileName = `${sessionId}/${exerciseId}/${piece.id}.${fileExtension}`
           
           console.log('Uploading file:', fileName, 'size:', piece.blob.size)
           
