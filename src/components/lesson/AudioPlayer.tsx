@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Play, Pause, Square, SkipBack, SkipForward, Download, Trash2, Edit3 } from 'lucide-react';
 import { AudioPiece } from '@/contexts/AppContext';
 import { analyzeAudioBlob, formatTime, calculateSeekTime, WaveformData } from '@/utils/audioAnalysis';
+import { RecordingComment } from '@/services/sharedLessonService';
 
 interface AudioPlayerProps {
   piece: AudioPiece;
@@ -16,6 +17,8 @@ interface AudioPlayerProps {
   onPlayStateChange: (pieceId: string, playing: boolean) => void;
   exerciseName: string;
   showDeleteButton?: boolean;
+  comments?: RecordingComment[];
+  onAddComment?: (timestampSeconds?: number) => void;
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({
@@ -27,7 +30,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   isPlaying,
   onPlayStateChange,
   exerciseName,
-  showDeleteButton = true
+  showDeleteButton = true,
+  comments = [],
+  onAddComment
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const waveformRef = useRef<HTMLDivElement>(null);
@@ -198,8 +203,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const clickX = event.clientX - rect.left;
     const seekTime = calculateSeekTime(clickX, rect.width, duration);
 
+    // Always trigger comment form focus with timestamp, and also seek
+    if (onAddComment) {
+      onAddComment(seekTime);
+    }
     handleSeek(seekTime);
-  }, [duration, handleSeek]);
+  }, [duration, handleSeek, onAddComment]);
+
 
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -313,6 +323,21 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                   className="waveform-progress"
                   style={{ left: `${progressPercentage}%` }}
                 />
+
+                {/* Comment indicators */}
+                {comments.filter(comment => comment.timestamp_seconds != null).map((comment) => {
+                  const commentPosition = ((comment.timestamp_seconds! / duration) * 100);
+                  return (
+                    <div
+                      key={comment.id}
+                      className="absolute top-0 bottom-0 w-1 bg-blue-500 z-10"
+                      style={{ left: `${commentPosition}%` }}
+                      title={`${comment.user_name}: ${comment.comment_text}`}
+                    >
+                      <div className="absolute -top-1 left-0 w-3 h-3 bg-blue-500 rounded-full transform -translate-x-1" />
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -403,6 +428,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           )}
         </div>
       </div>
+
     </div>
   );
 };

@@ -296,4 +296,167 @@ export class SharedLessonService {
   static generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
   }
+
+  // Comment-related methods
+  static async addComment(
+    sessionId: string,
+    recordingId: string,
+    userName: string,
+    commentText: string,
+    userEmail?: string,
+    timestampSeconds?: number
+  ): Promise<{ success: boolean; error?: string; commentId?: string }> {
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase is not configured'
+      }
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('recording_comments')
+        .insert({
+          session_id: sessionId,
+          recording_id: recordingId,
+          user_name: userName.trim(),
+          user_email: userEmail?.trim() || null,
+          comment_text: commentText.trim(),
+          timestamp_seconds: timestampSeconds || null
+        })
+        .select('id')
+        .single()
+
+      if (error) {
+        console.error('Error adding comment:', error)
+        return {
+          success: false,
+          error: 'Failed to add comment'
+        }
+      }
+
+      return {
+        success: true,
+        commentId: data.id
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      return {
+        success: false,
+        error: 'An unexpected error occurred'
+      }
+    }
+  }
+
+  static async getComments(
+    sessionId: string,
+    recordingId?: string
+  ): Promise<RecordingComment[]> {
+    if (!supabase) {
+      console.error('Supabase is not configured')
+      return []
+    }
+
+    try {
+      let query = supabase
+        .from('recording_comments')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('timestamp_seconds', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true })
+
+      if (recordingId) {
+        query = query.eq('recording_id', recordingId)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error fetching comments:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error fetching comments:', error)
+      return []
+    }
+  }
+
+  static async getCommentsForTimestamp(
+    sessionId: string,
+    recordingId: string,
+    timestampSeconds: number,
+    tolerance: number = 1.0
+  ): Promise<RecordingComment[]> {
+    if (!supabase) {
+      console.error('Supabase is not configured')
+      return []
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('recording_comments')
+        .select('*')
+        .eq('session_id', sessionId)
+        .eq('recording_id', recordingId)
+        .gte('timestamp_seconds', timestampSeconds - tolerance)
+        .lte('timestamp_seconds', timestampSeconds + tolerance)
+        .order('timestamp_seconds', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching comments for timestamp:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error fetching comments for timestamp:', error)
+      return []
+    }
+  }
+
+  static async deleteComment(commentId: string): Promise<{ success: boolean; error?: string }> {
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase is not configured'
+      }
+    }
+
+    try {
+      const { error } = await supabase
+        .from('recording_comments')
+        .delete()
+        .eq('id', commentId)
+
+      if (error) {
+        console.error('Error deleting comment:', error)
+        return {
+          success: false,
+          error: 'Failed to delete comment'
+        }
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('Error deleting comment:', error)
+      return {
+        success: false,
+        error: 'An unexpected error occurred'
+      }
+    }
+  }
+}
+
+export interface RecordingComment {
+  id: string
+  session_id: string
+  recording_id: string
+  user_name: string
+  user_email?: string
+  comment_text: string
+  timestamp_seconds?: number
+  created_at: string
+  updated_at: string
 }

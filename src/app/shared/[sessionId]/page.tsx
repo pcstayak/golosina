@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { ArrowLeft, Clock, Mic, Calendar } from 'lucide-react'
-import { SharedLessonService, type SharedLessonData } from '@/services/sharedLessonService'
+import { SharedLessonService, type SharedLessonData, type RecordingComment } from '@/services/sharedLessonService'
 import AudioPlayer from '@/components/lesson/AudioPlayer'
 import { AudioPiece } from '@/contexts/AppContext'
+import { MessageSquare, Send, User, Mail } from 'lucide-react'
+import { formatTime } from '@/utils/audioAnalysis'
 import Link from 'next/link'
 
 export default function SharedLessonPage() {
@@ -17,6 +19,14 @@ export default function SharedLessonPage() {
   const [error, setError] = useState<string | null>(null)
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null)
   const [convertedAudioPieces, setConvertedAudioPieces] = useState<Record<string, AudioPiece[]>>({})
+  const [comments, setComments] = useState<Record<string, RecordingComment[]>>({})
+  const [commentForms, setCommentForms] = useState<Record<string, {
+    userName: string
+    userEmail: string
+    commentText: string
+    timestampSeconds?: number
+    includeTimestamp: boolean
+  }>>({})
 
   useEffect(() => {
     const fetchLessonData = async () => {
@@ -138,6 +148,99 @@ export default function SharedLessonPage() {
     convertLessonData()
   }, [lessonData, convertToAudioPiece])
 
+  // Load comments for all recordings
+  useEffect(() => {
+    const loadComments = async () => {
+      if (!sessionId || typeof sessionId !== 'string' || !lessonData) return
+
+      try {
+        const allComments = await SharedLessonService.getComments(sessionId)
+
+        // Group comments by recording ID
+        const commentsByRecording: Record<string, RecordingComment[]> = {}
+        allComments.forEach(comment => {
+          if (!commentsByRecording[comment.recording_id]) {
+            commentsByRecording[comment.recording_id] = []
+          }
+          commentsByRecording[comment.recording_id].push(comment)
+        })
+
+        setComments(commentsByRecording)
+      } catch (error) {
+        console.error('Error loading comments:', error)
+      }
+    }
+
+    loadComments()
+  }, [sessionId, lessonData])
+
+  const handleAddComment = useCallback((recordingId: string, timestampSeconds?: number) => {
+    setCommentForms(prev => ({
+      ...prev,
+      [recordingId]: {
+        userName: prev[recordingId]?.userName || '',
+        userEmail: prev[recordingId]?.userEmail || '',
+        commentText: prev[recordingId]?.commentText || '',
+        timestampSeconds,
+        includeTimestamp: prev[recordingId]?.includeTimestamp || false
+      }
+    }))
+  }, [])
+
+  const handleSubmitComment = useCallback(async (recordingId: string) => {
+    const form = commentForms[recordingId]
+    if (!sessionId || !recordingId || !form?.userName.trim() || !form?.commentText.trim()) {
+      return
+    }
+
+    try {
+      const result = await SharedLessonService.addComment(
+        sessionId,
+        recordingId,
+        form.userName.trim(),
+        form.commentText.trim(),
+        form.userEmail.trim() || undefined,
+        form.includeTimestamp ? form.timestampSeconds : undefined
+      )
+
+      if (result.success) {
+        // Reload comments for this recording
+        const recordingComments = await SharedLessonService.getComments(sessionId, recordingId)
+        setComments(prev => ({
+          ...prev,
+          [recordingId]: recordingComments
+        }))
+
+        // Reset form but keep user name and email for next comment
+        setCommentForms(prev => ({
+          ...prev,
+          [recordingId]: {
+            userName: form.userName,
+            userEmail: form.userEmail,
+            commentText: '',
+            timestampSeconds: undefined,
+            includeTimestamp: false
+          }
+        }))
+      } else {
+        alert('Failed to add comment: ' + result.error)
+      }
+    } catch (error) {
+      console.error('Error submitting comment:', error)
+      alert('Failed to add comment. Please try again.')
+    }
+  }, [sessionId, commentForms])
+
+  const handleUpdateCommentForm = useCallback((recordingId: string, field: string, value: string | boolean) => {
+    setCommentForms(prev => ({
+      ...prev,
+      [recordingId]: {
+        ...prev[recordingId],
+        [field]: field === 'includeTimestamp' ? (value === 'true' || value === true) : value
+      }
+    }))
+  }, [])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -248,21 +351,162 @@ export default function SharedLessonPage() {
                   </p>
                 </div>
 
-                <div className="p-4 space-y-3">
-                  {pieces.map((piece, index) => (
-                    <AudioPlayer
-                      key={piece.id}
-                      piece={piece}
-                      index={index}
-                      onDelete={() => {}} // No-op for shared lessons
-                      onDownload={downloadPiece}
-                      onTitleUpdate={undefined} // No title editing for shared lessons
-                      isPlaying={currentlyPlaying === piece.id}
-                      onPlayStateChange={handlePlayStateChange}
-                      exerciseName={exercise.name}
-                      showDeleteButton={false}
-                    />
-                  ))}
+                <div className="p-4 space-y-6">
+                  {pieces.map((piece, index) => {
+                    const form = commentForms[piece.id]
+                    const recordingComments = comments[piece.id] || []
+
+                    return (
+                      <div key={piece.id} className="space-y-4">
+                        <AudioPlayer
+                          piece={piece}
+                          index={index}
+                          onDelete={() => {}} // No-op for shared lessons
+                          onDownload={downloadPiece}
+                          onTitleUpdate={undefined} // No title editing for shared lessons
+                          isPlaying={currentlyPlaying === piece.id}
+                          onPlayStateChange={handlePlayStateChange}
+                          exerciseName={exercise.name}
+                          showDeleteButton={false}
+                          comments={recordingComments}
+                          onAddComment={(timestampSeconds) => handleAddComment(piece.id, timestampSeconds)}
+                        />
+
+                        {/* Comments Section */}
+                        <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                          {/* Comments Header */}
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                              <MessageSquare className="w-4 h-4" />
+                              Comments ({recordingComments.length})
+                            </h4>
+                            {recordingComments.length === 0 && (
+                              <span className="text-xs text-gray-500">
+                                Click on waveform to add timestamp comments
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Existing Comments */}
+                          {recordingComments.length > 0 && (
+                            <div className="space-y-3">
+                              {recordingComments
+                                .sort((a, b) => (a.timestamp_seconds || 0) - (b.timestamp_seconds || 0))
+                                .map((comment) => (
+                                  <div key={comment.id} className="bg-white rounded-lg p-3 shadow-sm">
+                                    <div className="flex items-start justify-between mb-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1 text-gray-600">
+                                          <User className="w-3 h-3" />
+                                          <span className="font-medium text-gray-800">{comment.user_name}</span>
+                                        </div>
+                                        {comment.timestamp_seconds != null && (
+                                          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                                            {formatTime(comment.timestamp_seconds)}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="text-xs text-gray-500">
+                                        {formatDate(comment.created_at)}
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-700 text-sm">{comment.comment_text}</p>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+
+                          {/* Add Comment Form */}
+                          <div className="bg-white rounded-lg p-4 border border-gray-200">
+                            <h5 className="text-sm font-medium text-gray-700 mb-3">
+                              Add a Comment
+                            </h5>
+
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                    <User className="w-3 h-3 inline mr-1" />
+                                    Your Name *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={form?.userName || ''}
+                                    onChange={(e) => handleUpdateCommentForm(piece.id, 'userName', e.target.value)}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Enter your name"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                    <Mail className="w-3 h-3 inline mr-1" />
+                                    Email (optional)
+                                  </label>
+                                  <input
+                                    type="email"
+                                    value={form?.userEmail || ''}
+                                    onChange={(e) => handleUpdateCommentForm(piece.id, 'userEmail', e.target.value)}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="your@email.com"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  Comment *
+                                </label>
+                                <textarea
+                                  value={form?.commentText || ''}
+                                  onChange={(e) => handleUpdateCommentForm(piece.id, 'commentText', e.target.value)}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                  placeholder="Enter your comment..."
+                                  rows={3}
+                                />
+                              </div>
+
+                              {/* Timestamp checkbox */}
+                              {form?.timestampSeconds != null && (
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    id={`timestamp-${piece.id}`}
+                                    checked={form.includeTimestamp || false}
+                                    onChange={(e) => handleUpdateCommentForm(piece.id, 'includeTimestamp', e.target.checked)}
+                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                                  />
+                                  <label htmlFor={`timestamp-${piece.id}`} className="text-sm text-gray-700">
+                                    Comment applies to specific moment in recording
+                                    {form.includeTimestamp && form.timestampSeconds != null && (
+                                      <span className="text-blue-600 ml-2">
+                                        ({formatTime(form.timestampSeconds)})
+                                      </span>
+                                    )}
+                                  </label>
+                                </div>
+                              )}
+
+                              <div className="flex items-center justify-between">
+                                <div className="text-xs text-gray-500">
+                                  Tip: Click on the waveform above to set a timestamp position
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() => handleSubmitComment(piece.id)}
+                                  disabled={!form?.userName?.trim() || !form?.commentText?.trim()}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Send className="w-3 h-3" />
+                                  Post Comment
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )
@@ -272,7 +516,7 @@ export default function SharedLessonPage() {
             <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
               <div className="text-6xl mb-4">🎤</div>
               <h3 className="text-xl font-semibold mb-2">No recordings available</h3>
-              <p className="text-gray-600">This shared session doesn't contain any audio recordings.</p>
+              <p className="text-gray-600">This shared session doesn&apos;t contain any audio recordings.</p>
             </div>
           )}
         </div>
@@ -289,6 +533,7 @@ export default function SharedLessonPage() {
           </Link>
         </div>
       </div>
+
     </div>
   )
 }
