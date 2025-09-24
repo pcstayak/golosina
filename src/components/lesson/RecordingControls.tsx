@@ -3,7 +3,7 @@
 import { useApp } from '@/contexts/AppContext';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 import { Button } from '@/components/ui/Button';
-import { Mic, Square } from 'lucide-react';
+import { Mic, Square, Loader } from 'lucide-react';
 import AudioLevelMeter from '@/components/ui/AudioLevelMeter';
 
 export default function RecordingControls() {
@@ -18,6 +18,46 @@ export default function RecordingControls() {
     }
   };
 
+  // Render simple mode
+  if (!state.settings.recordingDebugMode) {
+    return (
+      <div className="flex flex-col items-center space-y-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleRecordingToggle}
+            className={`
+              flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200
+              ${state.isRecording
+                ? 'bg-red-500 hover:bg-red-600 text-white'
+                : 'bg-gray-400 hover:bg-gray-500 text-white'
+              }
+              ${!state.microphonePermissionGranted ? 'opacity-75' : ''}
+            `}
+            disabled={false}
+          >
+            {state.isRecording ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          </button>
+
+          {/* Processing indicator for auto-splitting */}
+          {state.isAutoSplitting && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Loader className="w-4 h-4 animate-spin" />
+              <span>Slicing audio...</span>
+            </div>
+          )}
+        </div>
+
+        {/* Microphone permission message (simplified) */}
+        {!state.microphonePermissionGranted && (
+          <p className="text-xs text-gray-500 text-center max-w-xs">
+            Click the microphone to start recording
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Render debug mode (original behavior)
   return (
     <div className="flex flex-col items-center space-y-3">
       <div className="flex items-center gap-4">

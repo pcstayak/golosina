@@ -63,6 +63,33 @@
   .audio-piece {
     @apply bg-gray-50 rounded-lg p-4 flex justify-between items-center;
   }
+
+  .audio-player {
+    @apply bg-gray-50 rounded-lg p-4 mb-4;
+  }
+
+  .waveform-container {
+    @apply relative;
+  }
+
+  .waveform-loading {
+    @apply flex items-end justify-center h-10 px-2;
+  }
+
+  .waveform {
+    @apply flex items-end justify-between bg-gray-100 rounded-lg p-2 h-12 cursor-pointer transition-all duration-200 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/50 relative;
+  }
+
+  .waveform-bar {
+    @apply bg-primary rounded-full transition-all duration-200;
+    width: 2px;
+    min-height: 2px;
+  }
+
+  .waveform-progress {
+    @apply absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none;
+    transform: translateX(-50%);
+  }
   
   .status-message {
     @apply fixed top-4 right-4 px-4 py-2 rounded-lg text-white font-medium z-50 transition-all duration-300;

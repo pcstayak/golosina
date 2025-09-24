@@ -47,7 +47,6 @@ export default function NavigationControls() {
       </Button>
 
       <div className="text-center min-w-0">
-        <div className="text-xs text-gray-500">Exercise</div>
         <div className="text-sm font-semibold text-gray-800">
           {state.currentExerciseIndex + 1} of {exercises.length}
         </div>

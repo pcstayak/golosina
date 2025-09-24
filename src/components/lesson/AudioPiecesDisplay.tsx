@@ -1,43 +1,37 @@
 'use client'
 
 import { useApp } from '@/contexts/AppContext';
-import { Button } from '@/components/ui/Button';
-import { Play, Download, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import AudioPlayer from './AudioPlayer';
 
 export default function AudioPiecesDisplay() {
   const { state, dispatch, getCurrentExercise, getCurrentSet } = useApp();
-  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; pieceId: string | null }>({ 
-    show: false, 
-    pieceId: null 
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; pieceId: string | null }>({
+    show: false,
+    pieceId: null
   });
-  
-  const currentExercise = getCurrentExercise();
-  
-  if (!currentExercise) {
-    return (
-      <div className="text-center text-gray-500 py-8">
-        <p>No exercise selected</p>
-      </div>
-    );
-  }
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
 
-  const exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise.id}`;
+  const currentExercise = getCurrentExercise();
+  const exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise?.id}`;
   const pieces = state.currentSessionPieces[exerciseKey] || [];
 
-  const playAudioPiece = (piece: typeof pieces[0]) => {
-    try {
-      const audio = new Audio(URL.createObjectURL(piece.blob));
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-      });
-    } catch (error) {
-      console.error('Error creating audio URL:', error);
+  const handlePlayStateChange = useCallback((pieceId: string, playing: boolean) => {
+    if (playing) {
+      // Stop any currently playing audio
+      setCurrentlyPlaying(pieceId);
+    } else {
+      // Only clear if this piece was playing
+      if (currentlyPlaying === pieceId) {
+        setCurrentlyPlaying(null);
+      }
     }
-  };
+  }, [currentlyPlaying]);
 
-  const downloadPiece = (piece: typeof pieces[0]) => {
+  const downloadPiece = useCallback((piece: typeof pieces[0]) => {
+    if (!currentExercise) return;
+
     try {
       const url = URL.createObjectURL(piece.blob);
       const a = document.createElement('a');
@@ -50,21 +44,40 @@ export default function AudioPiecesDisplay() {
     } catch (error) {
       console.error('Error downloading piece:', error);
     }
-  };
+  }, [currentExercise]);
 
-  const deletePiece = (pieceId: string) => {
+  const deletePiece = useCallback((pieceId: string) => {
+    // Stop playback if this piece is currently playing
+    if (currentlyPlaying === pieceId) {
+      setCurrentlyPlaying(null);
+    }
     setDeleteConfirm({ show: true, pieceId });
-  };
+  }, [currentlyPlaying]);
 
-  const confirmDelete = () => {
+  const confirmDelete = useCallback(() => {
     if (deleteConfirm.pieceId) {
-      dispatch({ 
-        type: 'REMOVE_AUDIO_PIECE', 
-        payload: { exerciseKey, pieceId: deleteConfirm.pieceId } 
+      dispatch({
+        type: 'REMOVE_AUDIO_PIECE',
+        payload: { exerciseKey, pieceId: deleteConfirm.pieceId }
       });
     }
     setDeleteConfirm({ show: false, pieceId: null });
-  };
+  }, [dispatch, exerciseKey, deleteConfirm.pieceId]);
+
+  const updatePieceTitle = useCallback((pieceId: string, title: string) => {
+    dispatch({
+      type: 'UPDATE_AUDIO_PIECE_TITLE',
+      payload: { exerciseKey, pieceId, title }
+    });
+  }, [dispatch, exerciseKey]);
+
+  if (!currentExercise) {
+    return (
+      <div className="text-center text-gray-500 py-8">
+        <p>No exercise selected</p>
+      </div>
+    );
+  }
 
   if (pieces.length === 0) {
     return (
@@ -83,48 +96,17 @@ export default function AudioPiecesDisplay() {
       </div>
       
       {pieces.map((piece, index) => (
-        <div key={piece.id} className="audio-piece">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-medium">
-              {index + 1}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-800">
-                Recording {index + 1}
-              </div>
-              <div className="text-xs text-gray-500">
-                {piece.duration.toFixed(1)}s • {new Date(piece.timestamp).toLocaleTimeString()}
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-1">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => playAudioPiece(piece)}
-              className="p-2"
-            >
-              <Play className="w-3 h-3" />
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => downloadPiece(piece)}
-              className="p-2"
-            >
-              <Download className="w-3 h-3" />
-            </Button>
-            <Button
-              size="sm"
-              variant="danger"
-              onClick={() => deletePiece(piece.id)}
-              className="p-2"
-            >
-              <Trash2 className="w-3 h-3" />
-            </Button>
-          </div>
-        </div>
+        <AudioPlayer
+          key={piece.id}
+          piece={piece}
+          index={index}
+          onDelete={deletePiece}
+          onDownload={downloadPiece}
+          onTitleUpdate={updatePieceTitle}
+          isPlaying={currentlyPlaying === piece.id}
+          onPlayStateChange={handlePlayStateChange}
+          exerciseName={currentExercise.name}
+        />
       ))}
       
       {/* Delete Confirmation Dialog */}

@@ -37,6 +37,7 @@ export interface AudioPiece {
   duration: number;
   exerciseId: number;
   exerciseName: string;
+  customTitle?: string;
 }
 
 export interface Settings {
@@ -49,6 +50,8 @@ export interface Settings {
   autoSplitThreshold: number;
   autoSplitDuration: number;
   minRecordingLength: number;
+  // Recording UI settings
+  recordingDebugMode: boolean;
 }
 
 interface AppState {
@@ -84,7 +87,7 @@ interface AppState {
   sharedExercises: Exercise[];
 }
 
-type AppAction = 
+type AppAction =
   | { type: 'SET_CURRENT_SET_INDEX'; payload: number }
   | { type: 'SET_CURRENT_EXERCISE_INDEX'; payload: number }
   | { type: 'SET_IS_RECORDING'; payload: boolean }
@@ -97,6 +100,7 @@ type AppAction =
   | { type: 'UPDATE_SETTINGS'; payload: Partial<Settings> }
   | { type: 'ADD_AUDIO_PIECE'; payload: { exerciseKey: string; piece: AudioPiece } }
   | { type: 'REMOVE_AUDIO_PIECE'; payload: { exerciseKey: string; pieceId: string } }
+  | { type: 'UPDATE_AUDIO_PIECE_TITLE'; payload: { exerciseKey: string; pieceId: string; title: string } }
   | { type: 'SET_EXERCISE_SETS'; payload: ExerciseSet[] }
   | { type: 'CLEAR_SESSION_PIECES' }
   | { type: 'SET_SHARED_SESSION'; payload: { isShared: boolean; exercises?: Exercise[] } }
@@ -262,7 +266,9 @@ const initialState: AppState = {
     autoSplitEnabled: true,
     autoSplitThreshold: 0.02,
     autoSplitDuration: 1.0,
-    minRecordingLength: 0.5
+    minRecordingLength: 0.5,
+    // Recording UI defaults
+    recordingDebugMode: false
   },
   isSharedSession: false,
   sharedExercises: []
@@ -314,6 +320,23 @@ function appReducer(state: AppState, action: AppAction): AppState {
         currentSessionPieces: {
           ...state.currentSessionPieces,
           [removeKey]: state.currentSessionPieces[removeKey]?.filter(p => p.id !== pieceId) || []
+        }
+      };
+    case 'UPDATE_AUDIO_PIECE_TITLE':
+      const { exerciseKey: updateKey, pieceId: updatePieceId, title } = action.payload;
+      return {
+        ...state,
+        audioPieces: {
+          ...state.audioPieces,
+          [updateKey]: state.audioPieces[updateKey]?.map(p =>
+            p.id === updatePieceId ? { ...p, customTitle: title } : p
+          ) || []
+        },
+        currentSessionPieces: {
+          ...state.currentSessionPieces,
+          [updateKey]: state.currentSessionPieces[updateKey]?.map(p =>
+            p.id === updatePieceId ? { ...p, customTitle: title } : p
+          ) || []
         }
       };
     case 'SET_EXERCISE_SETS':

@@ -45,6 +45,7 @@ export default function LessonPage() {
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
+        {/* Top row - Back button (left) | Lesson title (center) | View Recap (right) */}
         <div className="flex items-center justify-between mb-3">
           <Button
             variant="secondary"
@@ -53,11 +54,25 @@ export default function LessonPage() {
             className="flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Landing
+            Stop the lesson
           </Button>
 
-          {/* Navigation Controls in Header */}
-          <NavigationControls />
+          <div className="text-center">
+            {currentSet && !state.isSharedSession && (
+              <h2
+                className="text-xl font-bold"
+                style={{ color: currentSet.color }}
+              >
+                {currentSet.name}
+              </h2>
+            )}
+
+            {state.isSharedSession && (
+              <h2 className="text-xl font-bold text-gray-800">
+                Shared Lesson
+              </h2>
+            )}
+          </div>
 
           <Button
             variant="secondary"
@@ -70,40 +85,17 @@ export default function LessonPage() {
           </Button>
         </div>
 
-        {currentSet && !state.isSharedSession && (
-          <div className="text-center">
-            <h2
-              className="text-xl font-bold"
-              style={{ color: currentSet.color }}
-            >
-              {currentSet.name}
-            </h2>
-          </div>
-        )}
-
-        {state.isSharedSession && (
-          <div className="text-center">
-            <h2 className="text-xl font-bold text-gray-800">
-              Shared Lesson
-            </h2>
-          </div>
-        )}
+        {/* Bottom row - Exercise navigation controls centered */}
+        <div className="flex justify-center">
+          <NavigationControls />
+        </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Left Column - Exercise Info & Controls */}
-        <div className="space-y-6">
-          <ExerciseDisplay />
-          
-          {/* Recording Controls - Only show if not shared session */}
-          {!state.isSharedSession && (
-            <div className="bg-white rounded-xl shadow-lg p-4">
-              <RecordingControls />
-            </div>
-          )}
-        </div>
+      <div className="space-y-6">
+        {/* Exercise Info with integrated Recording Controls */}
+        <ExerciseDisplay />
 
-        {/* Right Column - Audio Pieces */}
+        {/* Full-width Audio Pieces */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           <h3 className="text-lg font-semibold mb-4">Recordings</h3>
           <AudioPiecesDisplay />
