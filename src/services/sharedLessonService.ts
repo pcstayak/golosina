@@ -89,7 +89,8 @@ export class SharedLessonService {
     setName: string,
     setDescription: string,
     currentSessionPieces: Record<string, AudioPiece[]>,
-    getCurrentExercises: () => Exercise[]
+    getCurrentExercises: () => Exercise[],
+    isUpdate: boolean = false
   ): Promise<UploadResult> {
     if (!supabase) {
       return {
@@ -125,8 +126,8 @@ export class SharedLessonService {
           const uploadPromise = supabase.storage
             .from(this.BUCKET_NAME)
             .upload(fileName, piece.blob, {
-              contentType: 'audio/webm',
-              upsert: false
+              contentType: piece.blob.type || 'audio/webm',
+              upsert: isUpdate // Allow overwriting existing files when updating
             })
 
           uploadPromises.push(uploadPromise.then((result) => {
@@ -201,22 +202,38 @@ export class SharedLessonService {
         })
       }
 
-      // Save lesson metadata to database
-      const { error: dbError } = await supabase
-        .from('shared_lessons')
-        .insert({
-          session_id: sessionId,
-          set_name: setName,
-          set_description: setDescription,
-          recording_count: totalRecordings,
-          files: files
-        })
+      // Save or update lesson metadata in database
+      let dbError = null;
+      if (isUpdate) {
+        const { error } = await supabase
+          .from('shared_lessons')
+          .update({
+            set_name: setName,
+            set_description: setDescription,
+            recording_count: totalRecordings,
+            files: files,
+            updated_at: new Date().toISOString()
+          })
+          .eq('session_id', sessionId);
+        dbError = error;
+      } else {
+        const { error } = await supabase
+          .from('shared_lessons')
+          .insert({
+            session_id: sessionId,
+            set_name: setName,
+            set_description: setDescription,
+            recording_count: totalRecordings,
+            files: files
+          });
+        dbError = error;
+      }
 
       if (dbError) {
         console.error('Database error:', dbError)
         return {
           success: false,
-          error: 'Failed to save lesson metadata'
+          error: `Failed to ${isUpdate ? 'update' : 'save'} lesson metadata`
         }
       }
 
@@ -256,6 +273,23 @@ export class SharedLessonService {
     } catch (error) {
       console.error('Error fetching shared lesson:', error)
       return null
+    }
+  }
+
+  static async checkIfSessionExists(sessionId: string): Promise<boolean> {
+    if (!supabase) return false;
+
+    try {
+      const { data, error } = await supabase
+        .from('shared_lessons')
+        .select('session_id')
+        .eq('session_id', sessionId)
+        .single();
+
+      return !error && !!data;
+    } catch (error) {
+      console.error('Error checking session existence:', error);
+      return false;
     }
   }
 

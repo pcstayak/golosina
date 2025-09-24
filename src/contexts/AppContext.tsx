@@ -59,32 +59,37 @@ interface AppState {
   currentSetIndex: number;
   currentExerciseIndex: number;
   exerciseSets: ExerciseSet[];
-  
+
   // Recording state
   isRecording: boolean;
   mediaRecorder: MediaRecorder | null;
   audioStream: MediaStream | null;
   recordedChunks: BlobPart[];
-  
+
   // Auto-splitting state
   currentRecordingSegment: number;
   isAutoSplitting: boolean;
-  
+
   // Audio pieces
   audioPieces: Record<string, AudioPiece[]>;
   currentSessionPieces: Record<string, AudioPiece[]>;
-  
+
   // UI state
   currentView: 'landing' | 'lesson' | 'recap' | 'teacher-dashboard' | 'admin-dashboard';
   sessionActive: boolean;
-  
+
   // Permissions and settings
   microphonePermissionGranted: boolean;
   settings: Settings;
-  
+
   // Shared lesson state
   isSharedSession: boolean;
   sharedExercises: Exercise[];
+
+  // Current session sharing state
+  currentSessionId: string | null;
+  shareUrl: string | null;
+  isUploading: boolean;
 }
 
 type AppAction =
@@ -105,7 +110,10 @@ type AppAction =
   | { type: 'CLEAR_SESSION_PIECES' }
   | { type: 'SET_SHARED_SESSION'; payload: { isShared: boolean; exercises?: Exercise[] } }
   | { type: 'SET_CURRENT_RECORDING_SEGMENT'; payload: number }
-  | { type: 'SET_IS_AUTO_SPLITTING'; payload: boolean };
+  | { type: 'SET_IS_AUTO_SPLITTING'; payload: boolean }
+  | { type: 'SET_CURRENT_SESSION_ID'; payload: string | null }
+  | { type: 'SET_SHARE_URL'; payload: string | null }
+  | { type: 'SET_IS_UPLOADING'; payload: boolean };
 
 const defaultExerciseSets: ExerciseSet[] = [
   {
@@ -248,7 +256,7 @@ const initialState: AppState = {
   mediaRecorder: null,
   audioStream: null,
   recordedChunks: [],
-  
+
   // Auto-splitting state
   currentRecordingSegment: 1,
   isAutoSplitting: false,
@@ -271,7 +279,12 @@ const initialState: AppState = {
     recordingDebugMode: false
   },
   isSharedSession: false,
-  sharedExercises: []
+  sharedExercises: [],
+
+  // Current session sharing state
+  currentSessionId: null,
+  shareUrl: null,
+  isUploading: false
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -353,6 +366,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, currentRecordingSegment: action.payload };
     case 'SET_IS_AUTO_SPLITTING':
       return { ...state, isAutoSplitting: action.payload };
+    case 'SET_CURRENT_SESSION_ID':
+      return { ...state, currentSessionId: action.payload };
+    case 'SET_SHARE_URL':
+      return { ...state, shareUrl: action.payload };
+    case 'SET_IS_UPLOADING':
+      return { ...state, isUploading: action.payload };
     default:
       return state;
   }

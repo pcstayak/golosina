@@ -2,18 +2,18 @@
 
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/Button';
-import { ArrowLeft, Download, Share2 } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Copy, Check, Loader2 } from 'lucide-react';
 import { useState, useCallback } from 'react';
-import ShareModal from '@/components/modals/ShareModal';
 import AlertDialog from '@/components/ui/AlertDialog';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 import AudioPlayer from '@/components/lesson/AudioPlayer';
+import { SharedLessonService } from '@/services/sharedLessonService';
 
 export default function RecapPage() {
-  const { state, dispatch, getCurrentExercises } = useApp();
+  const { state, dispatch, getCurrentExercises, getCurrentSet } = useApp();
   const { getFileExtensionFromMimeType } = useAudioRecording();
-  const [showShareModal, setShowShareModal] = useState(false);
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [alertDialog, setAlertDialog] = useState<{
     show: boolean;
     title: string;
@@ -120,8 +120,94 @@ export default function RecapPage() {
     }
   };
 
-  const handleShare = () => {
-    setShowShareModal(true);
+  const handleShare = async () => {
+    if (!hasRecordings) {
+      setAlertDialog({
+        show: true,
+        title: 'No Recordings',
+        message: 'There are no recordings to share. Start recording to create audio files.',
+        variant: 'info'
+      });
+      return;
+    }
+
+    try {
+      dispatch({ type: 'SET_IS_UPLOADING', payload: true });
+
+      const currentSet = getCurrentSet();
+      let sessionId = state.currentSessionId;
+      let isUpdate = false;
+
+      // If we don't have a session ID, generate one
+      if (!sessionId) {
+        sessionId = SharedLessonService.generateSessionId();
+        dispatch({ type: 'SET_CURRENT_SESSION_ID', payload: sessionId });
+      } else {
+        // Check if this session was already shared
+        isUpdate = await SharedLessonService.checkIfSessionExists(sessionId);
+      }
+
+      const result = await SharedLessonService.uploadLessonRecap(
+        sessionId,
+        currentSet?.name || 'Vocal Training Session',
+        currentSet?.description || 'A vocal training session with recordings',
+        state.currentSessionPieces,
+        getCurrentExercises,
+        isUpdate
+      );
+
+      if (result.success && result.sessionId) {
+        const shareUrl = `${window.location.origin}/shared/${result.sessionId}`;
+        dispatch({ type: 'SET_SHARE_URL', payload: shareUrl });
+
+        setAlertDialog({
+          show: true,
+          title: isUpdate ? 'Session Updated' : 'Session Shared',
+          message: `Your lesson has been ${isUpdate ? 'updated' : 'uploaded'}! The shareable link is now available above.`,
+          variant: 'success'
+        });
+      } else {
+        setAlertDialog({
+          show: true,
+          title: 'Share Failed',
+          message: result.error || 'Failed to share session. Please try again.',
+          variant: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Share failed:', error);
+      setAlertDialog({
+        show: true,
+        title: 'Share Failed',
+        message: 'An unexpected error occurred. Please try again.',
+        variant: 'error'
+      });
+    } finally {
+      dispatch({ type: 'SET_IS_UPLOADING', payload: false });
+    }
+  };
+
+  const copyShareUrl = async () => {
+    if (!state.shareUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(state.shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      setAlertDialog({
+        show: true,
+        title: 'Copied!',
+        message: 'Shareable link copied to clipboard.',
+        variant: 'success'
+      });
+    } catch (error) {
+      setAlertDialog({
+        show: true,
+        title: 'Copy Failed',
+        message: 'Failed to copy link to clipboard. Please copy it manually.',
+        variant: 'error'
+      });
+    }
   };
 
   const handlePlayStateChange = useCallback((pieceId: string, playing: boolean) => {
@@ -204,14 +290,48 @@ export default function RecapPage() {
               variant="primary"
               size="sm"
               onClick={handleShare}
-              disabled={!hasRecordings}
+              disabled={!hasRecordings || state.isUploading}
               className="flex items-center gap-2"
             >
-              <Share2 className="w-4 h-4" />
-              Share Lesson
+              {state.isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {state.currentSessionId ? 'Updating...' : 'Sharing...'}
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4" />
+                  {state.shareUrl ? 'Update Share' : 'Share Lesson'}
+                </>
+              )}
             </Button>
           </div>
         </div>
+
+        {/* Share URL Display */}
+        {state.shareUrl && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-green-800 mb-1">
+                  Shareable Link Available
+                </p>
+                <div className="bg-white border border-green-200 rounded px-2 py-1 text-sm text-gray-700 break-all">
+                  {state.shareUrl}
+                </div>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={copyShareUrl}
+                className="ml-3 flex items-center gap-1"
+              >
+                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                {copied ? 'Copied!' : 'Copy'}
+              </Button>
+            </div>
+          </div>
+        )}
 
         <h2 className="text-2xl font-bold text-gray-800">
           Session Recap
@@ -277,15 +397,6 @@ export default function RecapPage() {
           })
         )}
       </div>
-
-      {/* Share Modal */}
-      {showShareModal && (
-        <ShareModal
-          onClose={() => setShowShareModal(false)}
-          currentSessionPieces={state.currentSessionPieces}
-          getCurrentExercises={getCurrentExercises}
-        />
-      )}
 
       {/* Alert Dialog */}
       <AlertDialog
