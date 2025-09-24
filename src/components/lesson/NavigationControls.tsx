@@ -34,47 +34,45 @@ export default function NavigationControls() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex items-center justify-between">
-        <Button
-          variant="secondary"
-          onClick={previousExercise}
-          disabled={!canGoPrevious}
-          className="flex items-center gap-2"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Previous
-        </Button>
-        
-        <div className="text-center">
-          <div className="text-sm text-gray-500">Exercise</div>
-          <div className="font-semibold text-gray-800">
-            {state.currentExerciseIndex + 1} of {exercises.length}
+    <div className="flex items-center gap-3">
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={previousExercise}
+        disabled={!canGoPrevious}
+        className="flex items-center gap-1 px-2 py-1"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        <span className="hidden sm:inline">Prev</span>
+      </Button>
+
+      <div className="text-center min-w-0">
+        <div className="text-sm font-semibold text-gray-800">
+          {state.currentExerciseIndex + 1} of {exercises.length}
+        </div>
+        {/* Compact Progress Bar */}
+        <div className="mt-1 w-16 mx-auto">
+          <div className="bg-gray-200 rounded-full h-1">
+            <div
+              className="bg-primary rounded-full h-1 transition-all duration-300"
+              style={{
+                width: `${((state.currentExerciseIndex + 1) / exercises.length) * 100}%`
+              }}
+            />
           </div>
         </div>
-        
-        <Button
-          variant="secondary"
-          onClick={nextExercise}
-          disabled={!canGoNext}
-          className="flex items-center gap-2"
-        >
-          Next
-          <ChevronRight className="w-4 h-4" />
-        </Button>
       </div>
-      
-      {/* Progress Bar */}
-      <div className="mt-4">
-        <div className="bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-primary rounded-full h-2 transition-all duration-300"
-            style={{ 
-              width: `${((state.currentExerciseIndex + 1) / exercises.length) * 100}%` 
-            }}
-          />
-        </div>
-      </div>
+
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={nextExercise}
+        disabled={!canGoNext}
+        className="flex items-center gap-1 px-2 py-1"
+      >
+        <span className="hidden sm:inline">Next</span>
+        <ChevronRight className="w-4 h-4" />
+      </Button>
     </div>
   );
 }

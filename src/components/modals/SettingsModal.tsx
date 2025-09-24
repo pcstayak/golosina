@@ -151,6 +151,29 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             </div>
           </div>
 
+          {/* UI Settings */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Interface</h3>
+
+            {/* Recording Debug Mode */}
+            <div className="mb-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={state.settings.recordingDebugMode}
+                  onChange={(e) => handleSettingChange('recordingDebugMode', e.target.checked)}
+                  className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
+                />
+                <span className="ml-2 text-sm font-medium text-gray-700">
+                  Debug mode for recording controls
+                </span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1">
+                Show detailed recording information (audio levels, auto-split indicators). Disable for simpler interface.
+              </p>
+            </div>
+          </div>
+
           {/* Auto-Splitting Settings */}
           <div>
             <h3 className="text-lg font-medium text-gray-800 mb-4">Auto-Splitting</h3>

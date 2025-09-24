@@ -231,6 +231,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
+
   const signOut = async () => {
     setAuthOperationLoading(true)
     try {

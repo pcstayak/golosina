@@ -3,10 +3,11 @@
 import { useApp } from '@/contexts/AppContext';
 import { BookOpen, Clock, Lightbulb, Image } from 'lucide-react';
 import MediaGallery from './MediaGallery';
+import RecordingControls from './RecordingControls';
 
 export default function ExerciseDisplay() {
-  const { getCurrentExercise } = useApp();
-  
+  const { getCurrentExercise, state } = useApp();
+
   const currentExercise = getCurrentExercise();
 
   if (!currentExercise) {
@@ -63,6 +64,14 @@ export default function ExerciseDisplay() {
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Recording Controls - Only show if not shared session */}
+        {!state.isSharedSession && (
+          <div className="border-t border-gray-200 pt-4">
+            <h4 className="font-semibold text-gray-700 mb-3">Recording</h4>
+            <RecordingControls />
           </div>
         )}
       </div>

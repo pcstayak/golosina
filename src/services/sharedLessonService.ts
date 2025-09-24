@@ -1,6 +1,22 @@
 import { supabase } from '@/lib/supabase'
 import type { AudioPiece, Exercise } from '@/contexts/AppContext'
 
+// Helper function to get file extension from mime type
+const getFileExtensionFromMimeType = (mimeType: string): string => {
+  const mimeToExtension: Record<string, string> = {
+    'audio/mpeg': 'mp3',
+    'audio/mp3': 'mp3',
+    'audio/mp4': 'mp4',
+    'audio/mp4;codecs=mp4a.40.2': 'mp4',
+    'audio/webm': 'webm',
+    'audio/webm;codecs=opus': 'webm',
+    'audio/wav': 'wav',
+    'audio/ogg': 'ogg'
+  };
+
+  return mimeToExtension[mimeType] || 'webm'; // Default fallback
+};
+
 export interface SharedLessonData {
   session_id: string
   set_name: string
@@ -73,7 +89,8 @@ export class SharedLessonService {
     setName: string,
     setDescription: string,
     currentSessionPieces: Record<string, AudioPiece[]>,
-    getCurrentExercises: () => Exercise[]
+    getCurrentExercises: () => Exercise[],
+    isUpdate: boolean = false
   ): Promise<UploadResult> {
     if (!supabase) {
       return {
@@ -101,15 +118,16 @@ export class SharedLessonService {
         // Upload each recording for this exercise
         for (let i = 0; i < pieces.length; i++) {
           const piece = pieces[i]
-          const fileName = `${sessionId}/${exerciseId}/${piece.id}.webm`
+          const fileExtension = getFileExtensionFromMimeType(piece.blob.type)
+          const fileName = `${sessionId}/${exerciseId}/${piece.id}.${fileExtension}`
           
           console.log('Uploading file:', fileName, 'size:', piece.blob.size)
           
           const uploadPromise = supabase.storage
             .from(this.BUCKET_NAME)
             .upload(fileName, piece.blob, {
-              contentType: 'audio/webm',
-              upsert: false
+              contentType: piece.blob.type || 'audio/webm',
+              upsert: isUpdate // Allow overwriting existing files when updating
             })
 
           uploadPromises.push(uploadPromise.then((result) => {
@@ -184,22 +202,38 @@ export class SharedLessonService {
         })
       }
 
-      // Save lesson metadata to database
-      const { error: dbError } = await supabase
-        .from('shared_lessons')
-        .insert({
-          session_id: sessionId,
-          set_name: setName,
-          set_description: setDescription,
-          recording_count: totalRecordings,
-          files: files
-        })
+      // Save or update lesson metadata in database
+      let dbError = null;
+      if (isUpdate) {
+        const { error } = await supabase
+          .from('shared_lessons')
+          .update({
+            set_name: setName,
+            set_description: setDescription,
+            recording_count: totalRecordings,
+            files: files,
+            updated_at: new Date().toISOString()
+          })
+          .eq('session_id', sessionId);
+        dbError = error;
+      } else {
+        const { error } = await supabase
+          .from('shared_lessons')
+          .insert({
+            session_id: sessionId,
+            set_name: setName,
+            set_description: setDescription,
+            recording_count: totalRecordings,
+            files: files
+          });
+        dbError = error;
+      }
 
       if (dbError) {
         console.error('Database error:', dbError)
         return {
           success: false,
-          error: 'Failed to save lesson metadata'
+          error: `Failed to ${isUpdate ? 'update' : 'save'} lesson metadata`
         }
       }
 
@@ -242,7 +276,187 @@ export class SharedLessonService {
     }
   }
 
+  static async checkIfSessionExists(sessionId: string): Promise<boolean> {
+    if (!supabase) return false;
+
+    try {
+      const { data, error } = await supabase
+        .from('shared_lessons')
+        .select('session_id')
+        .eq('session_id', sessionId)
+        .single();
+
+      return !error && !!data;
+    } catch (error) {
+      console.error('Error checking session existence:', error);
+      return false;
+    }
+  }
+
   static generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
   }
+
+  // Comment-related methods
+  static async addComment(
+    sessionId: string,
+    recordingId: string,
+    userName: string,
+    commentText: string,
+    userEmail?: string,
+    timestampSeconds?: number
+  ): Promise<{ success: boolean; error?: string; commentId?: string }> {
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase is not configured'
+      }
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('recording_comments')
+        .insert({
+          session_id: sessionId,
+          recording_id: recordingId,
+          user_name: userName.trim(),
+          user_email: userEmail?.trim() || null,
+          comment_text: commentText.trim(),
+          timestamp_seconds: timestampSeconds || null
+        })
+        .select('id')
+        .single()
+
+      if (error) {
+        console.error('Error adding comment:', error)
+        return {
+          success: false,
+          error: 'Failed to add comment'
+        }
+      }
+
+      return {
+        success: true,
+        commentId: data.id
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      return {
+        success: false,
+        error: 'An unexpected error occurred'
+      }
+    }
+  }
+
+  static async getComments(
+    sessionId: string,
+    recordingId?: string
+  ): Promise<RecordingComment[]> {
+    if (!supabase) {
+      console.error('Supabase is not configured')
+      return []
+    }
+
+    try {
+      let query = supabase
+        .from('recording_comments')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('timestamp_seconds', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true })
+
+      if (recordingId) {
+        query = query.eq('recording_id', recordingId)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error fetching comments:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error fetching comments:', error)
+      return []
+    }
+  }
+
+  static async getCommentsForTimestamp(
+    sessionId: string,
+    recordingId: string,
+    timestampSeconds: number,
+    tolerance: number = 1.0
+  ): Promise<RecordingComment[]> {
+    if (!supabase) {
+      console.error('Supabase is not configured')
+      return []
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('recording_comments')
+        .select('*')
+        .eq('session_id', sessionId)
+        .eq('recording_id', recordingId)
+        .gte('timestamp_seconds', timestampSeconds - tolerance)
+        .lte('timestamp_seconds', timestampSeconds + tolerance)
+        .order('timestamp_seconds', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching comments for timestamp:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error fetching comments for timestamp:', error)
+      return []
+    }
+  }
+
+  static async deleteComment(commentId: string): Promise<{ success: boolean; error?: string }> {
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase is not configured'
+      }
+    }
+
+    try {
+      const { error } = await supabase
+        .from('recording_comments')
+        .delete()
+        .eq('id', commentId)
+
+      if (error) {
+        console.error('Error deleting comment:', error)
+        return {
+          success: false,
+          error: 'Failed to delete comment'
+        }
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error('Error deleting comment:', error)
+      return {
+        success: false,
+        error: 'An unexpected error occurred'
+      }
+    }
+  }
+}
+
+export interface RecordingComment {
+  id: string
+  session_id: string
+  recording_id: string
+  user_name: string
+  user_email?: string
+  comment_text: string
+  timestamp_seconds?: number
+  created_at: string
+  updated_at: string
 }

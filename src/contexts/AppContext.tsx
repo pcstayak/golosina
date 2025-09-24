@@ -37,6 +37,7 @@ export interface AudioPiece {
   duration: number;
   exerciseId: number;
   exerciseName: string;
+  customTitle?: string;
 }
 
 export interface Settings {
@@ -49,6 +50,8 @@ export interface Settings {
   autoSplitThreshold: number;
   autoSplitDuration: number;
   minRecordingLength: number;
+  // Recording UI settings
+  recordingDebugMode: boolean;
 }
 
 interface AppState {
@@ -56,35 +59,40 @@ interface AppState {
   currentSetIndex: number;
   currentExerciseIndex: number;
   exerciseSets: ExerciseSet[];
-  
+
   // Recording state
   isRecording: boolean;
   mediaRecorder: MediaRecorder | null;
   audioStream: MediaStream | null;
   recordedChunks: BlobPart[];
-  
+
   // Auto-splitting state
   currentRecordingSegment: number;
   isAutoSplitting: boolean;
-  
+
   // Audio pieces
   audioPieces: Record<string, AudioPiece[]>;
   currentSessionPieces: Record<string, AudioPiece[]>;
-  
+
   // UI state
   currentView: 'landing' | 'lesson' | 'recap' | 'teacher-dashboard' | 'admin-dashboard';
   sessionActive: boolean;
-  
+
   // Permissions and settings
   microphonePermissionGranted: boolean;
   settings: Settings;
-  
+
   // Shared lesson state
   isSharedSession: boolean;
   sharedExercises: Exercise[];
+
+  // Current session sharing state
+  currentSessionId: string | null;
+  shareUrl: string | null;
+  isUploading: boolean;
 }
 
-type AppAction = 
+type AppAction =
   | { type: 'SET_CURRENT_SET_INDEX'; payload: number }
   | { type: 'SET_CURRENT_EXERCISE_INDEX'; payload: number }
   | { type: 'SET_IS_RECORDING'; payload: boolean }
@@ -97,11 +105,15 @@ type AppAction =
   | { type: 'UPDATE_SETTINGS'; payload: Partial<Settings> }
   | { type: 'ADD_AUDIO_PIECE'; payload: { exerciseKey: string; piece: AudioPiece } }
   | { type: 'REMOVE_AUDIO_PIECE'; payload: { exerciseKey: string; pieceId: string } }
+  | { type: 'UPDATE_AUDIO_PIECE_TITLE'; payload: { exerciseKey: string; pieceId: string; title: string } }
   | { type: 'SET_EXERCISE_SETS'; payload: ExerciseSet[] }
   | { type: 'CLEAR_SESSION_PIECES' }
   | { type: 'SET_SHARED_SESSION'; payload: { isShared: boolean; exercises?: Exercise[] } }
   | { type: 'SET_CURRENT_RECORDING_SEGMENT'; payload: number }
-  | { type: 'SET_IS_AUTO_SPLITTING'; payload: boolean };
+  | { type: 'SET_IS_AUTO_SPLITTING'; payload: boolean }
+  | { type: 'SET_CURRENT_SESSION_ID'; payload: string | null }
+  | { type: 'SET_SHARE_URL'; payload: string | null }
+  | { type: 'SET_IS_UPLOADING'; payload: boolean };
 
 const defaultExerciseSets: ExerciseSet[] = [
   {
@@ -244,7 +256,7 @@ const initialState: AppState = {
   mediaRecorder: null,
   audioStream: null,
   recordedChunks: [],
-  
+
   // Auto-splitting state
   currentRecordingSegment: 1,
   isAutoSplitting: false,
@@ -262,10 +274,17 @@ const initialState: AppState = {
     autoSplitEnabled: true,
     autoSplitThreshold: 0.02,
     autoSplitDuration: 1.0,
-    minRecordingLength: 0.5
+    minRecordingLength: 0.5,
+    // Recording UI defaults
+    recordingDebugMode: false
   },
   isSharedSession: false,
-  sharedExercises: []
+  sharedExercises: [],
+
+  // Current session sharing state
+  currentSessionId: null,
+  shareUrl: null,
+  isUploading: false
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -316,6 +335,23 @@ function appReducer(state: AppState, action: AppAction): AppState {
           [removeKey]: state.currentSessionPieces[removeKey]?.filter(p => p.id !== pieceId) || []
         }
       };
+    case 'UPDATE_AUDIO_PIECE_TITLE':
+      const { exerciseKey: updateKey, pieceId: updatePieceId, title } = action.payload;
+      return {
+        ...state,
+        audioPieces: {
+          ...state.audioPieces,
+          [updateKey]: state.audioPieces[updateKey]?.map(p =>
+            p.id === updatePieceId ? { ...p, customTitle: title } : p
+          ) || []
+        },
+        currentSessionPieces: {
+          ...state.currentSessionPieces,
+          [updateKey]: state.currentSessionPieces[updateKey]?.map(p =>
+            p.id === updatePieceId ? { ...p, customTitle: title } : p
+          ) || []
+        }
+      };
     case 'SET_EXERCISE_SETS':
       return { ...state, exerciseSets: action.payload };
     case 'CLEAR_SESSION_PIECES':
@@ -330,6 +366,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, currentRecordingSegment: action.payload };
     case 'SET_IS_AUTO_SPLITTING':
       return { ...state, isAutoSplitting: action.payload };
+    case 'SET_CURRENT_SESSION_ID':
+      return { ...state, currentSessionId: action.payload };
+    case 'SET_SHARE_URL':
+      return { ...state, shareUrl: action.payload };
+    case 'SET_IS_UPLOADING':
+      return { ...state, isUploading: action.payload };
     default:
       return state;
   }
