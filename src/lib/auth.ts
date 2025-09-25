@@ -71,6 +71,13 @@ function getSiteUrl(): string {
     return productionUrl
   }
 
+  // Production fallback - if we're in production environment, use the production domain
+  if (process.env.NODE_ENV === 'production') {
+    const productionUrl = 'https://golosina.net'
+    console.log('Production environment detected, using production domain:', productionUrl)
+    return productionUrl
+  }
+
   // Default to localhost only in development
   const developmentUrl = 'http://localhost:3000'
   console.log('Development environment, using:', developmentUrl)
