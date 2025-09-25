@@ -7,7 +7,7 @@ import { ArrowLeft, Clock, Mic, Calendar } from 'lucide-react'
 import { SharedLessonService, type SharedLessonData, type RecordingComment } from '@/services/sharedLessonService'
 import AudioPlayer from '@/components/lesson/AudioPlayer'
 import { AudioPiece } from '@/contexts/AppContext'
-import { MessageSquare, Send, User, Mail } from 'lucide-react'
+import { MessageSquare, Send, User } from 'lucide-react'
 import { formatTime } from '@/utils/audioAnalysis'
 import Link from 'next/link'
 
@@ -21,8 +21,6 @@ export default function SharedLessonPage() {
   const [convertedAudioPieces, setConvertedAudioPieces] = useState<Record<string, AudioPiece[]>>({})
   const [comments, setComments] = useState<Record<string, RecordingComment[]>>({})
   const [commentForms, setCommentForms] = useState<Record<string, {
-    userName: string
-    userEmail: string
     commentText: string
     timestampSeconds?: number
     includeTimestamp: boolean
@@ -178,8 +176,6 @@ export default function SharedLessonPage() {
     setCommentForms(prev => ({
       ...prev,
       [recordingId]: {
-        userName: prev[recordingId]?.userName || '',
-        userEmail: prev[recordingId]?.userEmail || '',
         commentText: prev[recordingId]?.commentText || '',
         timestampSeconds,
         includeTimestamp: prev[recordingId]?.includeTimestamp || false
@@ -189,7 +185,7 @@ export default function SharedLessonPage() {
 
   const handleSubmitComment = useCallback(async (recordingId: string) => {
     const form = commentForms[recordingId]
-    if (!sessionId || !recordingId || !form?.userName.trim() || !form?.commentText.trim()) {
+    if (!sessionId || !recordingId || !form?.commentText.trim()) {
       return
     }
 
@@ -197,9 +193,9 @@ export default function SharedLessonPage() {
       const result = await SharedLessonService.addComment(
         sessionId,
         recordingId,
-        form.userName.trim(),
+        'Anonymous User',
         form.commentText.trim(),
-        form.userEmail.trim() || undefined,
+        undefined,
         form.includeTimestamp ? form.timestampSeconds : undefined
       )
 
@@ -211,12 +207,10 @@ export default function SharedLessonPage() {
           [recordingId]: recordingComments
         }))
 
-        // Reset form but keep user name and email for next comment
+        // Reset form
         setCommentForms(prev => ({
           ...prev,
           [recordingId]: {
-            userName: form.userName,
-            userEmail: form.userEmail,
             commentText: '',
             timestampSeconds: undefined,
             includeTimestamp: false
@@ -417,52 +411,33 @@ export default function SharedLessonPage() {
                           )}
 
                           {/* Add Comment Form */}
-                          <div className="bg-white rounded-lg p-4 border border-gray-200">
-                            <h5 className="text-sm font-medium text-gray-700 mb-3">
+                          <div className="bg-white rounded-lg p-3 border border-gray-200">
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">
                               Add a Comment
                             </h5>
 
-                            <div className="space-y-3">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                                    <User className="w-3 h-3 inline mr-1" />
-                                    Your Name *
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={form?.userName || ''}
-                                    onChange={(e) => handleUpdateCommentForm(piece.id, 'userName', e.target.value)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="Enter your name"
+                            <div className="space-y-2">
+                              {/* Comment textarea with inline submit button */}
+                              <div className="flex gap-2 items-end">
+                                <div className="flex-1">
+                                  <textarea
+                                    value={form?.commentText || ''}
+                                    onChange={(e) => handleUpdateCommentForm(piece.id, 'commentText', e.target.value)}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                    placeholder="Enter your comment..."
+                                    rows={2}
                                   />
                                 </div>
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                                    <Mail className="w-3 h-3 inline mr-1" />
-                                    Email (optional)
-                                  </label>
-                                  <input
-                                    type="email"
-                                    value={form?.userEmail || ''}
-                                    onChange={(e) => handleUpdateCommentForm(piece.id, 'userEmail', e.target.value)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    placeholder="your@email.com"
-                                  />
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">
-                                  Comment *
-                                </label>
-                                <textarea
-                                  value={form?.commentText || ''}
-                                  onChange={(e) => handleUpdateCommentForm(piece.id, 'commentText', e.target.value)}
-                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                  placeholder="Enter your comment..."
-                                  rows={3}
-                                />
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() => handleSubmitComment(piece.id)}
+                                  disabled={!form?.commentText?.trim()}
+                                  className="flex items-center gap-2 whitespace-nowrap"
+                                >
+                                  <Send className="w-3 h-3" />
+                                  Post
+                                </Button>
                               </div>
 
                               {/* Timestamp checkbox */}
@@ -486,20 +461,8 @@ export default function SharedLessonPage() {
                                 </div>
                               )}
 
-                              <div className="flex items-center justify-between">
-                                <div className="text-xs text-gray-500">
-                                  Tip: Click on the waveform above to set a timestamp position
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  onClick={() => handleSubmitComment(piece.id)}
-                                  disabled={!form?.userName?.trim() || !form?.commentText?.trim()}
-                                  className="flex items-center gap-2"
-                                >
-                                  <Send className="w-3 h-3" />
-                                  Post Comment
-                                </Button>
+                              <div className="text-xs text-gray-500">
+                                Tip: Click on the waveform above to set a timestamp position
                               </div>
                             </div>
                           </div>

@@ -13,32 +13,34 @@ import {
 } from './rateLimiting'
 
 // Utility function to get the correct site URL for email redirects
+// Simplified: Production always returns https://golosina.net, development uses localhost or env vars
 function getSiteUrl(): string {
-  // If we're in the browser, use the current origin
-  if (typeof window !== 'undefined') {
-    return window.location.origin
+  // Production environment: always use the production domain
+  if (process.env.NODE_ENV === 'production') {
+    const productionUrl = 'https://golosina.net'
+    console.log('Production environment detected, using:', productionUrl)
+    return productionUrl
   }
 
-  // Server-side logic
-  // Check for production environment variables first
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || process.env.SITE_URL
+  // Development environment: use browser origin or environment variables
+  if (typeof window !== 'undefined') {
+    // Browser-side in development: use current origin
+    const origin = window.location.origin
+    console.log('Development (browser):', origin)
+    return origin
+  }
 
+  // Server-side in development: check environment variables
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || process.env.SITE_URL
   if (siteUrl) {
-    // Ensure HTTPS for production URLs (but not localhost)
-    if (siteUrl.startsWith('http://') && !siteUrl.includes('localhost')) {
-      return siteUrl.replace('http://', 'https://')
-    }
-    
-    // If it's a Vercel URL without protocol, add https
-    if (siteUrl.includes('.vercel.app') && !siteUrl.startsWith('http')) {
-      return `https://${siteUrl}`
-    }
-    
+    console.log('Development (server), using env var:', siteUrl)
     return siteUrl
   }
 
-  // Default to localhost only in development
-  return 'http://localhost:3000'
+  // Fallback for development
+  const developmentUrl = 'http://localhost:3000'
+  console.log('Development fallback:', developmentUrl)
+  return developmentUrl
 }
 
 export interface AuthResponse {
@@ -71,10 +73,20 @@ export class AuthService {
     }
 
     try {
+      const siteUrl = getSiteUrl()
+      const redirectTo = `${siteUrl}/auth/callback`
+
+      console.log('Google OAuth configuration:', {
+        siteUrl,
+        redirectTo,
+        environment: process.env.NODE_ENV,
+        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server'
+      })
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${getSiteUrl()}/auth/callback`,
+          redirectTo: redirectTo,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent'
