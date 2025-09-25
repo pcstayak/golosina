@@ -70,8 +70,8 @@ const MarketingLandingPageComponent: React.FC = () => {
   const features = [
     {
       icon: <Mic className="w-8 h-8" />,
-      title: "Real-Time Audio Analysis",
-      description: "Get instant AI-powered feedback on your vocal performance with advanced speech recognition technology."
+      title: "Voice Recording & Playback",
+      description: "Record your voice during practice sessions and listen back to track your progress over time."
     },
     {
       icon: <Target className="w-8 h-8" />,
@@ -80,8 +80,8 @@ const MarketingLandingPageComponent: React.FC = () => {
     },
     {
       icon: <BarChart3 className="w-8 h-8" />,
-      title: "Progress Tracking",
-      description: "Monitor your improvement with detailed analytics, streak counters, and performance insights."
+      title: "Simple Progress Tracking",
+      description: "Keep track of your practice sessions and build consistent habits with basic session logging."
     },
     {
       icon: <Volume2 className="w-8 h-8" />,
@@ -95,8 +95,8 @@ const MarketingLandingPageComponent: React.FC = () => {
     },
     {
       icon: <Award className="w-8 h-8" />,
-      title: "Professional Quality",
-      description: "Industry-standard tools and techniques used by voice coaches and professional performers."
+      title: "Easy to Use",
+      description: "Simple, user-friendly interface designed for convenient voice practice anywhere you have a microphone."
     }
   ]
 
@@ -152,14 +152,14 @@ const MarketingLandingPageComponent: React.FC = () => {
     },
     {
       step: 2,
-      title: "Practice with AI",
-      description: "Record your voice and receive real-time feedback powered by advanced audio analysis technology.",
+      title: "Record & Practice",
+      description: "Record your voice during exercises and listen back to hear your progress and identify areas for improvement.",
       icon: <Mic className="w-12 h-12 text-purple-600" />
     },
     {
       step: 3,
-      title: "Track Progress",
-      description: "Monitor your improvement with detailed analytics, streaks, and performance insights over time.",
+      title: "Track Sessions",
+      description: "Keep a simple log of your practice sessions to build consistent voice training habits.",
       icon: <BarChart3 className="w-12 h-12 text-purple-600" />
     }
   ]
@@ -174,8 +174,8 @@ const MarketingLandingPageComponent: React.FC = () => {
       answer: "Not at all! Golosina is designed for everyone, from complete beginners to professional performers. Our exercises adapt to your current level and help you progress at your own pace."
     },
     {
-      question: "How does the AI feedback work?",
-      answer: "Our advanced audio analysis technology listens to your voice in real-time and provides instant feedback on pitch accuracy, breath control, timing, and vocal quality. It's like having a personal voice coach available 24/7."
+      question: "How do the recordings work?",
+      answer: "You can record your voice during any exercise and play it back to hear how you sound. This helps you identify areas for improvement and track your progress over time through self-evaluation."
     },
     {
       question: "Can I use this on my mobile device?",
@@ -199,7 +199,7 @@ const MarketingLandingPageComponent: React.FC = () => {
         "@type": "WebApplication",
         "name": "Golosina",
         "url": "https://golosina.net",
-        "description": "AI-powered voice training platform for singers, speakers, and performers",
+        "description": "Voice training tool with exercises and recording capabilities for singers, speakers, and performers",
         "applicationCategory": "EducationalApplication",
         "operatingSystem": "Web Browser",
         "offers": {
@@ -208,17 +208,10 @@ const MarketingLandingPageComponent: React.FC = () => {
           "priceCurrency": "USD",
           "availability": "https://schema.org/InStock"
         },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.8",
-          "reviewCount": "1247",
-          "bestRating": "5",
-          "worstRating": "1"
-        },
         "featureList": [
-          "Real-time audio analysis with AI feedback",
-          "Personalized exercise sets",
-          "Progress tracking and analytics",
+          "Voice recording and playback",
+          "Organized exercise sets",
+          "Basic session tracking",
           "Cross-platform compatibility",
           "Auto-splitting recordings with silence detection"
         ]
@@ -228,11 +221,6 @@ const MarketingLandingPageComponent: React.FC = () => {
         "name": "Golosina",
         "url": "https://golosina.net",
         "logo": "https://golosina.net/logo.png",
-        "sameAs": [
-          "https://twitter.com/golosina",
-          "https://facebook.com/golosina",
-          "https://instagram.com/golosina"
-        ],
         "contactPoint": {
           "@type": "ContactPoint",
           "contactType": "Customer Service",
@@ -246,7 +234,7 @@ const MarketingLandingPageComponent: React.FC = () => {
           "@type": "Organization",
           "name": "Golosina"
         },
-        "description": "AI-powered voice training for singers, speakers, performers, and students",
+        "description": "Voice training with exercises and recording tools for singers, speakers, performers, and students",
         "serviceType": "Voice Training",
         "areaServed": "Worldwide",
         "availableChannel": {
@@ -275,11 +263,11 @@ const MarketingLandingPageComponent: React.FC = () => {
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6">
               Master Your Voice with{' '}
               <span className="bg-gradient-to-r from-yellow-300 to-pink-300 bg-clip-text text-transparent">
-                AI-Powered Training
+                Practice & Recording
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Get personalized voice coaching with real-time AI feedback. Perfect for singers, speakers, performers, and anyone looking to improve their vocal skills.
+              Practice voice exercises with recording and playback capabilities. Perfect for singers, speakers, performers, and anyone looking to improve their vocal skills through self-guided training.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
@@ -307,22 +295,18 @@ const MarketingLandingPageComponent: React.FC = () => {
             <div className="mt-16 relative">
               <div className="absolute inset-0 bg-gradient-to-t from-purple-600/50 to-transparent rounded-2xl"></div>
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
                   <div>
-                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">50K+</div>
-                    <div className="text-white/80 text-sm">Active Users</div>
+                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">3+</div>
+                    <div className="text-white/80 text-sm">Exercise Categories</div>
                   </div>
                   <div>
-                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">1M+</div>
-                    <div className="text-white/80 text-sm">Voice Sessions</div>
+                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">Free</div>
+                    <div className="text-white/80 text-sm">To Use</div>
                   </div>
                   <div>
-                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">95%</div>
-                    <div className="text-white/80 text-sm">Success Rate</div>
-                  </div>
-                  <div>
-                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">24/7</div>
-                    <div className="text-white/80 text-sm">AI Coaching</div>
+                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">Web</div>
+                    <div className="text-white/80 text-sm">Based Tool</div>
                   </div>
                 </div>
               </div>
@@ -339,8 +323,8 @@ const MarketingLandingPageComponent: React.FC = () => {
               Powerful Features for Voice Excellence
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Our comprehensive platform combines cutting-edge AI technology with proven voice training methods
-              to deliver results that traditional coaching can't match.
+              A simple voice training tool with organized exercises and recording capabilities
+              to help you practice and improve your vocal skills.
             </p>
           </div>
 
@@ -443,9 +427,9 @@ const MarketingLandingPageComponent: React.FC = () => {
                 Why Voice Training Matters
               </h2>
               <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-                Your voice is your most powerful tool for communication, expression, and connection. 
-                Whether you're presenting ideas, performing on stage, or having everyday conversations, 
-                proper voice training can dramatically improve your confidence and effectiveness.
+                Your voice is your most powerful tool for communication, expression, and connection.
+                Whether you're presenting ideas, performing on stage, or having everyday conversations,
+                regular practice with structured exercises can help improve your confidence and vocal skills.
               </p>
               
               <div className="space-y-6">
@@ -475,7 +459,7 @@ const MarketingLandingPageComponent: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-2">Consistent Practice</h4>
-                    <p className="text-gray-600">Regular training with AI feedback ensures steady improvement over time.</p>
+                    <p className="text-gray-600">Regular practice with structured exercises helps build vocal skills over time.</p>
                   </div>
                 </div>
               </div>
@@ -483,27 +467,27 @@ const MarketingLandingPageComponent: React.FC = () => {
             
             <div className="bg-white rounded-2xl p-8 shadow-xl">
               <h3 className="text-2xl font-semibold text-gray-900 mb-6">
-                The Technology Behind Your Success
+                Simple Tools for Voice Practice
               </h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Real-time Audio Processing</span>
+                  <span className="text-gray-600">Browser-based Recording</span>
                   <CheckCircle className="w-5 h-5 text-green-500" />
                 </div>
                 <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Advanced Speech Recognition</span>
+                  <span className="text-gray-600">Organized Exercise Sets</span>
                   <CheckCircle className="w-5 h-5 text-green-500" />
                 </div>
                 <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Silence Detection Algorithm</span>
+                  <span className="text-gray-600">Auto-Split Long Recordings</span>
                   <CheckCircle className="w-5 h-5 text-green-500" />
                 </div>
                 <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Cross-platform WebRTC</span>
+                  <span className="text-gray-600">Cross-platform Compatibility</span>
                   <CheckCircle className="w-5 h-5 text-green-500" />
                 </div>
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-gray-600">Progressive Analytics</span>
+                  <span className="text-gray-600">Session Logging</span>
                   <CheckCircle className="w-5 h-5 text-green-500" />
                 </div>
               </div>
@@ -556,8 +540,8 @@ const MarketingLandingPageComponent: React.FC = () => {
             Ready to Transform Your Voice?
           </h2>
           <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-            Join thousands of users who have already improved their vocal skills with our AI-powered training platform.
-            Start your journey to vocal excellence today.
+            Start practicing with organized voice exercises and recording tools.
+            Begin your vocal improvement journey today with simple, effective practice.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -584,35 +568,23 @@ const MarketingLandingPageComponent: React.FC = () => {
             <div className="md:col-span-2">
               <h3 className="text-2xl font-bold mb-4">🎵 Golosina</h3>
               <p className="text-gray-400 mb-6 max-w-md">
-                AI-powered voice training platform helping singers, speakers, and performers 
-                achieve their vocal goals through personalized coaching and real-time feedback.
+                Voice training tool with organized exercises and recording capabilities
+                helping singers, speakers, and performers practice and improve their vocal skills.
               </p>
-              <div className="flex space-x-4">
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">Twitter</a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">Facebook</a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">Instagram</a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">LinkedIn</a>
-              </div>
             </div>
             
             <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Features</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">How it Works</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">FAQ</a></li>
-              </ul>
+              <h4 className="font-semibold mb-4">About</h4>
+              <p className="text-gray-400 text-sm">
+                Golosina is a simple voice training tool for practice and improvement.
+              </p>
             </div>
-            
+
             <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Help Center</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Contact Us</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Terms of Service</a></li>
-              </ul>
+              <h4 className="font-semibold mb-4">Get Started</h4>
+              <p className="text-gray-400 text-sm">
+                Click "Start Training Free" above to begin practicing with voice exercises.
+              </p>
             </div>
           </div>
           
