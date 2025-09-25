@@ -8,6 +8,8 @@ import { SharedLessonService, type SharedLessonData, type RecordingComment } fro
 import AudioPlayer from '@/components/lesson/AudioPlayer'
 import { AudioPiece } from '@/contexts/AppContext'
 import { MessageSquare, Send, User } from 'lucide-react'
+import AlertDialog from '@/components/ui/AlertDialog'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { formatTime } from '@/utils/audioAnalysis'
 import Link from 'next/link'
 
@@ -25,6 +27,20 @@ export default function SharedLessonPage() {
     timestampSeconds?: number
     includeTimestamp: boolean
   }>>({})
+  const [isOwner, setIsOwner] = useState(false)
+  const [alertDialog, setAlertDialog] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    variant: 'success' | 'error' | 'warning' | 'info';
+  }>({ show: false, title: '', message: '', variant: 'info' });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isLoading: boolean;
+  }>({ show: false, title: '', message: '', onConfirm: () => {}, isLoading: false });
 
   useEffect(() => {
     const fetchLessonData = async () => {
@@ -50,6 +66,11 @@ export default function SharedLessonPage() {
     }
 
     fetchLessonData()
+
+    // Check if current user is the owner of this session
+    if (sessionId && typeof sessionId === 'string') {
+      setIsOwner(SharedLessonService.isSessionOwned(sessionId))
+    }
   }, [sessionId])
 
   const formatDuration = (seconds: number): string => {
@@ -235,6 +256,61 @@ export default function SharedLessonPage() {
     }))
   }, [])
 
+  const handleDeleteRecording = useCallback((recordingId: string, exerciseId: string) => {
+    if (!sessionId || typeof sessionId !== 'string') return
+
+    setConfirmDialog({
+      show: true,
+      title: 'Delete Recording',
+      message: 'Are you sure you want to delete this recording? This action cannot be undone.',
+      onConfirm: () => performDeleteRecording(recordingId, exerciseId),
+      isLoading: false
+    });
+  }, [sessionId])
+
+  const performDeleteRecording = useCallback(async (recordingId: string, exerciseId: string) => {
+    if (!sessionId || typeof sessionId !== 'string') return
+
+    setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+
+    try {
+      const result = await SharedLessonService.deleteRecording(sessionId, exerciseId, recordingId)
+
+      setConfirmDialog(prev => ({ ...prev, show: false, isLoading: false }));
+
+      if (result.success) {
+        // Refresh the lesson data to show updated state
+        const updatedData = await SharedLessonService.getSharedLesson(sessionId)
+        if (updatedData) {
+          setLessonData(updatedData)
+        }
+
+        setAlertDialog({
+          show: true,
+          title: 'Recording Deleted',
+          message: 'The recording has been successfully deleted.',
+          variant: 'success'
+        });
+      } else {
+        setAlertDialog({
+          show: true,
+          title: 'Delete Failed',
+          message: result.error || 'Failed to delete recording. Please try again.',
+          variant: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting recording:', error)
+      setConfirmDialog(prev => ({ ...prev, show: false, isLoading: false }));
+      setAlertDialog({
+        show: true,
+        title: 'Delete Failed',
+        message: 'Failed to delete recording. Please try again.',
+        variant: 'error'
+      });
+    }
+  }, [sessionId])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -355,13 +431,13 @@ export default function SharedLessonPage() {
                         <AudioPlayer
                           piece={piece}
                           index={index}
-                          onDelete={() => {}} // No-op for shared lessons
+                          onDelete={isOwner ? (pieceId: string) => handleDeleteRecording(piece.id, exerciseId) : () => {}}
                           onDownload={downloadPiece}
                           onTitleUpdate={undefined} // No title editing for shared lessons
                           isPlaying={currentlyPlaying === piece.id}
                           onPlayStateChange={handlePlayStateChange}
                           exerciseName={exercise.name}
-                          showDeleteButton={false}
+                          showDeleteButton={isOwner}
                           comments={recordingComments}
                           onAddComment={(timestampSeconds) => handleAddComment(piece.id, timestampSeconds)}
                         />
@@ -495,6 +571,28 @@ export default function SharedLessonPage() {
             </Button>
           </Link>
         </div>
+
+        {/* Alert Dialog */}
+        <AlertDialog
+          isOpen={alertDialog.show}
+          onClose={() => setAlertDialog({ ...alertDialog, show: false })}
+          title={alertDialog.title}
+          message={alertDialog.message}
+          variant={alertDialog.variant}
+        />
+
+        {/* Confirm Dialog */}
+        <ConfirmDialog
+          isOpen={confirmDialog.show}
+          onClose={() => setConfirmDialog({ ...confirmDialog, show: false, isLoading: false })}
+          onConfirm={confirmDialog.onConfirm}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText="Delete"
+          variant="danger"
+          confirmButtonVariant="danger"
+          isLoading={confirmDialog.isLoading}
+        />
       </div>
 
     </div>

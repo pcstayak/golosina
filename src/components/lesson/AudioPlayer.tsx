@@ -6,6 +6,7 @@ import { Play, Pause, Square, SkipBack, SkipForward, Download, Trash2, Edit3 } f
 import { AudioPiece } from '@/contexts/AppContext';
 import { analyzeAudioBlob, formatTime, calculateSeekTime, WaveformData } from '@/utils/audioAnalysis';
 import { RecordingComment } from '@/services/sharedLessonService';
+import CommentPopover from '@/components/ui/CommentPopover';
 
 interface AudioPlayerProps {
   piece: AudioPiece;
@@ -36,6 +37,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const waveformRef = useRef<HTMLDivElement>(null);
+  const waveformContainerRef = useRef<HTMLDivElement>(null);
 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(piece.duration);
@@ -45,6 +47,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitle, setEditingTitle] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Comment popover state
+  const [hoveredCommentCluster, setHoveredCommentCluster] = useState<RecordingComment[] | null>(null);
+  const [stickyCommentCluster, setStickyCommentCluster] = useState<RecordingComment[] | null>(null);
+  const [popoverTargetElement, setPopoverTargetElement] = useState<HTMLElement | null>(null);
+  const [stickyTargetElement, setStickyTargetElement] = useState<HTMLElement | null>(null);
+
+  // Comment cluster type
+  interface CommentCluster {
+    comments: RecordingComment[];
+    position: number; // percentage position on waveform
+    pixelPosition: number; // actual pixel position for clustering
+  }
 
   // Generate waveform data on mount
   useEffect(() => {
@@ -210,6 +225,91 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     handleSeek(seekTime);
   }, [duration, handleSeek, onAddComment]);
 
+  // Comment clustering function
+  const clusterComments = useCallback((comments: RecordingComment[], waveformWidth: number): CommentCluster[] => {
+    if (comments.length === 0) return [];
+
+    // Filter comments with valid timestamps and sort by timestamp
+    const validComments = comments
+      .filter(comment => comment.timestamp_seconds != null)
+      .sort((a, b) => a.timestamp_seconds! - b.timestamp_seconds!);
+
+    if (validComments.length === 0) return [];
+
+    const clusters: CommentCluster[] = [];
+    const CLUSTER_THRESHOLD = 20; // pixels - comments within this distance are clustered
+
+    for (const comment of validComments) {
+      const position = (comment.timestamp_seconds! / duration) * 100;
+      const pixelPosition = (position / 100) * waveformWidth;
+
+      // Try to find an existing cluster within threshold
+      let addedToCluster = false;
+      for (const cluster of clusters) {
+        if (Math.abs(cluster.pixelPosition - pixelPosition) <= CLUSTER_THRESHOLD) {
+          cluster.comments.push(comment);
+          // Update cluster position to be the average of all comments in cluster
+          const avgPosition = cluster.comments.reduce((sum, c) => sum + ((c.timestamp_seconds! / duration) * 100), 0) / cluster.comments.length;
+          cluster.position = avgPosition;
+          cluster.pixelPosition = (avgPosition / 100) * waveformWidth;
+          addedToCluster = true;
+          break;
+        }
+      }
+
+      // If not added to existing cluster, create a new one
+      if (!addedToCluster) {
+        clusters.push({
+          comments: [comment],
+          position,
+          pixelPosition
+        });
+      }
+    }
+
+    return clusters;
+  }, [duration]);
+
+  // Handle comment hover
+  const handleCommentHover = useCallback((cluster: CommentCluster, element: HTMLElement) => {
+    // Don't show hover popover if there's already a sticky one
+    if (stickyCommentCluster) return;
+
+    setHoveredCommentCluster(cluster.comments);
+    setPopoverTargetElement(element);
+  }, [stickyCommentCluster]);
+
+  const handleCommentLeave = useCallback(() => {
+    // Don't hide hover popover if there's a sticky one
+    if (stickyCommentCluster) return;
+
+    setHoveredCommentCluster(null);
+    setPopoverTargetElement(null);
+  }, [stickyCommentCluster]);
+
+  // Handle comment click for sticky behavior
+  const handleCommentClick = useCallback((cluster: CommentCluster, element: HTMLElement) => {
+    // If clicking the same cluster that's already sticky, close it
+    if (stickyCommentCluster &&
+        stickyCommentCluster.length === cluster.comments.length &&
+        stickyCommentCluster.every((comment, i) => comment.id === cluster.comments[i]?.id)) {
+      setStickyCommentCluster(null);
+      setStickyTargetElement(null);
+      return;
+    }
+
+    // Clear hover state and set sticky state
+    setHoveredCommentCluster(null);
+    setPopoverTargetElement(null);
+    setStickyCommentCluster(cluster.comments);
+    setStickyTargetElement(element);
+  }, [stickyCommentCluster]);
+
+  // Handle sticky popover close
+  const handleStickyClose = useCallback(() => {
+    setStickyCommentCluster(null);
+    setStickyTargetElement(null);
+  }, []);
 
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -267,7 +367,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
         {/* Center: Waveform Visualization */}
         <div className="flex-1 min-w-0">
-          <div className="waveform-container">
+          <div ref={waveformContainerRef} className="waveform-container">
             {isLoading ? (
               <div className="waveform-loading">
                 <div className="flex space-x-1">
@@ -324,20 +424,37 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                   style={{ left: `${progressPercentage}%` }}
                 />
 
-                {/* Comment indicators */}
-                {comments.filter(comment => comment.timestamp_seconds != null).map((comment) => {
-                  const commentPosition = ((comment.timestamp_seconds! / duration) * 100);
-                  return (
-                    <div
-                      key={comment.id}
-                      className="absolute top-0 bottom-0 w-1 bg-blue-500 z-10"
-                      style={{ left: `${commentPosition}%` }}
-                      title={`${comment.user_name}: ${comment.comment_text}`}
-                    >
-                      <div className="absolute -top-1 left-0 w-3 h-3 bg-blue-500 rounded-full transform -translate-x-1" />
-                    </div>
-                  );
-                })}
+                {/* Clustered comment indicators */}
+                {(() => {
+                  const waveformWidth = waveformRef.current?.getBoundingClientRect()?.width || 300;
+                  const clusters = clusterComments(comments, waveformWidth);
+
+                  return clusters.map((cluster, index) => {
+                    const isMultiple = cluster.comments.length > 1;
+
+                    return (
+                      <div
+                        key={`cluster-${index}`}
+                        className="absolute top-0 bottom-0 w-1 bg-blue-500 z-10 cursor-pointer"
+                        style={{ left: `${cluster.position}%` }}
+                        onMouseEnter={(e) => handleCommentHover(cluster, e.currentTarget)}
+                        onMouseLeave={handleCommentLeave}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent waveform click
+                          handleCommentClick(cluster, e.currentTarget);
+                        }}
+                      >
+                        <div className="absolute -top-1 left-0 w-3 h-3 bg-blue-500 rounded-full transform -translate-x-1 flex items-center justify-center">
+                          {isMultiple && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center border border-white">
+                              {cluster.comments.length}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
 
@@ -346,6 +463,26 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
+
+            {/* Hover Comment popover */}
+            <CommentPopover
+              comments={hoveredCommentCluster || []}
+              isVisible={!!hoveredCommentCluster && !stickyCommentCluster}
+              targetElement={popoverTargetElement}
+              onClose={handleCommentLeave}
+              containerRef={waveformContainerRef}
+              isSticky={false}
+            />
+
+            {/* Sticky Comment popover */}
+            <CommentPopover
+              comments={stickyCommentCluster || []}
+              isVisible={!!stickyCommentCluster}
+              targetElement={stickyTargetElement}
+              onClose={handleStickyClose}
+              containerRef={waveformContainerRef}
+              isSticky={true}
+            />
           </div>
         </div>
 
@@ -428,7 +565,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           )}
         </div>
       </div>
-
     </div>
   );
 };

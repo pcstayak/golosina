@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { ArrowLeft, Download, Share2, Copy, Check, Loader2 } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import AlertDialog from '@/components/ui/AlertDialog';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 import AudioPlayer from '@/components/lesson/AudioPlayer';
 import { SharedLessonService } from '@/services/sharedLessonService';
@@ -20,6 +21,13 @@ export default function RecapPage() {
     message: string;
     variant: 'success' | 'error' | 'warning' | 'info';
   }>({ show: false, title: '', message: '', variant: 'info' });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isLoading: boolean;
+  }>({ show: false, title: '', message: '', onConfirm: () => {}, isLoading: false });
 
   const backToLesson = () => {
     dispatch({ type: 'SET_CURRENT_VIEW', payload: 'lesson' });
@@ -242,11 +250,95 @@ export default function RecapPage() {
     }
   }, [dispatch, state.currentSessionPieces]);
 
-  // No-op delete function for recap (we don't allow deleting from recap)
-  const handleDelete = useCallback((pieceId: string) => {
-    // In recap view, we don't allow deletion
-    console.log('Delete not allowed in recap view');
-  }, []);
+  // Delete function for recap (only for session owners)
+  const handleDelete = useCallback(async (pieceId: string) => {
+    // Check if we can delete (must be session owner with shared session)
+    if (!state.currentSessionId || !SharedLessonService.isSessionOwned(state.currentSessionId)) {
+      setAlertDialog({
+        show: true,
+        title: 'Cannot Delete',
+        message: 'You can only delete recordings from sessions you have shared.',
+        variant: 'warning'
+      });
+      return;
+    }
+
+    // Show confirmation dialog
+    setConfirmDialog({
+      show: true,
+      title: 'Delete Recording',
+      message: 'Are you sure you want to delete this recording? This action cannot be undone.',
+      onConfirm: () => performDelete(pieceId),
+      isLoading: false
+    });
+  }, [state.currentSessionId, state.currentSessionPieces]);
+
+  const performDelete = useCallback(async (pieceId: string) => {
+    setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+
+    // Find which exercise this piece belongs to
+    let exerciseId: string | null = null;
+    let exerciseKey: string | null = null;
+    for (const [key, pieces] of Object.entries(state.currentSessionPieces)) {
+      const piece = pieces.find(p => p.id === pieceId);
+      if (piece) {
+        exerciseId = key.split('_')[1];
+        exerciseKey = key;
+        break;
+      }
+    }
+
+    if (!exerciseId || !exerciseKey) {
+      setAlertDialog({
+        show: true,
+        title: 'Delete Failed',
+        message: 'Recording not found.',
+        variant: 'error'
+      });
+      return;
+    }
+
+    try {
+      const result = await SharedLessonService.deleteRecording(
+        state.currentSessionId!,
+        exerciseId,
+        pieceId
+      );
+
+      setConfirmDialog(prev => ({ ...prev, show: false, isLoading: false }));
+
+      if (result.success) {
+        // Remove from local state
+        dispatch({
+          type: 'REMOVE_AUDIO_PIECE',
+          payload: { exerciseKey, pieceId }
+        });
+
+        setAlertDialog({
+          show: true,
+          title: 'Recording Deleted',
+          message: 'The recording has been successfully deleted.',
+          variant: 'success'
+        });
+      } else {
+        setAlertDialog({
+          show: true,
+          title: 'Delete Failed',
+          message: result.error || 'Failed to delete recording. Please try again.',
+          variant: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting recording:', error);
+      setConfirmDialog(prev => ({ ...prev, show: false, isLoading: false }));
+      setAlertDialog({
+        show: true,
+        title: 'Delete Failed',
+        message: 'An unexpected error occurred. Please try again.',
+        variant: 'error'
+      });
+    }
+  }, [state.currentSessionId, state.currentSessionPieces, dispatch]);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -379,7 +471,7 @@ export default function RecapPage() {
                       isPlaying={currentlyPlaying === piece.id}
                       onPlayStateChange={handlePlayStateChange}
                       exerciseName={exercise.name}
-                      showDeleteButton={false}
+                      showDeleteButton={Boolean(state.currentSessionId && SharedLessonService.isSessionOwned(state.currentSessionId))}
                     />
                   ))}
                 </div>
@@ -396,6 +488,19 @@ export default function RecapPage() {
         title={alertDialog.title}
         message={alertDialog.message}
         variant={alertDialog.variant}
+      />
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.show}
+        onClose={() => setConfirmDialog({ ...confirmDialog, show: false, isLoading: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Delete"
+        variant="danger"
+        confirmButtonVariant="danger"
+        isLoading={confirmDialog.isLoading}
       />
     </div>
   );
