@@ -13,13 +13,13 @@ import { usePersistence } from '@/hooks/usePersistence';
 
 export default function VoiceTrainerApp() {
   const { state, dispatch } = useApp();
-  const { loadSettings } = usePersistence();
+  const { loadSettingsOnly } = usePersistence();
   const { profile, loading } = useAuth();
 
   useEffect(() => {
-    // Load settings on app initialization
-    loadSettings();
-  }, [loadSettings]);
+    // Load settings on app initialization (without indices to avoid overriding)
+    loadSettingsOnly();
+  }, [loadSettingsOnly]);
 
   // Handle role-based initial view selection
   useEffect(() => {

@@ -38,12 +38,19 @@ export default function ExerciseDisplay() {
             <MediaGallery mediaItems={currentExercise.media} />
           </div>
         )}
-        
+
         <div>
           <h4 className="font-semibold text-gray-700 mb-2">Instructions</h4>
           <p className="text-gray-600 leading-relaxed">
-            {currentExercise.instructions}
+            {currentExercise.instructions || "No instructions available for this exercise. Please check with your instructor or try refreshing the page."}
           </p>
+          {!currentExercise.instructions && (
+            <div className="mt-2 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg">
+              <p className="text-sm text-yellow-700">
+                <strong>Debug Info:</strong> Exercise "{currentExercise.name}" has empty or undefined instructions.
+              </p>
+            </div>
+          )}
         </div>
         
         {currentExercise.duration && (
