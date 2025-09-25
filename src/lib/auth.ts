@@ -40,22 +40,28 @@ function getSiteUrl(): string {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || process.env.SITE_URL
 
   if (siteUrl) {
-    // Ensure HTTPS for production URLs (but not localhost)
-    if (siteUrl.startsWith('http://') && !siteUrl.includes('localhost')) {
-      const httpsUrl = siteUrl.replace('http://', 'https://')
-      console.log('Converting HTTP to HTTPS:', siteUrl, '->', httpsUrl)
-      return httpsUrl
-    }
+    // In production, ignore localhost URLs from environment variables
+    if (process.env.NODE_ENV === 'production' && siteUrl.includes('localhost')) {
+      console.log('Production environment detected, ignoring localhost URL:', siteUrl)
+      // Continue to production fallback instead of using localhost
+    } else {
+      // Ensure HTTPS for production URLs (but not localhost)
+      if (siteUrl.startsWith('http://') && !siteUrl.includes('localhost')) {
+        const httpsUrl = siteUrl.replace('http://', 'https://')
+        console.log('Converting HTTP to HTTPS:', siteUrl, '->', httpsUrl)
+        return httpsUrl
+      }
 
-    // If it's a Vercel URL without protocol, add https
-    if (siteUrl.includes('.vercel.app') && !siteUrl.startsWith('http')) {
-      const vercelUrl = `https://${siteUrl}`
-      console.log('Adding HTTPS to Vercel URL:', siteUrl, '->', vercelUrl)
-      return vercelUrl
-    }
+      // If it's a Vercel URL without protocol, add https
+      if (siteUrl.includes('.vercel.app') && !siteUrl.startsWith('http')) {
+        const vercelUrl = `https://${siteUrl}`
+        console.log('Adding HTTPS to Vercel URL:', siteUrl, '->', vercelUrl)
+        return vercelUrl
+      }
 
-    console.log('Using configured site URL:', siteUrl)
-    return siteUrl
+      console.log('Using configured site URL:', siteUrl)
+      return siteUrl
+    }
   }
 
   // Production fallback - if we're in production environment, use the production domain
