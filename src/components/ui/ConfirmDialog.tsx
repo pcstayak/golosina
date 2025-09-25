@@ -13,6 +13,7 @@ interface ConfirmDialogProps {
   cancelText?: string;
   variant?: 'danger' | 'warning' | 'info';
   confirmButtonVariant?: 'primary' | 'secondary' | 'danger';
+  isLoading?: boolean;
 }
 
 export default function ConfirmDialog({
@@ -24,19 +25,21 @@ export default function ConfirmDialog({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   variant = 'info',
-  confirmButtonVariant = 'primary'
+  confirmButtonVariant = 'primary',
+  isLoading = false
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
   const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
+    if (e.target === e.currentTarget && !isLoading) {
       onClose();
     }
   };
 
   const handleConfirm = () => {
-    onConfirm();
-    onClose();
+    if (!isLoading) {
+      onConfirm();
+    }
   };
 
   const getIcon = () => {
@@ -80,6 +83,7 @@ export default function ConfirmDialog({
             size="sm"
             onClick={onClose}
             className="p-2"
+            disabled={isLoading}
           >
             <X className="w-4 h-4" />
           </Button>
@@ -94,14 +98,16 @@ export default function ConfirmDialog({
             <Button
               variant="secondary"
               onClick={onClose}
+              disabled={isLoading}
             >
               {cancelText}
             </Button>
             <Button
               variant={confirmButtonVariant}
               onClick={handleConfirm}
+              disabled={isLoading}
             >
-              {confirmText}
+              {isLoading ? 'Deleting...' : confirmText}
             </Button>
           </div>
         </div>

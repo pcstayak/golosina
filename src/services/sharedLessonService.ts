@@ -45,6 +45,7 @@ export interface UploadResult {
 
 export class SharedLessonService {
   private static readonly BUCKET_NAME = 'lesson-recordings'
+  private static readonly OWNED_SESSIONS_KEY = 'golosina_owned_sessions'
 
   private static async ensureBucketExists(): Promise<boolean> {
     if (!supabase) return false
@@ -237,6 +238,9 @@ export class SharedLessonService {
         }
       }
 
+      // Mark this session as owned by the current browser
+      this.markSessionAsOwned(sessionId)
+
       return {
         success: true,
         sessionId // Return sessionId instead, let client generate URL
@@ -295,6 +299,39 @@ export class SharedLessonService {
 
   static generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+  }
+
+  // Owner tracking utilities
+  static markSessionAsOwned(sessionId: string): void {
+    try {
+      const ownedSessions = this.getOwnedSessions()
+      if (!ownedSessions.includes(sessionId)) {
+        ownedSessions.push(sessionId)
+        localStorage.setItem(this.OWNED_SESSIONS_KEY, JSON.stringify(ownedSessions))
+      }
+    } catch (error) {
+      console.error('Error marking session as owned:', error)
+    }
+  }
+
+  static isSessionOwned(sessionId: string): boolean {
+    try {
+      const ownedSessions = this.getOwnedSessions()
+      return ownedSessions.includes(sessionId)
+    } catch (error) {
+      console.error('Error checking session ownership:', error)
+      return false
+    }
+  }
+
+  private static getOwnedSessions(): string[] {
+    try {
+      const stored = localStorage.getItem(this.OWNED_SESSIONS_KEY)
+      return stored ? JSON.parse(stored) : []
+    } catch (error) {
+      console.error('Error getting owned sessions:', error)
+      return []
+    }
   }
 
   // Comment-related methods
@@ -441,6 +478,126 @@ export class SharedLessonService {
       return { success: true }
     } catch (error) {
       console.error('Error deleting comment:', error)
+      return {
+        success: false,
+        error: 'An unexpected error occurred'
+      }
+    }
+  }
+
+  // Delete recording functionality
+  static async deleteRecording(
+    sessionId: string,
+    exerciseId: string,
+    recordingId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase is not configured'
+      }
+    }
+
+    // Check if user owns this session
+    if (!this.isSessionOwned(sessionId)) {
+      return {
+        success: false,
+        error: 'You do not have permission to delete recordings from this session'
+      }
+    }
+
+    try {
+      // First, get the current lesson data to update the files object
+      const lessonData = await this.getSharedLesson(sessionId)
+      if (!lessonData) {
+        return {
+          success: false,
+          error: 'Session not found'
+        }
+      }
+
+      const updatedFiles = { ...lessonData.files }
+
+      // Find and remove the recording from the files object
+      if (updatedFiles[exerciseId]) {
+        const recordingIndex = updatedFiles[exerciseId].files.findIndex((file, index) =>
+          `${exerciseId}-${index}` === recordingId
+        )
+
+        if (recordingIndex === -1) {
+          return {
+            success: false,
+            error: 'Recording not found'
+          }
+        }
+
+        const recording = updatedFiles[exerciseId].files[recordingIndex]
+
+        // Delete the file from storage
+        // Extract the file path from the signed URL or construct it
+        const fileName = `${sessionId}/${exerciseId}/${recordingId.split('-').pop()}.webm`
+
+        const { error: deleteError } = await supabase.storage
+          .from(this.BUCKET_NAME)
+          .remove([fileName])
+
+        if (deleteError) {
+          console.error('Error deleting file from storage:', deleteError)
+          // Continue anyway - we'll still remove from database
+        }
+
+        // Remove the recording from the files array
+        updatedFiles[exerciseId].files.splice(recordingIndex, 1)
+
+        // If no recordings left in this exercise, remove the exercise
+        if (updatedFiles[exerciseId].files.length === 0) {
+          delete updatedFiles[exerciseId]
+        }
+
+        // Calculate new recording count
+        const newRecordingCount = Object.values(updatedFiles).reduce((total, exercise) => {
+          return total + exercise.files.length
+        }, 0)
+
+        // Update the database
+        const { error: updateError } = await supabase
+          .from('shared_lessons')
+          .update({
+            files: updatedFiles,
+            recording_count: newRecordingCount,
+            updated_at: new Date().toISOString()
+          })
+          .eq('session_id', sessionId)
+
+        if (updateError) {
+          console.error('Error updating lesson data:', updateError)
+          return {
+            success: false,
+            error: 'Failed to update lesson data'
+          }
+        }
+
+        // Delete associated comments
+        const { error: commentsError } = await supabase
+          .from('recording_comments')
+          .delete()
+          .eq('session_id', sessionId)
+          .eq('recording_id', recordingId)
+
+        if (commentsError) {
+          console.error('Error deleting comments:', commentsError)
+          // Don't fail the whole operation for this
+        }
+
+        return { success: true }
+      } else {
+        return {
+          success: false,
+          error: 'Exercise not found'
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting recording:', error)
       return {
         success: false,
         error: 'An unexpected error occurred'
