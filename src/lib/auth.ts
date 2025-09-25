@@ -13,32 +13,62 @@ import {
 } from './rateLimiting'
 
 // Utility function to get the correct site URL for email redirects
+// Fixed: Ensures production environment always uses https://golosina.net and never localhost
 function getSiteUrl(): string {
   // If we're in the browser, use the current origin
   if (typeof window !== 'undefined') {
-    return window.location.origin
+    const origin = window.location.origin
+    console.log('getSiteUrl (browser):', origin)
+
+    // Production domain detection - never return localhost for golosina.net
+    if (origin.includes('golosina.net')) {
+      const productionUrl = 'https://golosina.net'
+      console.log('Production domain detected, using:', productionUrl)
+      return productionUrl
+    }
+
+    return origin
   }
 
   // Server-side logic
+  console.log('getSiteUrl (server-side), checking environment variables...')
+  console.log('NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL)
+  console.log('VERCEL_URL:', process.env.VERCEL_URL)
+  console.log('NODE_ENV:', process.env.NODE_ENV)
+
   // Check for production environment variables first
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || process.env.SITE_URL
 
   if (siteUrl) {
     // Ensure HTTPS for production URLs (but not localhost)
     if (siteUrl.startsWith('http://') && !siteUrl.includes('localhost')) {
-      return siteUrl.replace('http://', 'https://')
+      const httpsUrl = siteUrl.replace('http://', 'https://')
+      console.log('Converting HTTP to HTTPS:', siteUrl, '->', httpsUrl)
+      return httpsUrl
     }
-    
+
     // If it's a Vercel URL without protocol, add https
     if (siteUrl.includes('.vercel.app') && !siteUrl.startsWith('http')) {
-      return `https://${siteUrl}`
+      const vercelUrl = `https://${siteUrl}`
+      console.log('Adding HTTPS to Vercel URL:', siteUrl, '->', vercelUrl)
+      return vercelUrl
     }
-    
+
+    console.log('Using configured site URL:', siteUrl)
     return siteUrl
   }
 
+  // Production fallback - if we're in production environment, use the production domain
+  if (process.env.NODE_ENV === 'production') {
+    const productionUrl = 'https://golosina.net'
+    console.log('Production environment detected, using production domain:', productionUrl)
+    return productionUrl
+  }
+
   // Default to localhost only in development
-  return 'http://localhost:3000'
+  const developmentUrl = 'http://localhost:3000'
+  console.log('Development environment, using:', developmentUrl)
+  return developmentUrl
 }
 
 export interface AuthResponse {
@@ -71,10 +101,20 @@ export class AuthService {
     }
 
     try {
+      const siteUrl = getSiteUrl()
+      const redirectTo = `${siteUrl}/auth/callback`
+
+      console.log('Google OAuth configuration:', {
+        siteUrl,
+        redirectTo,
+        environment: process.env.NODE_ENV,
+        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server'
+      })
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${getSiteUrl()}/auth/callback`,
+          redirectTo: redirectTo,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent'

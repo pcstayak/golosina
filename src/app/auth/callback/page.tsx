@@ -14,6 +14,8 @@ export default function AuthCallback() {
       try {
         console.log('Auth callback started')
         console.log('Current URL:', window.location.href)
+        console.log('Current origin:', window.location.origin)
+        console.log('Current hostname:', window.location.hostname)
         console.log('URL search params:', window.location.search)
         console.log('URL fragments:', window.location.hash)
         
