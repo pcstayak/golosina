@@ -102,13 +102,28 @@ export const useAudioRecording = () => {
         return;
       }
 
-      const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
-      if (!currentExercise) {
-        console.error('No current exercise found');
-        return;
+      // Handle freehand mode differently
+      let exerciseKey: string;
+      let exerciseId: string;
+      let exerciseName: string;
+
+      if (state.isFreehandMode) {
+        // Freehand mode: use a simple key
+        exerciseKey = 'freehand_recording';
+        exerciseId = 'freehand';
+        exerciseName = `Practice Recording (Segment ${segmentNumber})`;
+      } else {
+        // Regular lesson mode: use exercise data
+        const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
+        if (!currentExercise) {
+          console.error('No current exercise found');
+          return;
+        }
+        exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise.id}`;
+        exerciseId = currentExercise.id;
+        exerciseName = `${currentExercise.name} (Segment ${segmentNumber})`;
       }
 
-      const exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise.id}`;
       const pieceId = `${Date.now()}_seg${segmentNumber}`;
       const timestamp = new Date().toISOString();
 
@@ -117,8 +132,8 @@ export const useAudioRecording = () => {
         blob: audioBlob,
         timestamp: timestamp,
         duration: duration,
-        exerciseId: currentExercise.id,
-        exerciseName: `${currentExercise.name} (Segment ${segmentNumber})`
+        exerciseId: exerciseId,
+        exerciseName: exerciseName
       };
 
       dispatch({ type: 'ADD_AUDIO_PIECE', payload: { exerciseKey, piece: pieceData } });
@@ -392,26 +407,40 @@ export const useAudioRecording = () => {
         throw new Error('Recorded audio blob is empty');
       }
       
-      const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
-      if (!currentExercise) {
-        throw new Error('No current exercise found');
+      // Handle freehand mode differently
+      let exerciseKey: string;
+      let exerciseId: string;
+      let exerciseName: string;
+
+      if (state.isFreehandMode) {
+        // Freehand mode: use a simple key
+        exerciseKey = 'freehand_recording';
+        exerciseId = 'freehand';
+        exerciseName = 'Practice Recording';
+      } else {
+        // Regular lesson mode: use exercise data
+        const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
+        if (!currentExercise) {
+          throw new Error('No current exercise found');
+        }
+        exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise.id}`;
+        exerciseId = currentExercise.id;
+        exerciseName = currentExercise.name;
       }
-      
-      const exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise.id}`;
-      
+
       // Use actual duration if provided, otherwise estimate
       const recordingDuration = duration || Math.max(chunks.length * 0.1, 1);
-      
+
       const pieceId = Date.now().toString();
       const timestamp = new Date().toISOString();
-      
+
       const pieceData: AudioPiece = {
         id: pieceId,
         blob: audioBlob,
         timestamp: timestamp,
         duration: recordingDuration,
-        exerciseId: currentExercise.id,
-        exerciseName: currentExercise.name
+        exerciseId: exerciseId,
+        exerciseName: exerciseName
       };
       
       dispatch({ type: 'ADD_AUDIO_PIECE', payload: { exerciseKey, piece: pieceData } });

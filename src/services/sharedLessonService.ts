@@ -485,6 +485,93 @@ export class SharedLessonService {
     }
   }
 
+  static async getSharedLessonsByOwner(): Promise<SharedLessonListItem[]> {
+    if (!supabase) {
+      console.error('Supabase is not configured')
+      return []
+    }
+
+    try {
+      const ownedSessions = this.getOwnedSessions()
+
+      if (ownedSessions.length === 0) {
+        return []
+      }
+
+      const { data: regularLessons, error: regularError } = await supabase
+        .from('shared_lessons')
+        .select('session_id, set_name, recording_count, created_at')
+        .in('session_id', ownedSessions)
+        .order('created_at', { ascending: false })
+
+      if (regularError) {
+        console.error('Error fetching shared lessons:', regularError)
+        return []
+      }
+
+      const { data: freehandLessons, error: freehandError } = await supabase
+        .from('freehand_practice_sessions')
+        .select(`
+          session_id,
+          recording_count,
+          created_at,
+          freehand_lessons!inner(title)
+        `)
+        .in('session_id', ownedSessions)
+        .order('created_at', { ascending: false })
+
+      if (freehandError) {
+        console.error('Error fetching freehand lessons:', freehandError)
+      }
+
+      const sessionIds = [
+        ...(regularLessons?.map(l => l.session_id) || []),
+        ...(freehandLessons?.map(l => l.session_id) || [])
+      ]
+
+      let commentCounts: Record<string, number> = {}
+      if (sessionIds.length > 0) {
+        const { data: comments, error: commentsError } = await supabase
+          .from('recording_comments')
+          .select('session_id')
+          .in('session_id', sessionIds)
+
+        if (!commentsError && comments) {
+          commentCounts = comments.reduce((acc, comment) => {
+            acc[comment.session_id] = (acc[comment.session_id] || 0) + 1
+            return acc
+          }, {} as Record<string, number>)
+        }
+      }
+
+      const regularLessonsFormatted: SharedLessonListItem[] = (regularLessons || []).map(lesson => ({
+        session_id: lesson.session_id,
+        title: lesson.set_name,
+        type: 'regular' as const,
+        recording_count: lesson.recording_count || 0,
+        comment_count: commentCounts[lesson.session_id] || 0,
+        created_at: lesson.created_at
+      }))
+
+      const freehandLessonsFormatted: SharedLessonListItem[] = (freehandLessons || []).map(lesson => ({
+        session_id: lesson.session_id,
+        title: (lesson.freehand_lessons as any)?.title || 'Untitled Lesson',
+        type: 'freehand' as const,
+        recording_count: lesson.recording_count || 0,
+        comment_count: commentCounts[lesson.session_id] || 0,
+        created_at: lesson.created_at
+      }))
+
+      const allLessons = [...regularLessonsFormatted, ...freehandLessonsFormatted]
+      allLessons.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      return allLessons
+    } catch (error) {
+      console.error('Error fetching shared lessons by owner:', error)
+      return []
+    }
+  }
+
   // Delete recording functionality
   static async deleteRecording(
     sessionId: string,
@@ -616,4 +703,13 @@ export interface RecordingComment {
   timestamp_seconds?: number
   created_at: string
   updated_at: string
+}
+
+export interface SharedLessonListItem {
+  session_id: string
+  title: string
+  type: 'regular' | 'freehand'
+  recording_count: number
+  comment_count: number
+  created_at: string
 }

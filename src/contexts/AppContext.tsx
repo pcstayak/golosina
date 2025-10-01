@@ -40,6 +40,15 @@ export interface AudioPiece {
   customTitle?: string;
 }
 
+export interface FreehandVideo {
+  id?: string;
+  video_url: string;
+  video_platform: 'youtube' | 'vimeo' | 'audio' | 'other';
+  embed_id: string;
+  description?: string;
+  display_order: number;
+}
+
 export interface Settings {
   microphoneId: string;
   sampleRate: number;
@@ -90,6 +99,17 @@ interface AppState {
   currentSessionId: string | null;
   shareUrl: string | null;
   isUploading: boolean;
+
+  // Freehand lesson state
+  currentFreehandLessonId: string | null;
+  freehandVideos: FreehandVideo[];
+  freehandTitle: string;
+  freehandDescription: string;
+  isFreehandMode: boolean;
+
+  // Freehand practice session state
+  currentFreehandPracticeId: string | null;
+  freehandPracticeLessonId: string | null;
 }
 
 type AppAction =
@@ -113,7 +133,20 @@ type AppAction =
   | { type: 'SET_IS_AUTO_SPLITTING'; payload: boolean }
   | { type: 'SET_CURRENT_SESSION_ID'; payload: string | null }
   | { type: 'SET_SHARE_URL'; payload: string | null }
-  | { type: 'SET_IS_UPLOADING'; payload: boolean };
+  | { type: 'SET_IS_UPLOADING'; payload: boolean }
+  | { type: 'SET_FREEHAND_MODE'; payload: boolean }
+  | { type: 'SET_FREEHAND_LESSON_ID'; payload: string | null }
+  | { type: 'SET_FREEHAND_TITLE'; payload: string }
+  | { type: 'SET_FREEHAND_DESCRIPTION'; payload: string }
+  | { type: 'ADD_FREEHAND_VIDEO'; payload: FreehandVideo }
+  | { type: 'REMOVE_FREEHAND_VIDEO'; payload: number }
+  | { type: 'UPDATE_FREEHAND_VIDEO'; payload: { index: number; video: FreehandVideo } }
+  | { type: 'SET_FREEHAND_VIDEOS'; payload: FreehandVideo[] }
+  | { type: 'REORDER_FREEHAND_VIDEO'; payload: { fromIndex: number; toIndex: number } }
+  | { type: 'CLEAR_FREEHAND_STATE' }
+  | { type: 'SET_FREEHAND_PRACTICE_ID'; payload: string | null }
+  | { type: 'SET_FREEHAND_PRACTICE_LESSON_ID'; payload: string | null }
+  | { type: 'CLEAR_FREEHAND_PRACTICE_STATE' };
 
 const defaultExerciseSets: ExerciseSet[] = [
   {
@@ -284,7 +317,18 @@ const initialState: AppState = {
   // Current session sharing state
   currentSessionId: null,
   shareUrl: null,
-  isUploading: false
+  isUploading: false,
+
+  // Freehand lesson state
+  currentFreehandLessonId: null,
+  freehandVideos: [],
+  freehandTitle: '',
+  freehandDescription: '',
+  isFreehandMode: false,
+
+  // Freehand practice session state
+  currentFreehandPracticeId: null,
+  freehandPracticeLessonId: null
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -372,6 +416,65 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, shareUrl: action.payload };
     case 'SET_IS_UPLOADING':
       return { ...state, isUploading: action.payload };
+    case 'SET_FREEHAND_MODE':
+      return { ...state, isFreehandMode: action.payload };
+    case 'SET_FREEHAND_LESSON_ID':
+      return { ...state, currentFreehandLessonId: action.payload };
+    case 'SET_FREEHAND_TITLE':
+      return { ...state, freehandTitle: action.payload };
+    case 'SET_FREEHAND_DESCRIPTION':
+      return { ...state, freehandDescription: action.payload };
+    case 'ADD_FREEHAND_VIDEO':
+      return {
+        ...state,
+        freehandVideos: [...state.freehandVideos, action.payload]
+      };
+    case 'REMOVE_FREEHAND_VIDEO':
+      return {
+        ...state,
+        freehandVideos: state.freehandVideos.filter((_, index) => index !== action.payload)
+      };
+    case 'UPDATE_FREEHAND_VIDEO':
+      return {
+        ...state,
+        freehandVideos: state.freehandVideos.map((video, index) =>
+          index === action.payload.index ? action.payload.video : video
+        )
+      };
+    case 'SET_FREEHAND_VIDEOS':
+      return { ...state, freehandVideos: action.payload };
+    case 'REORDER_FREEHAND_VIDEO':
+      const videos = [...state.freehandVideos];
+      const [movedVideo] = videos.splice(action.payload.fromIndex, 1);
+      videos.splice(action.payload.toIndex, 0, movedVideo);
+      return {
+        ...state,
+        freehandVideos: videos.map((video, index) => ({
+          ...video,
+          display_order: index
+        }))
+      };
+    case 'CLEAR_FREEHAND_STATE':
+      return {
+        ...state,
+        currentFreehandLessonId: null,
+        freehandVideos: [],
+        freehandTitle: '',
+        freehandDescription: '',
+        isFreehandMode: false,
+        currentSessionPieces: {}
+      };
+    case 'SET_FREEHAND_PRACTICE_ID':
+      return { ...state, currentFreehandPracticeId: action.payload };
+    case 'SET_FREEHAND_PRACTICE_LESSON_ID':
+      return { ...state, freehandPracticeLessonId: action.payload };
+    case 'CLEAR_FREEHAND_PRACTICE_STATE':
+      return {
+        ...state,
+        currentFreehandPracticeId: null,
+        freehandPracticeLessonId: null,
+        currentSessionPieces: {}
+      };
     default:
       return state;
   }
@@ -391,14 +494,44 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  const getCurrentExercises = (): Exercise[] => {
-    if (state.isSharedSession) {
-      return state.sharedExercises;
+  // State validation function
+  const validateState = () => {
+    if (state.isSharedSession && (!state.sharedExercises || state.sharedExercises.length === 0)) {
+      console.warn('DEBUG: Invalid shared session state detected. Shared session is true but no shared exercises found.');
+      console.warn('DEBUG: State details:', {
+        isSharedSession: state.isSharedSession,
+        sharedExercises: state.sharedExercises,
+        sharedExercisesLength: state.sharedExercises?.length || 0
+      });
     }
-    
+  };
+
+  const getCurrentExercises = (): Exercise[] => {
+    // Run state validation
+    validateState();
+
+    // If it's a shared session, return shared exercises if they exist and have content
+    if (state.isSharedSession) {
+      // Fallback to default exercises if shared exercises are empty or undefined
+      if (state.sharedExercises && state.sharedExercises.length > 0) {
+        return state.sharedExercises;
+      } else {
+        console.warn('Shared session detected but no shared exercises found. Falling back to default exercises.');
+        // Fall through to return default exercises
+      }
+    }
+
+    // Return default exercises from current set
     if (state.currentSetIndex >= 0 && state.currentSetIndex < state.exerciseSets.length) {
       return state.exerciseSets[state.currentSetIndex].exercises;
     }
+
+    // Final fallback: return exercises from first set if available
+    if (state.exerciseSets.length > 0) {
+      console.warn('Current set index is invalid. Falling back to first exercise set.');
+      return state.exerciseSets[0].exercises;
+    }
+
     return [];
   };
 
@@ -411,9 +544,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getCurrentExercise = (): Exercise | null => {
     const exercises = getCurrentExercises();
+
     if (state.currentExerciseIndex >= 0 && state.currentExerciseIndex < exercises.length) {
-      return exercises[state.currentExerciseIndex];
+      const exercise = exercises[state.currentExerciseIndex];
+
+      // Debug logging for production issue
+      if (!exercise.instructions) {
+        console.error('DEBUG: Exercise missing instructions:', {
+          exerciseName: exercise.name,
+          exerciseId: exercise.id,
+          isSharedSession: state.isSharedSession,
+          sharedExercisesCount: state.sharedExercises?.length || 0,
+          currentSetIndex: state.currentSetIndex,
+          currentExerciseIndex: state.currentExerciseIndex,
+          totalExerciseSets: state.exerciseSets.length,
+          exercisesInCurrentSet: exercises.length,
+          exerciseObject: JSON.stringify(exercise, null, 2)
+        });
+      }
+
+      return exercise;
     }
+
+    console.warn('DEBUG: getCurrentExercise - Invalid exercise index:', {
+      currentExerciseIndex: state.currentExerciseIndex,
+      exercisesLength: exercises.length,
+      isSharedSession: state.isSharedSession
+    });
+
     return null;
   };
 

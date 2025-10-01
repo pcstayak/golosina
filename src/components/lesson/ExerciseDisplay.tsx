@@ -6,9 +6,10 @@ import MediaGallery from './MediaGallery';
 import RecordingControls from './RecordingControls';
 
 export default function ExerciseDisplay() {
-  const { getCurrentExercise, state } = useApp();
+  const { getCurrentExercise, getCurrentExercises, state } = useApp();
 
   const currentExercise = getCurrentExercise();
+  const allExercises = getCurrentExercises();
 
   if (!currentExercise) {
     return (
@@ -46,9 +47,20 @@ export default function ExerciseDisplay() {
           </p>
           {!currentExercise.instructions && (
             <div className="mt-2 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg">
-              <p className="text-sm text-yellow-700">
+              <p className="text-sm text-yellow-700 mb-2">
                 <strong>Debug Info:</strong> Exercise "{currentExercise.name}" has empty or undefined instructions.
               </p>
+              <div className="text-xs text-yellow-600 bg-yellow-100 p-2 rounded mt-2 font-mono">
+                <p><strong>isSharedSession:</strong> {state.isSharedSession ? 'true' : 'false'}</p>
+                <p><strong>sharedExercises.length:</strong> {state.sharedExercises?.length || 0}</p>
+                <p><strong>currentSetIndex:</strong> {state.currentSetIndex}</p>
+                <p><strong>currentExerciseIndex:</strong> {state.currentExerciseIndex}</p>
+                <p><strong>exerciseSets.length:</strong> {state.exerciseSets?.length || 0}</p>
+                <p><strong>allExercises.length:</strong> {allExercises?.length || 0}</p>
+                <p><strong>currentExercise.id:</strong> {currentExercise.id}</p>
+                <p><strong>instructions type:</strong> {typeof currentExercise.instructions}</p>
+                <p><strong>instructions length:</strong> {currentExercise.instructions?.length || 0}</p>
+              </div>
             </div>
           )}
         </div>
