@@ -401,4 +401,320 @@ export class FreehandLessonService {
       return [];
     }
   }
+
+  static async assignLessonToStudent(
+    lessonId: string,
+    assignedBy: string,
+    assignedTo: string,
+    notes?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase is not configured',
+      };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('freehand_lesson_assignments')
+        .insert({
+          freehand_lesson_id: lessonId,
+          assigned_by: assignedBy,
+          assigned_to: assignedTo,
+          notes: notes,
+        });
+
+      if (error) {
+        console.error('Error assigning lesson:', error);
+        if (error.code === '23505') {
+          return {
+            success: false,
+            error: 'Lesson already assigned to this student',
+          };
+        }
+        return {
+          success: false,
+          error: 'Failed to assign lesson',
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error assigning lesson:', error);
+      return {
+        success: false,
+        error: 'An unexpected error occurred',
+      };
+    }
+  }
+
+  static async unassignLesson(
+    lessonId: string,
+    studentId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase is not configured',
+      };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('freehand_lesson_assignments')
+        .delete()
+        .eq('freehand_lesson_id', lessonId)
+        .eq('assigned_to', studentId);
+
+      if (error) {
+        console.error('Error unassigning lesson:', error);
+        return {
+          success: false,
+          error: 'Failed to unassign lesson',
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error unassigning lesson:', error);
+      return {
+        success: false,
+        error: 'An unexpected error occurred',
+      };
+    }
+  }
+
+  static async getAssignedStudents(
+    lessonId: string
+  ): Promise<Array<{ id: string; assigned_to: string; assigned_at: string; notes?: string }>> {
+    if (!supabase) {
+      console.error('Supabase is not configured');
+      return [];
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('freehand_lesson_assignments')
+        .select('id, assigned_to, assigned_at, notes')
+        .eq('freehand_lesson_id', lessonId)
+        .order('assigned_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching assigned students:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching assigned students:', error);
+      return [];
+    }
+  }
+
+  static async getLessonsAssignedToStudent(
+    studentId: string
+  ): Promise<Array<FreehandLesson & { teacherName?: string; assignedAt: string; assignmentNotes?: string }>> {
+    if (!supabase) {
+      console.error('Supabase is not configured');
+      return [];
+    }
+
+    try {
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from('freehand_lesson_assignments')
+        .select('freehand_lesson_id, assigned_by, assigned_at, notes')
+        .eq('assigned_to', studentId)
+        .order('assigned_at', { ascending: false });
+
+      if (assignmentsError) {
+        console.error('Error fetching assignments:', assignmentsError);
+        return [];
+      }
+
+      if (!assignmentsData || assignmentsData.length === 0) {
+        return [];
+      }
+
+      const lessonIds = assignmentsData.map((assignment) => assignment.freehand_lesson_id);
+
+      const { data: lessonsData, error: lessonsError } = await supabase
+        .from('freehand_lessons')
+        .select('*')
+        .in('id', lessonIds);
+
+      if (lessonsError) {
+        console.error('Error fetching lessons:', lessonsError);
+        return [];
+      }
+
+      if (!lessonsData || lessonsData.length === 0) {
+        return [];
+      }
+
+      const { data: videosData, error: videosError } = await supabase
+        .from('freehand_lesson_videos')
+        .select('*')
+        .in('freehand_lesson_id', lessonIds)
+        .order('display_order', { ascending: true });
+
+      if (videosError) {
+        console.error('Error fetching videos:', videosError);
+      }
+
+      const teacherIds = Array.from(new Set(assignmentsData.map((a) => a.assigned_by)));
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('id, first_name, last_name, display_name')
+        .in('id', teacherIds);
+
+      if (profilesError) {
+        console.error('Error fetching teacher profiles:', profilesError);
+      }
+
+      const profilesMap = new Map(
+        profilesData?.map((profile) => [
+          profile.id,
+          profile.display_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Teacher',
+        ]) || []
+      );
+
+      const assignmentsMap = new Map(
+        assignmentsData.map((assignment) => [
+          assignment.freehand_lesson_id,
+          {
+            teacherId: assignment.assigned_by,
+            assignedAt: assignment.assigned_at,
+            notes: assignment.notes,
+          },
+        ])
+      );
+
+      const lessonsWithDetails = lessonsData.map((lesson) => {
+        const assignment = assignmentsMap.get(lesson.id);
+        return {
+          ...lesson,
+          videos: videosData?.filter((video) => video.freehand_lesson_id === lesson.id) || [],
+          teacherName: assignment ? profilesMap.get(assignment.teacherId) : 'Teacher',
+          assignedAt: assignment?.assignedAt || '',
+          assignmentNotes: assignment?.notes,
+        };
+      });
+
+      return lessonsWithDetails;
+    } catch (error) {
+      console.error('Error fetching lessons assigned to student:', error);
+      return [];
+    }
+  }
+
+  static async deleteFreehandPracticeSession(sessionId: string): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase is not configured',
+      };
+    }
+
+    if (!this.isSessionOwned(sessionId)) {
+      return {
+        success: false,
+        error: 'You do not have permission to delete this session',
+      };
+    }
+
+    try {
+      // Get the practice session to find all recordings
+      const { data: sessionData, error: fetchError } = await supabase
+        .from('freehand_practice_sessions')
+        .select('recordings')
+        .eq('session_id', sessionId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching practice session:', fetchError);
+      }
+
+      // Delete all recording files from storage
+      if (sessionData?.recordings) {
+        const filesToDelete: string[] = [];
+        const recordings = sessionData.recordings as any;
+
+        Object.keys(recordings).forEach((key) => {
+          if (Array.isArray(recordings[key])) {
+            recordings[key].forEach((recording: any) => {
+              if (recording.url) {
+                // Extract file path from URL or construct it
+                const urlParts = recording.url.split('/');
+                const filePath = urlParts.slice(urlParts.indexOf('lesson-recordings') + 1).join('/').split('?')[0];
+                if (filePath) {
+                  filesToDelete.push(filePath);
+                }
+              }
+            });
+          }
+        });
+
+        if (filesToDelete.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from('lesson-recordings')
+            .remove(filesToDelete);
+
+          if (storageError) {
+            console.error('Error deleting files from storage:', storageError);
+            // Continue anyway
+          }
+        }
+      }
+
+      // Delete all comments for this session
+      const { error: commentsError } = await supabase
+        .from('recording_comments')
+        .delete()
+        .eq('session_id', sessionId);
+
+      if (commentsError) {
+        console.error('Error deleting comments:', commentsError);
+        // Continue anyway
+      }
+
+      // Delete the practice session record
+      const { error: deleteError } = await supabase
+        .from('freehand_practice_sessions')
+        .delete()
+        .eq('session_id', sessionId);
+
+      if (deleteError) {
+        console.error('Error deleting practice session:', deleteError);
+        return {
+          success: false,
+          error: 'Failed to delete practice session',
+        };
+      }
+
+      // Remove from owned sessions
+      this.removeOwnedSession(sessionId);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting freehand practice session:', error);
+      return {
+        success: false,
+        error: 'An unexpected error occurred',
+      };
+    }
+  }
+
+  static removeOwnedSession(sessionId: string): void {
+    try {
+      const ownedSessions = this.getOwnedSessions();
+      const filtered = ownedSessions.filter(id => id !== sessionId);
+      localStorage.setItem(this.OWNED_FREEHAND_SESSIONS_KEY, JSON.stringify(filtered));
+    } catch (error) {
+      console.error('Error removing owned session:', error);
+    }
+  }
 }

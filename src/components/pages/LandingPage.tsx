@@ -3,16 +3,20 @@
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
-import { Settings, LogOut, Home, Video, ChevronDown, ChevronUp } from 'lucide-react';
+import { Settings, LogOut, Home, Video, ChevronDown, ChevronUp, GraduationCap } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import SettingsModal from '@/components/modals/SettingsModal';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import FreehandLessonCard from '@/components/student/FreehandLessonCard';
+import AssignedLessonCard from '@/components/student/AssignedLessonCard';
 import SharedLessonCard from '@/components/student/SharedLessonCard';
 import { FreehandLessonService, FreehandLesson } from '@/services/freehandLessonService';
 import { SharedLessonService, SharedLessonListItem } from '@/services/sharedLessonService';
 import { useNotification } from '@/hooks/useNotification';
+import { LessonService, type Lesson, type LessonAssignment } from '@/services/lessonService';
+import LessonCard from '@/components/lessons/LessonCard';
+import AssignedLessonCardNew from '@/components/lessons/AssignedLessonCard';
 
 export default function LandingPage() {
   const { state, dispatch } = useApp();
@@ -23,11 +27,22 @@ export default function LandingPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const [freehandLessons, setFreehandLessons] = useState<FreehandLesson[]>([]);
+  const [assignedLessons, setAssignedLessons] = useState<Array<FreehandLesson & { teacherName?: string; assignedAt: string; assignmentNotes?: string }>>([]);
   const [sharedLessons, setSharedLessons] = useState<SharedLessonListItem[]>([]);
   const [loadingFreehand, setLoadingFreehand] = useState(true);
+  const [loadingAssigned, setLoadingAssigned] = useState(true);
   const [loadingShared, setLoadingShared] = useState(true);
   const [showFreehandSection, setShowFreehandSection] = useState(true);
+  const [showAssignedSection, setShowAssignedSection] = useState(true);
   const [showSharedSection, setShowSharedSection] = useState(true);
+
+  // New unified lesson states
+  const [myLessons, setMyLessons] = useState<Lesson[]>([]);
+  const [assignedToMeLessons, setAssignedToMeLessons] = useState<LessonAssignment[]>([]);
+  const [loadingMyLessons, setLoadingMyLessons] = useState(true);
+  const [loadingAssignedToMe, setLoadingAssignedToMe] = useState(true);
+  const [showMyLessonsSection, setShowMyLessonsSection] = useState(true);
+  const [showAssignedToMeSection, setShowAssignedToMeSection] = useState(true);
 
   const selectExerciseSet = (setIndex: number) => {
     dispatch({ type: 'SET_CURRENT_SET_INDEX', payload: setIndex });
@@ -75,6 +90,47 @@ export default function LandingPage() {
     return count;
   };
 
+  // Load unified lessons (new system)
+  useEffect(() => {
+    const loadMyLessons = async () => {
+      if (!user?.id) {
+        setLoadingMyLessons(false);
+        return;
+      }
+
+      try {
+        const lessons = await LessonService.getLessonsByCreator(user.id);
+        setMyLessons(lessons);
+      } catch (error) {
+        console.error('Error loading my lessons:', error);
+      } finally {
+        setLoadingMyLessons(false);
+      }
+    };
+
+    loadMyLessons();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const loadAssignedToMe = async () => {
+      if (!user?.id) {
+        setLoadingAssignedToMe(false);
+        return;
+      }
+
+      try {
+        const assignments = await LessonService.getLessonsAssignedToStudent(user.id);
+        setAssignedToMeLessons(assignments);
+      } catch (error) {
+        console.error('Error loading assigned lessons:', error);
+      } finally {
+        setLoadingAssignedToMe(false);
+      }
+    };
+
+    loadAssignedToMe();
+  }, [user?.id]);
+
   useEffect(() => {
     const loadFreehandLessons = async () => {
       if (!user?.id) {
@@ -93,6 +149,26 @@ export default function LandingPage() {
     };
 
     loadFreehandLessons();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const loadAssignedLessons = async () => {
+      if (!user?.id) {
+        setLoadingAssigned(false);
+        return;
+      }
+
+      try {
+        const lessons = await FreehandLessonService.getLessonsAssignedToStudent(user.id);
+        setAssignedLessons(lessons);
+      } catch (error) {
+        console.error('Error loading assigned lessons:', error);
+      } finally {
+        setLoadingAssigned(false);
+      }
+    };
+
+    loadAssignedLessons();
   }, [user?.id]);
 
   useEffect(() => {
@@ -121,6 +197,14 @@ export default function LandingPage() {
     }
   };
 
+  const handleDeleteSharedLesson = async () => {
+    try {
+      const lessons = await SharedLessonService.getSharedLessonsByOwner();
+      setSharedLessons(lessons);
+    } catch (error) {
+      console.error('Error refreshing shared lessons:', error);
+    }
+  };
 
   const handleCopyShareLink = (sessionId: string, type: 'regular' | 'freehand') => {
     const baseUrl = window.location.origin;
@@ -133,10 +217,14 @@ export default function LandingPage() {
   };
 
   const handleViewSharedLesson = (sessionId: string, type: 'regular' | 'freehand') => {
-    if (type === 'freehand') {
+    // Determine the correct URL based on the session_id prefix
+    if (sessionId.startsWith('freehand_')) {
       router.push(`/freehand?id=${sessionId}`);
+    } else if (sessionId.startsWith('lesson_')) {
+      router.push(`/share/lesson/${sessionId}`);
     } else {
-      router.push(`/shared?id=${sessionId}`);
+      // Regular shared lesson (starts with 'session_')
+      router.push(`/share/${sessionId}`);
     }
   };
 
@@ -187,7 +275,7 @@ export default function LandingPage() {
         </p>
       </div>
 
-      {/* Freehand Lesson Card */}
+      {/* Create Lesson Card */}
       <div className="mb-6">
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg overflow-hidden">
           <div className="p-6">
@@ -197,23 +285,150 @@ export default function LandingPage() {
                   <Video className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">Freehand Lesson</h2>
-                  <p className="text-white/80 text-sm">Create custom practice sessions</p>
+                  <h2 className="text-2xl font-bold text-white">Create Lesson</h2>
+                  <p className="text-white/80 text-sm">Build custom step-by-step lessons</p>
                 </div>
               </div>
             </div>
             <p className="text-white/90 mb-4">
-              Add YouTube videos and record yourself practicing to share with your teacher. Perfect for getting feedback on specific techniques or songs.
+              Create structured lessons with videos, images, tips, and practice recordings. Share with your teacher or use for personal practice.
             </p>
-            <Link href="/freehand">
+            <Link href="/lessons/create">
               <Button variant="secondary" className="w-full flex items-center justify-center gap-2">
                 <Video className="w-4 h-4" />
-                Create Freehand Lesson
+                Create New Lesson
               </Button>
             </Link>
           </div>
         </div>
       </div>
+
+      {/* Lessons I Created Section */}
+      {loadingMyLessons ? (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Lessons I Created</h2>
+          <div className="text-center text-white/60 py-8">
+            Loading your lessons...
+          </div>
+        </div>
+      ) : myLessons.length > 0 ? (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-white">Lessons I Created ({myLessons.length})</h2>
+            <button
+              onClick={() => setShowMyLessonsSection(!showMyLessonsSection)}
+              className="text-white/80 hover:text-white transition-colors"
+            >
+              {showMyLessonsSection ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+          {showMyLessonsSection && (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myLessons.map((lesson) => (
+                <LessonCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  onDelete={async () => {
+                    // Refresh the list after delete
+                    if (user?.id) {
+                      const lessons = await LessonService.getLessonsByCreator(user.id)
+                      setMyLessons(lessons)
+                    }
+                  }}
+                  onCopy={async () => {
+                    // Refresh the list after copy
+                    if (user?.id) {
+                      const lessons = await LessonService.getLessonsByCreator(user.id)
+                      setMyLessons(lessons)
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* Lessons Assigned to Me Section (Students) */}
+      {loadingAssignedToMe ? (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Lessons from Teachers</h2>
+          <div className="text-center text-white/60 py-8">
+            Loading assigned lessons...
+          </div>
+        </div>
+      ) : assignedToMeLessons.length > 0 ? (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <GraduationCap className="w-6 h-6 text-white" />
+              <h2 className="text-2xl font-bold text-white">
+                Lessons from Teachers ({assignedToMeLessons.length})
+              </h2>
+            </div>
+            <button
+              onClick={() => setShowAssignedToMeSection(!showAssignedToMeSection)}
+              className="text-white/80 hover:text-white transition-colors"
+            >
+              {showAssignedToMeSection ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+          {showAssignedToMeSection && (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {assignedToMeLessons.map((assignment) => (
+                <AssignedLessonCardNew key={assignment.id} assignment={assignment} />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* Lessons Assigned to Me Section (Students only) */}
+      {loadingAssigned ? (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Lessons from Teachers</h2>
+          <div className="text-center text-white/60 py-8">
+            Loading assigned lessons...
+          </div>
+        </div>
+      ) : assignedLessons.length > 0 ? (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <GraduationCap className="w-6 h-6 text-white" />
+              <h2 className="text-2xl font-bold text-white">Lessons from Teachers</h2>
+            </div>
+            <button
+              onClick={() => setShowAssignedSection(!showAssignedSection)}
+              className="text-white/80 hover:text-white transition-colors"
+            >
+              {showAssignedSection ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+          {showAssignedSection && (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {assignedLessons.map((lesson) => (
+                <AssignedLessonCard
+                  key={`${lesson.id}-${lesson.assignedAt}`}
+                  lesson={lesson}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {/* My Freehand Lessons Section */}
       {loadingFreehand ? (
@@ -283,6 +498,7 @@ export default function LandingPage() {
                   lesson={lesson}
                   onCopyLink={handleCopyShareLink}
                   onViewLesson={handleViewSharedLesson}
+                  onDelete={handleDeleteSharedLesson}
                 />
               ))}
             </div>

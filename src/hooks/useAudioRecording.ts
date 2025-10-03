@@ -102,18 +102,18 @@ export const useAudioRecording = () => {
         return;
       }
 
-      // Handle freehand mode differently
+      // Handle freehand mode and lesson mode differently
       let exerciseKey: string;
-      let exerciseId: string;
+      let exerciseId: number;
       let exerciseName: string;
 
-      if (state.isFreehandMode) {
-        // Freehand mode: use a simple key
-        exerciseKey = 'freehand_recording';
-        exerciseId = 'freehand';
+      if (state.isFreehandMode || state.currentView === 'lesson') {
+        // Freehand mode or unified lesson mode: use a simple key
+        exerciseKey = state.isFreehandMode ? 'freehand_recording' : 'lesson_recording';
+        exerciseId = 0;
         exerciseName = `Practice Recording (Segment ${segmentNumber})`;
       } else {
-        // Regular lesson mode: use exercise data
+        // Regular exercise mode: use exercise data
         const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
         if (!currentExercise) {
           console.error('No current exercise found');
@@ -407,18 +407,18 @@ export const useAudioRecording = () => {
         throw new Error('Recorded audio blob is empty');
       }
       
-      // Handle freehand mode differently
+      // Handle freehand mode and lesson mode differently
       let exerciseKey: string;
-      let exerciseId: string;
+      let exerciseId: number;
       let exerciseName: string;
 
-      if (state.isFreehandMode) {
-        // Freehand mode: use a simple key
-        exerciseKey = 'freehand_recording';
-        exerciseId = 'freehand';
+      if (state.isFreehandMode || state.currentView === 'lesson') {
+        // Freehand mode or unified lesson mode: use a simple key
+        exerciseKey = state.isFreehandMode ? 'freehand_recording' : 'lesson_recording';
+        exerciseId = 0;
         exerciseName = 'Practice Recording';
       } else {
-        // Regular lesson mode: use exercise data
+        // Regular exercise mode: use exercise data
         const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
         if (!currentExercise) {
           throw new Error('No current exercise found');

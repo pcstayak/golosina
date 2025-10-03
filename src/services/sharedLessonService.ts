@@ -524,9 +524,26 @@ export class SharedLessonService {
         console.error('Error fetching freehand lessons:', freehandError)
       }
 
+      // Fetch unified lesson practice sessions
+      const { data: unifiedLessonSessions, error: unifiedError } = await supabase
+        .from('lesson_practice_sessions')
+        .select(`
+          session_id,
+          recording_count,
+          created_at,
+          lessons!inner(title)
+        `)
+        .in('session_id', ownedSessions)
+        .order('created_at', { ascending: false })
+
+      if (unifiedError) {
+        console.error('Error fetching unified lesson sessions:', unifiedError)
+      }
+
       const sessionIds = [
         ...(regularLessons?.map(l => l.session_id) || []),
-        ...(freehandLessons?.map(l => l.session_id) || [])
+        ...(freehandLessons?.map(l => l.session_id) || []),
+        ...(unifiedLessonSessions?.map(l => l.session_id) || [])
       ]
 
       let commentCounts: Record<string, number> = {}
@@ -562,7 +579,16 @@ export class SharedLessonService {
         created_at: lesson.created_at
       }))
 
-      const allLessons = [...regularLessonsFormatted, ...freehandLessonsFormatted]
+      const unifiedLessonsFormatted: SharedLessonListItem[] = (unifiedLessonSessions || []).map(lesson => ({
+        session_id: lesson.session_id,
+        title: (lesson.lessons as any)?.title || 'Untitled Lesson',
+        type: 'freehand' as const, // Using 'freehand' type for now
+        recording_count: lesson.recording_count || 0,
+        comment_count: commentCounts[lesson.session_id] || 0,
+        created_at: lesson.created_at
+      }))
+
+      const allLessons = [...regularLessonsFormatted, ...freehandLessonsFormatted, ...unifiedLessonsFormatted]
       allLessons.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
       return allLessons
@@ -689,6 +715,100 @@ export class SharedLessonService {
         success: false,
         error: 'An unexpected error occurred'
       }
+    }
+  }
+
+  // Delete shared lesson session
+  static async deleteSharedLesson(sessionId: string): Promise<{ success: boolean; error?: string }> {
+    if (!supabase) {
+      return {
+        success: false,
+        error: 'Supabase is not configured'
+      }
+    }
+
+    if (!this.isSessionOwned(sessionId)) {
+      return {
+        success: false,
+        error: 'You do not have permission to delete this session'
+      }
+    }
+
+    try {
+      // Get the lesson data to find all files that need to be deleted
+      const lessonData = await this.getSharedLesson(sessionId)
+      if (lessonData) {
+        // Delete all files from storage
+        const filesToDelete: string[] = []
+        Object.entries(lessonData.files).forEach(([exerciseId, exercise]) => {
+          exercise.files.forEach((file, index) => {
+            // Try to construct the file path
+            const fileName = `${sessionId}/${exerciseId}/${index}`
+            // Add different possible extensions
+            filesToDelete.push(`${fileName}.webm`)
+            filesToDelete.push(`${fileName}.mp3`)
+            filesToDelete.push(`${fileName}.mp4`)
+            filesToDelete.push(`${fileName}.wav`)
+          })
+        })
+
+        if (filesToDelete.length > 0) {
+          const { error: storageError } = await supabase.storage
+            .from(this.BUCKET_NAME)
+            .remove(filesToDelete)
+
+          if (storageError) {
+            console.error('Error deleting files from storage:', storageError)
+            // Continue anyway - we'll still delete the database record
+          }
+        }
+      }
+
+      // Delete all comments for this session
+      const { error: commentsError } = await supabase
+        .from('recording_comments')
+        .delete()
+        .eq('session_id', sessionId)
+
+      if (commentsError) {
+        console.error('Error deleting comments:', commentsError)
+        // Continue anyway
+      }
+
+      // Delete the lesson record
+      const { error: deleteError } = await supabase
+        .from('shared_lessons')
+        .delete()
+        .eq('session_id', sessionId)
+
+      if (deleteError) {
+        console.error('Error deleting shared lesson:', deleteError)
+        return {
+          success: false,
+          error: 'Failed to delete session'
+        }
+      }
+
+      // Remove from owned sessions
+      this.removeOwnedSession(sessionId)
+
+      return { success: true }
+    } catch (error) {
+      console.error('Error deleting shared lesson:', error)
+      return {
+        success: false,
+        error: 'An unexpected error occurred'
+      }
+    }
+  }
+
+  static removeOwnedSession(sessionId: string): void {
+    try {
+      const ownedSessions = this.getOwnedSessions()
+      const filtered = ownedSessions.filter(id => id !== sessionId)
+      localStorage.setItem(this.OWNED_SESSIONS_KEY, JSON.stringify(filtered))
+    } catch (error) {
+      console.error('Error removing owned session:', error)
     }
   }
 }

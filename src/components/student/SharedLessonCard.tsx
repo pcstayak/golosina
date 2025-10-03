@@ -1,18 +1,26 @@
 'use client'
 
-import { SharedLessonListItem } from '@/services/sharedLessonService'
+import { SharedLessonListItem, SharedLessonService } from '@/services/sharedLessonService'
+import { FreehandLessonService } from '@/services/freehandLessonService'
+import { LessonService } from '@/services/lessonService'
 import { Button } from '@/components/ui/Button'
-import { Mic, MessageSquare, Calendar, ExternalLink, Copy, Share, Video } from 'lucide-react'
+import { Mic, MessageSquare, Calendar, ExternalLink, Copy, Share, Video, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { useNotification } from '@/hooks/useNotification'
 
 interface SharedLessonCardProps {
   lesson: SharedLessonListItem
   onCopyLink: (sessionId: string, type: 'regular' | 'freehand') => void
   onViewLesson: (sessionId: string, type: 'regular' | 'freehand') => void
+  onDelete?: () => void
 }
 
-export default function SharedLessonCard({ lesson, onCopyLink, onViewLesson }: SharedLessonCardProps) {
+export default function SharedLessonCard({ lesson, onCopyLink, onViewLesson, onDelete }: SharedLessonCardProps) {
   const [copied, setCopied] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const { showSuccess, showError } = useNotification()
 
   const formatDate = (dateString: string) => {
     try {
@@ -45,26 +53,63 @@ export default function SharedLessonCard({ lesson, onCopyLink, onViewLesson }: S
     )
   }
 
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      let result
+
+      // Determine which type of session this is and call the appropriate delete method
+      if (lesson.session_id.startsWith('freehand_')) {
+        result = await FreehandLessonService.deleteFreehandPracticeSession(lesson.session_id)
+      } else if (lesson.session_id.startsWith('lesson_')) {
+        result = await LessonService.deleteLessonPracticeSession(lesson.session_id)
+      } else {
+        result = await SharedLessonService.deleteSharedLesson(lesson.session_id)
+      }
+
+      if (result.success) {
+        showSuccess('Shared lesson deleted successfully')
+        setShowDeleteDialog(false)
+        if (onDelete) onDelete()
+      } else {
+        showError(result.error || 'Failed to delete shared lesson')
+      }
+    } catch (error) {
+      console.error('Error deleting shared lesson:', error)
+      showError('An unexpected error occurred')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                lesson.type === 'freehand'
-                  ? 'bg-purple-100 text-purple-700'
-                  : 'bg-blue-100 text-blue-700'
-              }`}>
-                {getLessonTypeIcon()}
-                {getLessonTypeLabel()}
-              </span>
+    <>
+      <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+        <div className="p-4">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                  lesson.type === 'freehand'
+                    ? 'bg-purple-100 text-purple-700'
+                    : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {getLessonTypeIcon()}
+                  {getLessonTypeLabel()}
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">
+                {lesson.title}
+              </h3>
             </div>
-            <h3 className="text-lg font-semibold text-gray-800">
-              {lesson.title}
-            </h3>
+            <button
+              onClick={() => setShowDeleteDialog(true)}
+              className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+              title="Delete shared lesson"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
-        </div>
 
         <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
           <div className="flex items-center gap-1">
@@ -106,5 +151,19 @@ export default function SharedLessonCard({ lesson, onCopyLink, onViewLesson }: S
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      isOpen={showDeleteDialog}
+      onClose={() => setShowDeleteDialog(false)}
+      onConfirm={handleDelete}
+      title="Delete Shared Lesson"
+      message={`Are you sure you want to delete "${lesson.title}"? This will delete all recordings and comments. This action cannot be undone.`}
+      confirmText="Delete"
+      cancelText="Cancel"
+      variant="danger"
+      confirmButtonVariant="danger"
+      isLoading={isDeleting}
+    />
+  </>
   )
 }
