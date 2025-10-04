@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { X, UserPlus, Loader2 } from 'lucide-react'
-import { FreehandLessonService } from '@/services/freehandLessonService'
+import { LessonService } from '@/services/lessonService'
 import { useNotification } from '@/hooks/useNotification'
 
 interface AssignLessonModalProps {
@@ -40,12 +40,13 @@ export default function AssignLessonModal({
 
     setIsAssigning(true)
     try {
-      const result = await FreehandLessonService.assignLessonToStudent(
-        lessonId,
-        assignedBy,
-        studentId.trim(),
-        notes.trim() || undefined
-      )
+      const result = await LessonService.assignLesson({
+        lesson_id: lessonId,
+        assigned_to: studentId.trim(),
+        assigned_by: assignedBy,
+        assignment_type: 'teacher_assigned',
+        notes: notes.trim() || undefined
+      })
 
       if (result.success) {
         showSuccess('Lesson assigned successfully')

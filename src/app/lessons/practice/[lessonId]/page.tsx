@@ -11,7 +11,7 @@ import StepDisplay from '@/components/lessons/StepDisplay'
 import RecordingControls from '@/components/lesson/RecordingControls'
 import AudioPlayer from '@/components/lesson/AudioPlayer'
 import { LessonService, type Lesson } from '@/services/lessonService'
-import { SharedLessonService } from '@/services/sharedLessonService'
+import { PracticeService } from '@/services/practiceService'
 import { useNotification } from '@/hooks/useNotification'
 
 export default function LessonPracticePage() {
@@ -29,8 +29,9 @@ export default function LessonPracticePage() {
   const [isSaving, setIsSaving] = useState(false)
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null)
 
-  const recordingKey = 'lesson_recording'
-  const currentRecordings = state.currentSessionPieces[recordingKey] || []
+  // Get all recordings across all steps
+  const allRecordings = Object.values(state.currentPracticePieces).flat()
+  const hasRecordings = allRecordings.length > 0
 
   useEffect(() => {
     const fetchLesson = async () => {
@@ -44,13 +45,29 @@ export default function LessonPracticePage() {
         if (fetchedLesson) {
           setLesson(fetchedLesson)
 
+          // Set initial step context for recording
+          if (fetchedLesson.steps.length > 0) {
+            const firstStep = fetchedLesson.steps[0];
+            const stepId = firstStep.id || `order_${firstStep.step_order}`;
+
+            console.log('Setting initial step context:', { stepId, stepIndex: 0, fullStep: firstStep });
+
+            dispatch({
+              type: 'SET_CURRENT_STEP',
+              payload: {
+                stepId,
+                stepIndex: 0
+              }
+            })
+          }
+
           // Fetch step comments if this is an assigned lesson
           if (assignmentId) {
             // TODO: Fetch and attach step comments
           }
 
-          dispatch({ type: 'SET_CURRENT_VIEW', payload: 'lesson' })
-          dispatch({ type: 'CLEAR_SESSION_PIECES' })
+          dispatch({ type: 'SET_CURRENT_VIEW', payload: 'practice' })
+          dispatch({ type: 'CLEAR_PRACTICE_PIECES' })
         }
       } catch (error) {
         console.error('Error loading lesson:', error)
@@ -74,7 +91,7 @@ export default function LessonPracticePage() {
       return
     }
 
-    if (Object.keys(state.currentSessionPieces).length === 0) {
+    if (Object.keys(state.currentPracticePieces).length === 0) {
       showError('Please record at least one audio clip before sharing')
       return
     }
@@ -82,21 +99,28 @@ export default function LessonPracticePage() {
     setIsSaving(true)
 
     try {
-      const createResult = await LessonService.createPracticeSession({
-        lesson_id: lesson.id,
-        assignment_id: assignmentId || undefined,
-        created_by: user.id,
-      })
+      const createResult = await PracticeService.createPractice(
+        lesson.id,
+        user.id,
+        assignmentId || undefined
+      )
 
-      if (!createResult.success || !createResult.sessionId) {
-        showError(createResult.error || 'Failed to create practice session')
+      if (!createResult.success || !createResult.practiceId) {
+        showError(createResult.error || 'Failed to create practice')
         setIsSaving(false)
         return
       }
 
-      const uploadResult = await LessonService.savePracticeRecordings(
-        createResult.sessionId,
-        state.currentSessionPieces
+      // Create step names map from lesson steps
+      const stepNames: Record<string, string> = {}
+      lesson.steps.forEach((step, index) => {
+        stepNames[`step_${step.id}`] = `Step ${index + 1}: ${step.title || 'Untitled'}`
+      })
+
+      const uploadResult = await PracticeService.savePracticeRecordings(
+        createResult.practiceId,
+        state.currentPracticePieces,
+        stepNames
       )
 
       if (!uploadResult.success) {
@@ -105,16 +129,24 @@ export default function LessonPracticePage() {
         return
       }
 
-      // Track this session in localStorage so it appears in "My Shared Lessons"
-      SharedLessonService.markSessionAsOwned(createResult.sessionId)
+      // Mark practice as shared
+      const shareResult = await PracticeService.sharePractice(createResult.practiceId)
+      if (!shareResult.success) {
+        showError(shareResult.error || 'Failed to share practice')
+        setIsSaving(false)
+        return
+      }
 
-      const shareUrl = `${window.location.origin}/share/lesson/${createResult.sessionId}`
+      // Track this practice in localStorage so it appears in "My Shared Practices"
+      PracticeService.markPracticeAsOwned(createResult.practiceId)
+
+      const shareUrl = `${window.location.origin}/practices/${createResult.practiceId}`
       await navigator.clipboard.writeText(shareUrl)
 
       showSuccess('Practice saved! Share link copied to clipboard')
 
       // Clear recordings after successful save
-      dispatch({ type: 'CLEAR_SESSION_PIECES' })
+      dispatch({ type: 'CLEAR_PRACTICE_PIECES' })
 
       setTimeout(() => {
         router.push('/')
@@ -125,7 +157,7 @@ export default function LessonPracticePage() {
     } finally {
       setIsSaving(false)
     }
-  }, [lesson, user, state.currentSessionPieces, assignmentId, dispatch, router, showSuccess, showError])
+  }, [lesson, user, state.currentPracticePieces, assignmentId, dispatch, router, showSuccess, showError])
 
   const handlePlayStateChange = useCallback((pieceId: string, playing: boolean) => {
     if (playing) {
@@ -199,7 +231,7 @@ export default function LessonPracticePage() {
             variant="primary"
             size="sm"
             onClick={handleSaveAndShare}
-            disabled={isSaving || currentRecordings.length === 0}
+            disabled={isSaving || !hasRecordings}
             className="flex items-center gap-2"
           >
             <Share2 className="w-4 h-4" />
@@ -244,34 +276,40 @@ export default function LessonPracticePage() {
 
               <RecordingControls />
 
-              {currentRecordings.length > 0 && (
+              {allRecordings.length > 0 && (
                 <div className="mt-6 space-y-4">
                   <h3 className="text-sm font-semibold text-gray-700">
-                    Recordings ({currentRecordings.length})
+                    Recordings ({allRecordings.length})
                   </h3>
-                  {currentRecordings.map((piece, index) => (
+                  {allRecordings.map((piece, index) => (
                     <AudioPlayer
                       key={piece.id}
                       piece={piece}
                       index={index}
                       onDelete={() => {
-                        dispatch({
-                          type: 'REMOVE_AUDIO_PIECE',
-                          payload: { exerciseKey: recordingKey, pieceId: piece.id },
-                        })
+                        // Find which step key this recording belongs to
+                        const stepKey = Object.entries(state.currentPracticePieces).find(
+                          ([key, pieces]) => pieces.some(p => p.id === piece.id)
+                        )?.[0];
+                        if (stepKey) {
+                          dispatch({
+                            type: 'REMOVE_AUDIO_PIECE',
+                            payload: { stepId: stepKey, pieceId: piece.id },
+                          });
+                        }
                       }}
                       onDownload={downloadPiece}
                       onTitleUpdate={undefined}
                       isPlaying={currentlyPlaying === piece.id}
                       onPlayStateChange={handlePlayStateChange}
-                      exerciseName="Practice Recording"
+                      exerciseName={piece.exerciseName || "Practice Recording"}
                       showDeleteButton={true}
                     />
                   ))}
                 </div>
               )}
 
-              {currentRecordings.length === 0 && !state.isRecording && (
+              {allRecordings.length === 0 && !state.isRecording && (
                 <div className="mt-6 p-4 bg-gray-50 rounded-lg text-center">
                   <p className="text-sm text-gray-600">
                     No recordings yet. Click the microphone to start.

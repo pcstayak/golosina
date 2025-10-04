@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Play, Pause, Square, SkipBack, SkipForward, Download, Trash2, Edit3 } from 'lucide-react';
 import { AudioPiece } from '@/contexts/AppContext';
 import { analyzeAudioBlob, formatTime, calculateSeekTime, WaveformData } from '@/utils/audioAnalysis';
-import { RecordingComment } from '@/services/sharedLessonService';
+import { PracticeComment as RecordingComment } from '@/services/practiceService';
 import CommentPopover from '@/components/ui/CommentPopover';
 
 interface AudioPlayerProps {

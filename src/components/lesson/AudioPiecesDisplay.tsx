@@ -7,7 +7,7 @@ import AudioPlayer from './AudioPlayer';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 
 export default function AudioPiecesDisplay() {
-  const { state, dispatch, getCurrentExercise, getCurrentSet } = useApp();
+  const { state, dispatch } = useApp();
   const { getFileExtensionFromMimeType } = useAudioRecording();
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; pieceId: string | null }>({
     show: false,
@@ -15,9 +15,9 @@ export default function AudioPiecesDisplay() {
   });
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
 
-  const currentExercise = getCurrentExercise();
-  const exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise?.id}`;
-  const pieces = state.currentSessionPieces[exerciseKey] || [];
+  const currentStepId = state.currentStepId;
+  const exerciseKey = `step_${currentStepId}`;
+  const pieces = state.currentPracticePieces[exerciseKey] || [];
 
   const handlePlayStateChange = useCallback((pieceId: string, playing: boolean) => {
     if (playing) {
@@ -32,8 +32,6 @@ export default function AudioPiecesDisplay() {
   }, [currentlyPlaying]);
 
   const downloadPiece = useCallback((piece: typeof pieces[0]) => {
-    if (!currentExercise) return;
-
     try {
       const url = URL.createObjectURL(piece.blob);
 
@@ -42,7 +40,7 @@ export default function AudioPiecesDisplay() {
 
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${currentExercise.name}_${piece.id}.${fileExtension}`;
+      a.download = `step_${currentStepId}_${piece.id}.${fileExtension}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -50,7 +48,7 @@ export default function AudioPiecesDisplay() {
     } catch (error) {
       console.error('Error downloading piece:', error);
     }
-  }, [currentExercise, getFileExtensionFromMimeType]);
+  }, [currentStepId, getFileExtensionFromMimeType]);
 
   const deletePiece = useCallback((pieceId: string) => {
     // Stop playback if this piece is currently playing
@@ -64,7 +62,7 @@ export default function AudioPiecesDisplay() {
     if (deleteConfirm.pieceId) {
       dispatch({
         type: 'REMOVE_AUDIO_PIECE',
-        payload: { exerciseKey, pieceId: deleteConfirm.pieceId }
+        payload: { stepId: exerciseKey, pieceId: deleteConfirm.pieceId }
       });
     }
     setDeleteConfirm({ show: false, pieceId: null });
@@ -73,14 +71,14 @@ export default function AudioPiecesDisplay() {
   const updatePieceTitle = useCallback((pieceId: string, title: string) => {
     dispatch({
       type: 'UPDATE_AUDIO_PIECE_TITLE',
-      payload: { exerciseKey, pieceId, title }
+      payload: { stepId: exerciseKey, pieceId, title }
     });
   }, [dispatch, exerciseKey]);
 
-  if (!currentExercise) {
+  if (!currentStepId) {
     return (
       <div className="text-center text-gray-500 py-8">
-        <p>No exercise selected</p>
+        <p>No step selected</p>
       </div>
     );
   }
@@ -111,7 +109,7 @@ export default function AudioPiecesDisplay() {
           onTitleUpdate={updatePieceTitle}
           isPlaying={currentlyPlaying === piece.id}
           onPlayStateChange={handlePlayStateChange}
-          exerciseName={currentExercise.name}
+          exerciseName={`Step ${state.currentStepIndex + 1}`}
           showDeleteButton={true}
         />
       ))}

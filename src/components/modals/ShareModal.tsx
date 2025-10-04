@@ -16,7 +16,7 @@ import {
   createAudioFiles,
   type ShareData
 } from '@/utils/shareUtils';
-import { SharedLessonService } from '@/services/sharedLessonService';
+import { PracticeService } from '@/services/practiceService';
 import { useApp } from '@/contexts/AppContext';
 
 interface ShareModalProps {
@@ -27,7 +27,7 @@ interface ShareModalProps {
 
 export default function ShareModal({ onClose, currentSessionPieces, getCurrentExercises }: ShareModalProps) {
   const { showSuccess, showError } = useNotification();
-  const { getCurrentSet } = useApp();
+  const { state } = useApp();
   const [isCreatingFiles, setIsCreatingFiles] = useState(false);
   const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -117,17 +117,13 @@ export default function ShareModal({ onClose, currentSessionPieces, getCurrentEx
 
     try {
       setIsUploadingToCloud(true);
-      
-      const currentSet = getCurrentSet();
-      const sessionId = SharedLessonService.generateSessionId();
-      
-      const result = await SharedLessonService.uploadLessonRecap(
-        sessionId,
-        currentSet?.name || 'Vocal Training Session',
-        currentSet?.description || 'A vocal training session with recordings',
-        currentSessionPieces,
-        getCurrentExercises
-      );
+
+      // Upload to cloud functionality is deprecated in the new unified lesson system
+      // Practices are now created and shared through the PracticeService
+      const result: { success: boolean; error?: string; sessionId?: string } = {
+        success: false,
+        error: 'Cloud upload not supported in unified lesson system'
+      };
 
       if (result.success && result.sessionId) {
         // Generate shareable URL on client side (always uses correct origin)

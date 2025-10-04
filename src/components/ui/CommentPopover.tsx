@@ -29,15 +29,15 @@ const CommentPopover: React.FC<CommentPopoverProps> = ({
     const MAX_DISPLAYED_COMMENTS = 5;
     const displayedComments = comments.slice(0, MAX_DISPLAYED_COMMENTS);
 
-    // Header: 20px (reduced padding)
-    const headerHeight = 20;
+    // Header: 28px (padding + border)
+    const headerHeight = 28;
 
-    // Each comment: 28px (compact spacing)
-    const commentHeight = 28;
+    // Each comment: 48px (name line + comment text + padding)
+    const commentHeight = 48;
     const commentsHeight = displayedComments.length * commentHeight;
 
-    // "and X more" text if needed: 16px
-    const moreTextHeight = comments.length > MAX_DISPLAYED_COMMENTS ? 16 : 0;
+    // "and X more" text if needed: 24px
+    const moreTextHeight = comments.length > MAX_DISPLAYED_COMMENTS ? 24 : 0;
 
     return headerHeight + commentsHeight + moreTextHeight;
   }, [comments]);
@@ -183,8 +183,8 @@ const CommentPopover: React.FC<CommentPopoverProps> = ({
         {displayedComments.map((comment, index) => (
           <div
             key={comment.id}
-            className="px-2 py-1 flex items-start gap-1"
-            style={{ height: '28px' }}
+            className="px-2 py-1.5 flex items-start gap-1"
+            style={{ height: '48px' }}
           >
             {/* Avatar */}
             <div className="w-4 h-4 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">
@@ -214,7 +214,7 @@ const CommentPopover: React.FC<CommentPopoverProps> = ({
         ))}
 
         {hiddenCount > 0 && (
-          <div className="px-2 py-1 text-xs text-gray-500 italic" style={{ height: '16px' }}>
+          <div className="px-2 py-1 text-xs text-gray-500 italic" style={{ height: '24px' }}>
             and {hiddenCount} more...
           </div>
         )}

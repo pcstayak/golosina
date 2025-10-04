@@ -7,7 +7,7 @@ import type { AudioPiece } from '@/contexts/AppContext';
 import { useRealTimeSilenceDetection } from './useRealTimeSilenceDetection';
 
 export const useAudioRecording = () => {
-  const { state, dispatch, getCurrentExercises, getCurrentSet } = useApp();
+  const { state, dispatch } = useApp();
   const { showSuccess, showError, showWarning } = useNotification();
   
   // Auto-splitting state
@@ -102,27 +102,13 @@ export const useAudioRecording = () => {
         return;
       }
 
-      // Handle freehand mode and lesson mode differently
-      let exerciseKey: string;
-      let exerciseId: number;
-      let exerciseName: string;
+      // Use step-based recording for unified practice system
+      const currentStepId = state.currentStepId;
+      const currentStepIndex = state.currentStepIndex;
 
-      if (state.isFreehandMode || state.currentView === 'lesson') {
-        // Freehand mode or unified lesson mode: use a simple key
-        exerciseKey = state.isFreehandMode ? 'freehand_recording' : 'lesson_recording';
-        exerciseId = 0;
-        exerciseName = `Practice Recording (Segment ${segmentNumber})`;
-      } else {
-        // Regular exercise mode: use exercise data
-        const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
-        if (!currentExercise) {
-          console.error('No current exercise found');
-          return;
-        }
-        exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise.id}`;
-        exerciseId = currentExercise.id;
-        exerciseName = `${currentExercise.name} (Segment ${segmentNumber})`;
-      }
+      const exerciseKey = `step_${currentStepId}`;
+      const exerciseId = currentStepId;
+      const exerciseName = `Step ${currentStepIndex + 1} - Recording ${segmentNumber}`;
 
       const pieceId = `${Date.now()}_seg${segmentNumber}`;
       const timestamp = new Date().toISOString();
@@ -148,7 +134,7 @@ export const useAudioRecording = () => {
       console.error('Error processing recording segment:', error);
       showError('Error processing recording: ' + error.message);
     }
-  }, [state.settings.minRecordingLength, state.settings.autoSplitEnabled, state.settings.autoSplitDuration, state.currentExerciseIndex, dispatch, getCurrentExercises, getCurrentSet, showError, showSuccess]);
+  }, [state.settings.minRecordingLength, state.settings.autoSplitEnabled, state.settings.autoSplitDuration, state.currentStepId, state.currentStepIndex, dispatch, showError, showSuccess]);
 
   // Helper function to get file extension from mime type
   const getFileExtensionFromMimeType = useCallback((mimeType: string): string => {
@@ -407,26 +393,13 @@ export const useAudioRecording = () => {
         throw new Error('Recorded audio blob is empty');
       }
       
-      // Handle freehand mode and lesson mode differently
-      let exerciseKey: string;
-      let exerciseId: number;
-      let exerciseName: string;
+      // Use step-based recording for unified practice system
+      const currentStepId = state.currentStepId;
+      const currentStepIndex = state.currentStepIndex;
 
-      if (state.isFreehandMode || state.currentView === 'lesson') {
-        // Freehand mode or unified lesson mode: use a simple key
-        exerciseKey = state.isFreehandMode ? 'freehand_recording' : 'lesson_recording';
-        exerciseId = 0;
-        exerciseName = 'Practice Recording';
-      } else {
-        // Regular exercise mode: use exercise data
-        const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
-        if (!currentExercise) {
-          throw new Error('No current exercise found');
-        }
-        exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise.id}`;
-        exerciseId = currentExercise.id;
-        exerciseName = currentExercise.name;
-      }
+      const exerciseKey = `step_${currentStepId}`;
+      const exerciseId = currentStepId;
+      const exerciseName = `Step ${currentStepIndex + 1} - Recording`;
 
       // Use actual duration if provided, otherwise estimate
       const recordingDuration = duration || Math.max(chunks.length * 0.1, 1);
@@ -451,7 +424,7 @@ export const useAudioRecording = () => {
       console.error('Error processing recording:', error);
       showError('Error processing recording: ' + error.message);
     }
-  }, [state.currentExerciseIndex, dispatch, getCurrentExercises, getCurrentSet, showError, showSuccess]);
+  }, [state.currentStepId, state.currentStepIndex, dispatch, showError, showSuccess]);
 
   // Keep the old function for compatibility
   const processRecording = useCallback(async () => {
