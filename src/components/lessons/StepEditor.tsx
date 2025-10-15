@@ -12,6 +12,11 @@ interface StepEditorProps {
   onChange: (step: LessonStep) => void
   onRemove: () => void
   canRemove: boolean
+  onDragStart?: () => void
+  onDragEnd?: () => void
+  onDragOver?: () => void
+  onDrop?: () => void
+  isDragging?: boolean
 }
 
 export default function StepEditor({
@@ -20,6 +25,11 @@ export default function StepEditor({
   onChange,
   onRemove,
   canRemove,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
+  isDragging,
 }: StepEditorProps) {
   const [isExpanded, setIsExpanded] = useState(true)
 
@@ -27,13 +37,49 @@ export default function StepEditor({
     onChange({ ...step, [field]: value })
   }
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/html', e.currentTarget.innerHTML)
+    if (onDragStart) {
+      onDragStart()
+    }
+  }
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    if (onDragEnd) {
+      onDragEnd()
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (onDragOver) {
+      onDragOver()
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (onDrop) {
+      onDrop()
+    }
+  }
+
   return (
-    <div className="border rounded-lg bg-white">
+    <div
+      className={`border rounded-lg bg-white ${isDragging ? 'opacity-50' : ''}`}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <div
         className="flex items-center gap-3 p-4 cursor-pointer bg-gray-50 rounded-t-lg"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <GripVertical className="w-5 h-5 text-gray-400" />
+        <GripVertical className="w-5 h-5 text-gray-400 cursor-grab active:cursor-grabbing" />
         <div className="flex-1">
           <h3 className="font-semibold text-gray-800">
             Step {stepNumber}: {step.title || 'Untitled Step'}

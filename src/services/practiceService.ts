@@ -24,6 +24,8 @@ export interface Practice {
   is_shared: boolean;
   created_at: string;
   updated_at: string;
+  comment_count?: number;
+  title?: string;
 }
 
 export interface PracticeComment {

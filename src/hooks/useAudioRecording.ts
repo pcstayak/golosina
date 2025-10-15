@@ -106,7 +106,7 @@ export const useAudioRecording = () => {
       const currentStepId = state.currentStepId;
       const currentStepIndex = state.currentStepIndex;
 
-      const exerciseKey = `step_${currentStepId}`;
+      const stepId = `step_${currentStepId}`;
       const exerciseId = currentStepId;
       const exerciseName = `Step ${currentStepIndex + 1} - Recording ${segmentNumber}`;
 
@@ -122,7 +122,7 @@ export const useAudioRecording = () => {
         exerciseName: exerciseName
       };
 
-      dispatch({ type: 'ADD_AUDIO_PIECE', payload: { exerciseKey, piece: pieceData } });
+      dispatch({ type: 'ADD_AUDIO_PIECE', payload: { stepId, piece: pieceData } });
 
       const message = state.settings.autoSplitEnabled ? 
         `Segment ${segmentNumber} saved! (${duration.toFixed(1)}s)` :
@@ -397,7 +397,7 @@ export const useAudioRecording = () => {
       const currentStepId = state.currentStepId;
       const currentStepIndex = state.currentStepIndex;
 
-      const exerciseKey = `step_${currentStepId}`;
+      const stepId = `step_${currentStepId}`;
       const exerciseId = currentStepId;
       const exerciseName = `Step ${currentStepIndex + 1} - Recording`;
 
@@ -415,8 +415,8 @@ export const useAudioRecording = () => {
         exerciseId: exerciseId,
         exerciseName: exerciseName
       };
-      
-      dispatch({ type: 'ADD_AUDIO_PIECE', payload: { exerciseKey, piece: pieceData } });
+
+      dispatch({ type: 'ADD_AUDIO_PIECE', payload: { stepId, piece: pieceData } });
       
       showSuccess(`Recording saved! (${recordingDuration.toFixed(1)}s)`);
       

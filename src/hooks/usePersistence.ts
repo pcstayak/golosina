@@ -76,7 +76,9 @@ export const usePersistence = () => {
         // Validate exercise sets structure
         const validatedExerciseSets = validateExerciseSets(exerciseSets);
         if (validatedExerciseSets) {
-          dispatch({ type: 'SET_EXERCISE_SETS', payload: validatedExerciseSets });
+          // TODO: Exercise sets are no longer part of AppContext - this is legacy code
+          // dispatch({ type: 'SET_EXERCISE_SETS', payload: validatedExerciseSets });
+          console.log('Validated exercise sets (legacy):', validatedExerciseSets);
         } else {
           console.warn('Invalid exercise sets in localStorage, using defaults');
           // Clear corrupted data
@@ -106,7 +108,9 @@ export const usePersistence = () => {
         // Validate exercise sets structure
         const validatedExerciseSets = validateExerciseSets(exerciseSets);
         if (validatedExerciseSets) {
-          dispatch({ type: 'SET_EXERCISE_SETS', payload: validatedExerciseSets });
+          // TODO: Exercise sets are no longer part of AppContext - this is legacy code
+          // dispatch({ type: 'SET_EXERCISE_SETS', payload: validatedExerciseSets });
+          console.log('Validated exercise sets (legacy):', validatedExerciseSets);
         } else {
           console.warn('Invalid exercise sets in localStorage, using defaults');
           // Clear corrupted data
@@ -120,13 +124,16 @@ export const usePersistence = () => {
         const savedSetIndex = localStorage.getItem('voiceSlicerCurrentSetIndex');
         const savedExerciseIndex = localStorage.getItem('voiceSlicerCurrentExerciseIndex');
 
-        if (savedSetIndex !== null) {
-          dispatch({ type: 'SET_CURRENT_SET_INDEX', payload: parseInt(savedSetIndex) });
-        }
+        // TODO: These actions no longer exist - this is legacy code
+        // if (savedSetIndex !== null) {
+        //   dispatch({ type: 'SET_CURRENT_SET_INDEX', payload: parseInt(savedSetIndex) });
+        // }
 
-        if (savedExerciseIndex !== null) {
-          dispatch({ type: 'SET_CURRENT_EXERCISE_INDEX', payload: parseInt(savedExerciseIndex) });
-        }
+        // if (savedExerciseIndex !== null) {
+        //   dispatch({ type: 'SET_CURRENT_EXERCISE_INDEX', payload: parseInt(savedExerciseIndex) });
+        // }
+
+        console.log('Legacy saved indices:', { savedSetIndex, savedExerciseIndex });
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -136,13 +143,14 @@ export const usePersistence = () => {
   const saveSettings = useCallback(() => {
     try {
       localStorage.setItem('voiceSlicerSettings', JSON.stringify(state.settings));
-      localStorage.setItem('voiceSlicerExerciseSets', JSON.stringify(state.exerciseSets));
-      localStorage.setItem('voiceSlicerCurrentSetIndex', state.currentSetIndex.toString());
-      localStorage.setItem('voiceSlicerCurrentExerciseIndex', state.currentExerciseIndex.toString());
+      // TODO: exerciseSets, currentSetIndex, currentExerciseIndex no longer exist - legacy code
+      // localStorage.setItem('voiceSlicerExerciseSets', JSON.stringify(state.exerciseSets));
+      // localStorage.setItem('voiceSlicerCurrentSetIndex', state.currentSetIndex.toString());
+      // localStorage.setItem('voiceSlicerCurrentExerciseIndex', state.currentExerciseIndex.toString());
     } catch (error) {
       console.error('Error saving settings:', error);
     }
-  }, [state]);
+  }, [state.settings]);
 
   return {
     loadSettings,

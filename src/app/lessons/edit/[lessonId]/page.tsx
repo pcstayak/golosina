@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { ArrowLeft, Plus, Save } from 'lucide-react'
@@ -10,27 +10,71 @@ import StepEditor from '@/components/lessons/StepEditor'
 import { LessonService, type LessonStep } from '@/services/lessonService'
 import { useNotification } from '@/hooks/useNotification'
 
-export default function CreateLessonPage() {
+export default function EditLessonPage() {
   const router = useRouter()
+  const params = useParams()
+  const lessonId = params.lessonId as string
   const { user, profile } = useAuth()
   const { showSuccess, showError } = useNotification()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [isTemplate, setIsTemplate] = useState(false)
-  const [steps, setSteps] = useState<(LessonStep & { _tempId?: string })[]>([
-    {
-      _tempId: `temp_${Date.now()}_0`,
-      step_order: 0,
-      title: '',
-      description: '',
-      tips: '',
-      media: [],
-    },
-  ])
+  const [steps, setSteps] = useState<(LessonStep & { _tempId?: string })[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [permissionDenied, setPermissionDenied] = useState(false)
+  const [lessonNotFound, setLessonNotFound] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    const fetchLesson = async () => {
+      if (!lessonId) {
+        setLessonNotFound(true)
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const lesson = await LessonService.getLesson(lessonId)
+
+        if (!lesson) {
+          setLessonNotFound(true)
+          setIsLoading(false)
+          return
+        }
+
+        // Check permission - user must be creator
+        if (lesson.created_by !== user?.id) {
+          setPermissionDenied(true)
+          setIsLoading(false)
+          return
+        }
+
+        // Pre-populate form with existing data
+        setTitle(lesson.title)
+        setDescription(lesson.description || '')
+        setIsTemplate(lesson.is_template)
+        setSteps(
+          lesson.steps.map((step, idx) => ({
+            ...step,
+            _tempId: step.id || `temp_${Date.now()}_${idx}`,
+          }))
+        )
+        setIsLoading(false)
+      } catch (error) {
+        console.error('Error fetching lesson:', error)
+        showError('Failed to load lesson')
+        setIsLoading(false)
+      }
+    }
+
+    if (user) {
+      fetchLesson()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId, user])
 
   const handleAddStep = () => {
     setSteps([
@@ -115,20 +159,14 @@ export default function CreateLessonPage() {
       return
     }
 
-    if (!user?.id) {
-      showError('You must be logged in to create a lesson')
-      return
-    }
-
     setIsSaving(true)
 
     try {
-      const result = await LessonService.createLesson({
+      const result = await LessonService.updateLesson(lessonId, {
         title,
         description,
-        created_by: user.id,
-        is_template: isTemplate,
         steps: steps.map((step) => ({
+          step_order: step.step_order,
           title: step.title,
           description: step.description,
           tips: step.tips,
@@ -137,17 +175,64 @@ export default function CreateLessonPage() {
       })
 
       if (result.success) {
-        showSuccess('Lesson created successfully!')
+        showSuccess('Lesson updated successfully!')
         router.push('/')
       } else {
-        showError(result.error || 'Failed to create lesson')
+        showError(result.error || 'Failed to update lesson')
       }
     } catch (error) {
-      console.error('Error creating lesson:', error)
+      console.error('Error updating lesson:', error)
       showError('An unexpected error occurred')
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleCancel = () => {
+    router.push('/')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent mb-4"></div>
+          <p className="text-gray-600">Loading lesson...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (lessonNotFound) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center bg-white rounded-lg shadow-sm border p-8 max-w-md">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Lesson Not Found</h2>
+          <p className="text-gray-600 mb-6">
+            The lesson you are looking for does not exist or has been deleted.
+          </p>
+          <Link href="/">
+            <Button variant="primary">Back to Home</Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (permissionDenied) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center bg-white rounded-lg shadow-sm border p-8 max-w-md">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Permission Denied</h2>
+          <p className="text-gray-600 mb-6">
+            You do not have permission to edit this lesson. Only the creator can edit a lesson.
+          </p>
+          <Link href="/">
+            <Button variant="primary">Back to Home</Button>
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -155,12 +240,15 @@ export default function CreateLessonPage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
-          <Link href="/">
-            <Button variant="secondary" size="sm" className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Home
-            </Button>
-          </Link>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleCancel}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Cancel
+          </Button>
 
           <Button
             variant="primary"
@@ -170,13 +258,13 @@ export default function CreateLessonPage() {
             className="flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
-            {isSaving ? 'Saving...' : 'Save Lesson'}
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
 
         {/* Main Form */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-6">Create New Lesson</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-6">Edit Lesson</h1>
 
           <div className="space-y-4">
             <div>
@@ -214,9 +302,10 @@ export default function CreateLessonPage() {
                   checked={isTemplate}
                   onChange={(e) => setIsTemplate(e.target.checked)}
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                  disabled
                 />
-                <label htmlFor="isTemplate" className="text-sm text-gray-700">
-                  Save as template (can be assigned to students)
+                <label htmlFor="isTemplate" className="text-sm text-gray-500">
+                  Template status (cannot be changed after creation)
                 </label>
               </div>
             )}
@@ -242,7 +331,7 @@ export default function CreateLessonPage() {
 
           {steps.map((step, index) => (
             <div
-              key={step._tempId || index}
+              key={step._tempId || step.id || index}
               className={`${dragOverIndex === index ? 'border-t-4 border-blue-500' : ''}`}
             >
               <StepEditor
@@ -263,7 +352,7 @@ export default function CreateLessonPage() {
 
         {/* Info Box */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-blue-900 mb-2">💡 Tips</h3>
+          <h3 className="text-sm font-semibold text-blue-900 mb-2">Tips</h3>
           <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
             <li>Break your lesson into clear, manageable steps</li>
             <li>Add videos, images, or GIFs to demonstrate techniques</li>

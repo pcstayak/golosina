@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Lesson, LessonService } from '@/services/lessonService'
 import { Button } from '@/components/ui/Button'
-import { Play, Calendar, Layers, Trash2, Copy } from 'lucide-react'
+import { Play, Calendar, Layers, Trash2, Copy, Pencil } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNotification } from '@/hooks/useNotification'
@@ -118,6 +118,13 @@ export default function LessonCard({ lesson, onDelete, onCopy }: LessonCardProps
                   Template
                 </span>
               )}
+              <button
+                onClick={() => router.push(`/lessons/edit/${lesson.id}`)}
+                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                title="Edit lesson"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
               <button
                 onClick={handleCopy}
                 disabled={isCopying}

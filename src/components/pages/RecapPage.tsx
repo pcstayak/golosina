@@ -19,6 +19,7 @@ export default function RecapPage() {
   const getCurrentSet = (): any => null;
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [alertDialog, setAlertDialog] = useState<{
     show: boolean;
     title: string;
@@ -143,6 +144,8 @@ export default function RecapPage() {
       return;
     }
 
+    setIsUploading(true);
+
     try {
       const currentSet = getCurrentSet();
       let sessionId = state.currentPracticeId;
@@ -187,6 +190,8 @@ export default function RecapPage() {
         message: 'An unexpected error occurred. Please try again.',
         variant: 'error'
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -314,7 +319,7 @@ export default function RecapPage() {
         // Remove from local state
         dispatch({
           type: 'REMOVE_AUDIO_PIECE',
-          payload: { exerciseKey, pieceId }
+          payload: { stepId: exerciseKey, pieceId }
         });
 
         setAlertDialog({
@@ -374,10 +379,10 @@ export default function RecapPage() {
               variant="primary"
               size="sm"
               onClick={handleShare}
-              disabled={!hasRecordings || state.isUploading}
+              disabled={!hasRecordings || isUploading}
               className="flex items-center gap-2"
             >
-              {state.isUploading ? (
+              {isUploading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   {state.currentPracticeId ? 'Updating...' : 'Sharing...'}
@@ -385,7 +390,7 @@ export default function RecapPage() {
               ) : (
                 <>
                   <Share2 className="w-4 h-4" />
-                  {null /* state.shareUrl */ ? 'Update Share' : 'Share Lesson'}
+                  Share Lesson
                 </>
               )}
             </Button>
@@ -401,8 +406,8 @@ export default function RecapPage() {
           Review your recorded exercises from this session
         </p>
 
-        {/* Share URL Display */}
-        {null /* state.shareUrl */ && (
+        {/* Share URL Display - TODO: Implement shareUrl in state */}
+        {false && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
             <div className="flex items-center justify-between">
               <div className="flex-1">
@@ -410,7 +415,7 @@ export default function RecapPage() {
                   Shareable Link Available
                 </p>
                 <div className="bg-white border border-green-200 rounded px-2 py-1 text-sm text-gray-700 break-all">
-                  {null /* state.shareUrl */}
+                  {/* state.shareUrl */}
                 </div>
               </div>
               <Button

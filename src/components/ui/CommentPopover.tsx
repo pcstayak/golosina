@@ -1,11 +1,11 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { RecordingComment } from '@/services/sharedLessonService';
+import { PracticeComment } from '@/services/practiceService';
 import { formatTime } from '@/utils/audioAnalysis';
 
 interface CommentPopoverProps {
-  comments: RecordingComment[];
+  comments: PracticeComment[];
   isVisible: boolean;
   targetElement: HTMLElement | null;
   onClose: () => void;

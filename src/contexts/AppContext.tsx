@@ -35,7 +35,7 @@ export interface AudioPiece {
   blob: Blob;
   timestamp: string;
   duration: number;
-  exerciseId: number;
+  exerciseId: string | number | null;
   exerciseName: string;
   customTitle?: string;
 }
