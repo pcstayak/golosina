@@ -1,19 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
-import { ArrowLeft, Plus, Save } from 'lucide-react'
+import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import StepEditor from '@/components/lessons/StepEditor'
 import { LessonService, type LessonStep } from '@/services/lessonService'
 import { useNotification } from '@/hooks/useNotification'
 
+const DRAFT_STORAGE_KEY = 'lesson_draft'
+
 export default function CreateLessonPage() {
   const router = useRouter()
   const { user, profile } = useAuth()
   const { showSuccess, showError } = useNotification()
+  const isInitialMount = useRef(true)
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -28,9 +31,58 @@ export default function CreateLessonPage() {
       media: [],
     },
   ])
+
   const [isSaving, setIsSaving] = useState(false)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
+  // Restore draft on mount ONCE - use a ref to ensure it truly only runs once
+  const hasRestoredRef = useRef(false)
+  useEffect(() => {
+    if (hasRestoredRef.current) {
+      return
+    }
+
+    hasRestoredRef.current = true
+
+    const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY)
+    if (savedDraft) {
+      try {
+        const draft = JSON.parse(savedDraft)
+        setTitle(draft.title || '')
+        setDescription(draft.description || '')
+        setIsTemplate(draft.isTemplate || false)
+        if (draft.steps && draft.steps.length > 0) {
+          setSteps(draft.steps)
+        }
+        showSuccess('Draft restored')
+      } catch (error) {
+        console.error('Error restoring draft:', error)
+      }
+    }
+    isInitialMount.current = false
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty deps - only run ONCE on mount, never again
+
+  // Auto-save draft on state changes (debounced)
+  useEffect(() => {
+    // Don't save on initial mount
+    if (isInitialMount.current) return
+
+    // Debounce auto-save to avoid race conditions
+    const timeoutId = setTimeout(() => {
+      const draft = {
+        title,
+        description,
+        isTemplate,
+        steps,
+        savedAt: new Date().toISOString()
+      }
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft))
+    }, 500) // Wait 500ms after last change before saving
+
+    return () => clearTimeout(timeoutId)
+  }, [title, description, isTemplate, steps])
 
   const handleAddStep = () => {
     setSteps([
@@ -46,11 +98,18 @@ export default function CreateLessonPage() {
     ])
   }
 
-  const handleUpdateStep = (index: number, updatedStep: LessonStep) => {
-    const newSteps = [...steps]
-    newSteps[index] = updatedStep
-    setSteps(newSteps)
-  }
+  const handleUpdateStep = useCallback((index: number, updatedStep: LessonStep) => {
+    // Use functional update to always get latest state
+    setSteps((prevSteps) => {
+      const newSteps = [...prevSteps]
+      // Preserve _tempId when updating
+      newSteps[index] = {
+        ...updatedStep,
+        _tempId: prevSteps[index]?._tempId
+      }
+      return newSteps
+    })
+  }, []) // Empty deps - function never changes
 
   const handleRemoveStep = (index: number) => {
     const newSteps = steps.filter((_, i) => i !== index)
@@ -97,6 +156,26 @@ export default function CreateLessonPage() {
     setDragOverIndex(null)
   }
 
+  const handleClearDraft = () => {
+    if (confirm('Are you sure you want to clear the draft? All unsaved changes will be lost.')) {
+      localStorage.removeItem(DRAFT_STORAGE_KEY)
+      setTitle('')
+      setDescription('')
+      setIsTemplate(false)
+      setSteps([
+        {
+          _tempId: `temp_${Date.now()}_0`,
+          step_order: 0,
+          title: '',
+          description: '',
+          tips: '',
+          media: [],
+        },
+      ])
+      showSuccess('Draft cleared')
+    }
+  }
+
   const handleSave = async () => {
     if (!title.trim()) {
       showError('Please enter a lesson title')
@@ -123,20 +202,24 @@ export default function CreateLessonPage() {
     setIsSaving(true)
 
     try {
+      const stepsToSave = steps.map((step) => ({
+        title: step.title,
+        description: step.description,
+        tips: step.tips,
+        media: step.media,
+      }))
+
       const result = await LessonService.createLesson({
         title,
         description,
         created_by: user.id,
         is_template: isTemplate,
-        steps: steps.map((step) => ({
-          title: step.title,
-          description: step.description,
-          tips: step.tips,
-          media: step.media,
-        })),
+        steps: stepsToSave,
       })
 
       if (result.success) {
+        // Clear draft after successful save
+        localStorage.removeItem(DRAFT_STORAGE_KEY)
         showSuccess('Lesson created successfully!')
         router.push('/')
       } else {
@@ -162,16 +245,28 @@ export default function CreateLessonPage() {
             </Button>
           </Link>
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-2"
-          >
-            <Save className="w-4 h-4" />
-            {isSaving ? 'Saving...' : 'Save Lesson'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleClearDraft}
+              disabled={isSaving}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear Draft
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? 'Saving...' : 'Save Lesson'}
+            </Button>
+          </div>
         </div>
 
         {/* Main Form */}

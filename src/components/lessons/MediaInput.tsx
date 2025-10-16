@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Plus, X, Video, Image as ImageIcon } from 'lucide-react'
 import { VideoEmbedService } from '@/services/videoEmbedService'
@@ -152,7 +152,7 @@ export default function MediaInput({ media, onChange }: MediaInputProps) {
             className="flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Add Media
+            Submit Media
           </Button>
         </div>
       </div>

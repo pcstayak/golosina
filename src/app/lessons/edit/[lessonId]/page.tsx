@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
@@ -28,8 +28,14 @@ export default function EditLessonPage() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
+  // Fetch lesson data only once on mount - use a ref to prevent refetching on tab focus
+  const hasLoadedRef = useRef(false)
   useEffect(() => {
     const fetchLesson = async () => {
+      if (hasLoadedRef.current) {
+        return
+      }
+
       if (!lessonId) {
         setLessonNotFound(true)
         setIsLoading(false)
@@ -63,6 +69,7 @@ export default function EditLessonPage() {
           }))
         )
         setIsLoading(false)
+        hasLoadedRef.current = true
       } catch (error) {
         console.error('Error fetching lesson:', error)
         showError('Failed to load lesson')
@@ -73,8 +80,7 @@ export default function EditLessonPage() {
     if (user) {
       fetchLesson()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lessonId, user])
+  }, [user]) // Run when user loads, but ref prevents refetching
 
   const handleAddStep = () => {
     setSteps([

@@ -123,7 +123,7 @@ export class LessonService {
             .insert(mediaInserts);
 
           if (mediaError) {
-            console.error('Error creating media:', mediaError);
+            console.error('Error inserting media:', mediaError);
           }
         }
       }

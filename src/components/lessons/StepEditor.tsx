@@ -69,15 +69,20 @@ export default function StepEditor({
   return (
     <div
       className={`border rounded-lg bg-white ${isDragging ? 'opacity-50' : ''}`}
-      draggable
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
-      onDrop={handleDrop}
     >
       <div
         className="flex items-center gap-3 p-4 cursor-pointer bg-gray-50 rounded-t-lg"
-        onClick={() => setIsExpanded(!isExpanded)}
+        draggable
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onClick={(e) => {
+          // Don't toggle if dragging
+          if (!isDragging) {
+            setIsExpanded(!isExpanded)
+          }
+        }}
       >
         <GripVertical className="w-5 h-5 text-gray-400 cursor-grab active:cursor-grabbing" />
         <div className="flex-1">
