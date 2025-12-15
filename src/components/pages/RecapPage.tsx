@@ -11,10 +11,15 @@ import AudioPlayer from '@/components/lesson/AudioPlayer';
 import { SharedLessonService } from '@/services/sharedLessonService';
 
 export default function RecapPage() {
-  const { state, dispatch, getCurrentExercises, getCurrentSet } = useApp();
+  const { state, dispatch } = useApp();
   const { getFileExtensionFromMimeType } = useAudioRecording();
+
+  // TODO: RecapPage needs to be refactored to use new practiceService
+  const getCurrentExercises = (): any[] => [];
+  const getCurrentSet = (): any => null;
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [alertDialog, setAlertDialog] = useState<{
     show: boolean;
     title: string;
@@ -33,10 +38,10 @@ export default function RecapPage() {
     dispatch({ type: 'SET_CURRENT_VIEW', payload: 'lesson' });
   };
 
-  const hasRecordings = Object.values(state.currentSessionPieces)
+  const hasRecordings = Object.values(state.currentPracticePieces || {})
     .some(pieces => pieces.length > 0);
 
-  const totalPieces = Object.values(state.currentSessionPieces)
+  const totalPieces = Object.values(state.currentPracticePieces || {})
     .reduce((total, pieces) => total + pieces.length, 0);
 
   const handleDownloadAll = async () => {
@@ -60,7 +65,7 @@ export default function RecapPage() {
       
       // Add all recordings to zip
       let fileCount = 0;
-      for (const [exerciseKey, pieces] of Object.entries(state.currentSessionPieces)) {
+      for (const [exerciseKey, pieces] of Object.entries(state.currentPracticePieces)) {
         if (pieces.length === 0) continue;
         
         const exerciseId = exerciseKey.split('_')[1];
@@ -139,17 +144,17 @@ export default function RecapPage() {
       return;
     }
 
-    try {
-      dispatch({ type: 'SET_IS_UPLOADING', payload: true });
+    setIsUploading(true);
 
+    try {
       const currentSet = getCurrentSet();
-      let sessionId = state.currentSessionId;
+      let sessionId = state.currentPracticeId;
       let isUpdate = false;
 
       // If we don't have a session ID, generate one
       if (!sessionId) {
         sessionId = SharedLessonService.generateSessionId();
-        dispatch({ type: 'SET_CURRENT_SESSION_ID', payload: sessionId });
+        dispatch({ type: 'SET_CURRENT_PRACTICE_ID', payload: sessionId });
       } else {
         // Check if this session was already shared
         isUpdate = await SharedLessonService.checkIfSessionExists(sessionId);
@@ -159,14 +164,15 @@ export default function RecapPage() {
         sessionId,
         currentSet?.name || 'Vocal Training Session',
         currentSet?.description || 'A vocal training session with recordings',
-        state.currentSessionPieces,
+        state.currentPracticePieces,
         getCurrentExercises,
         isUpdate
       );
 
       if (result.success && result.sessionId) {
         const shareUrl = `${window.location.origin}/shared/${result.sessionId}`;
-        dispatch({ type: 'SET_SHARE_URL', payload: shareUrl });
+        // TODO: Add SET_SHARE_URL action back or refactor to use new system
+        // dispatch({ type: 'SET_SHARE_URL', payload: shareUrl });
         // Success - no popup needed, URL appears in UI
       } else {
         setAlertDialog({
@@ -185,15 +191,17 @@ export default function RecapPage() {
         variant: 'error'
       });
     } finally {
-      dispatch({ type: 'SET_IS_UPLOADING', payload: false });
+      setIsUploading(false);
     }
   };
 
   const copyShareUrl = async () => {
-    if (!state.shareUrl) return;
+    // TODO: Implement shareUrl in state
+    const shareUrl = null; // null /* state.shareUrl */
+    if (!shareUrl) return;
 
     try {
-      await navigator.clipboard.writeText(state.shareUrl);
+      await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       // Success feedback shown by button state change, no popup needed
@@ -238,22 +246,22 @@ export default function RecapPage() {
 
   const updatePieceTitle = useCallback((pieceId: string, title: string) => {
     // Find which exercise this piece belongs to
-    for (const [exerciseKey, pieces] of Object.entries(state.currentSessionPieces)) {
+    for (const [stepId, pieces] of Object.entries(state.currentPracticePieces)) {
       const piece = pieces.find(p => p.id === pieceId);
       if (piece) {
         dispatch({
           type: 'UPDATE_AUDIO_PIECE_TITLE',
-          payload: { exerciseKey, pieceId, title }
+          payload: { stepId, pieceId, title }
         });
         break;
       }
     }
-  }, [dispatch, state.currentSessionPieces]);
+  }, [dispatch, state.currentPracticePieces]);
 
   // Delete function for recap (only for session owners)
   const handleDelete = useCallback(async (pieceId: string) => {
     // Check if we can delete (must be session owner with shared session)
-    if (!state.currentSessionId || !SharedLessonService.isSessionOwned(state.currentSessionId)) {
+    if (!state.currentPracticeId || !SharedLessonService.isSessionOwned(state.currentPracticeId)) {
       setAlertDialog({
         show: true,
         title: 'Cannot Delete',
@@ -271,7 +279,7 @@ export default function RecapPage() {
       onConfirm: () => performDelete(pieceId),
       isLoading: false
     });
-  }, [state.currentSessionId, state.currentSessionPieces]);
+  }, [state.currentPracticeId, state.currentPracticePieces]);
 
   const performDelete = useCallback(async (pieceId: string) => {
     setConfirmDialog(prev => ({ ...prev, isLoading: true }));
@@ -279,7 +287,7 @@ export default function RecapPage() {
     // Find which exercise this piece belongs to
     let exerciseId: string | null = null;
     let exerciseKey: string | null = null;
-    for (const [key, pieces] of Object.entries(state.currentSessionPieces)) {
+    for (const [key, pieces] of Object.entries(state.currentPracticePieces)) {
       const piece = pieces.find(p => p.id === pieceId);
       if (piece) {
         exerciseId = key.split('_')[1];
@@ -300,7 +308,7 @@ export default function RecapPage() {
 
     try {
       const result = await SharedLessonService.deleteRecording(
-        state.currentSessionId!,
+        state.currentPracticeId!,
         exerciseId,
         pieceId
       );
@@ -311,7 +319,7 @@ export default function RecapPage() {
         // Remove from local state
         dispatch({
           type: 'REMOVE_AUDIO_PIECE',
-          payload: { exerciseKey, pieceId }
+          payload: { stepId: exerciseKey, pieceId }
         });
 
         setAlertDialog({
@@ -338,7 +346,7 @@ export default function RecapPage() {
         variant: 'error'
       });
     }
-  }, [state.currentSessionId, state.currentSessionPieces, dispatch]);
+  }, [state.currentPracticeId, state.currentPracticePieces, dispatch]);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -371,18 +379,18 @@ export default function RecapPage() {
               variant="primary"
               size="sm"
               onClick={handleShare}
-              disabled={!hasRecordings || state.isUploading}
+              disabled={!hasRecordings || isUploading}
               className="flex items-center gap-2"
             >
-              {state.isUploading ? (
+              {isUploading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  {state.currentSessionId ? 'Updating...' : 'Sharing...'}
+                  {state.currentPracticeId ? 'Updating...' : 'Sharing...'}
                 </>
               ) : (
                 <>
                   <Share2 className="w-4 h-4" />
-                  {state.shareUrl ? 'Update Share' : 'Share Lesson'}
+                  Share Lesson
                 </>
               )}
             </Button>
@@ -398,8 +406,8 @@ export default function RecapPage() {
           Review your recorded exercises from this session
         </p>
 
-        {/* Share URL Display */}
-        {state.shareUrl && (
+        {/* Share URL Display - TODO: Implement shareUrl in state */}
+        {false && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
             <div className="flex items-center justify-between">
               <div className="flex-1">
@@ -407,7 +415,7 @@ export default function RecapPage() {
                   Shareable Link Available
                 </p>
                 <div className="bg-white border border-green-200 rounded px-2 py-1 text-sm text-gray-700 break-all">
-                  {state.shareUrl}
+                  {/* state.shareUrl */}
                 </div>
               </div>
               <Button
@@ -426,7 +434,7 @@ export default function RecapPage() {
 
       {/* Recap Content */}
       <div className="space-y-6">
-        {Object.keys(state.currentSessionPieces).length === 0 ? (
+        {Object.keys(state.currentPracticePieces).length === 0 ? (
           <div className="bg-white rounded-xl shadow-lg p-8 text-center">
             <div className="text-6xl mb-4">🎤</div>
             <h3 className="text-xl font-semibold mb-2">No recordings yet</h3>
@@ -438,7 +446,7 @@ export default function RecapPage() {
             </Button>
           </div>
         ) : (
-          Object.entries(state.currentSessionPieces).map(([exerciseKey, pieces]) => {
+          Object.entries(state.currentPracticePieces).map(([exerciseKey, pieces]) => {
             if (pieces.length === 0) return null;
 
             const exerciseId = exerciseKey.split('_')[1];
@@ -471,7 +479,7 @@ export default function RecapPage() {
                       isPlaying={currentlyPlaying === piece.id}
                       onPlayStateChange={handlePlayStateChange}
                       exerciseName={exercise.name}
-                      showDeleteButton={Boolean(state.currentSessionId && SharedLessonService.isSessionOwned(state.currentSessionId))}
+                      showDeleteButton={Boolean(state.currentPracticeId && SharedLessonService.isSessionOwned(state.currentPracticeId))}
                     />
                   ))}
                 </div>

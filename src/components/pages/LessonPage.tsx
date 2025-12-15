@@ -11,12 +11,12 @@ import { useState } from 'react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 export default function LessonPage() {
-  const { state, dispatch, getCurrentSet } = useApp();
+  const { state, dispatch } = useApp();
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
 
   const handleBackToLanding = () => {
-    if (Object.keys(state.currentSessionPieces).some(key => 
-      state.currentSessionPieces[key]?.length > 0
+    if (Object.keys(state.currentPracticePieces).some(key =>
+      state.currentPracticePieces[key]?.length > 0
     )) {
       setShowAbandonConfirm(true);
     } else {
@@ -25,21 +25,22 @@ export default function LessonPage() {
   };
 
   const confirmAbandonSession = () => {
-    dispatch({ type: 'CLEAR_SESSION_PIECES' });
+    dispatch({ type: 'CLEAR_PRACTICE_PIECES' });
     endSession();
   };
 
   const endSession = () => {
     dispatch({ type: 'SET_SESSION_ACTIVE', payload: false });
     dispatch({ type: 'SET_CURRENT_VIEW', payload: 'landing' });
-    dispatch({ type: 'CLEAR_SESSION_PIECES' });
+    dispatch({ type: 'CLEAR_PRACTICE_PIECES' });
   };
 
   const showRecap = () => {
     dispatch({ type: 'SET_CURRENT_VIEW', payload: 'recap' });
   };
 
-  const currentSet = getCurrentSet();
+  // Deprecated: This page is for the old exercise set system
+  const currentSet = null;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -58,20 +59,9 @@ export default function LessonPage() {
           </Button>
 
           <div className="text-center">
-            {currentSet && !state.isSharedSession && (
-              <h2
-                className="text-xl font-bold"
-                style={{ color: currentSet.color }}
-              >
-                {currentSet.name}
-              </h2>
-            )}
-
-            {state.isSharedSession && (
-              <h2 className="text-xl font-bold text-gray-800">
-                Shared Lesson
-              </h2>
-            )}
+            <h2 className="text-xl font-bold text-gray-800">
+              Practice Session
+            </h2>
           </div>
 
           <Button

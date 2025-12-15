@@ -3,28 +3,36 @@
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
-import { Settings, LogOut, Home } from 'lucide-react';
-import { useState } from 'react';
+import { Settings, LogOut, Home, Video, ChevronDown, ChevronUp, GraduationCap, Mic, MessageSquare, Calendar, Copy, ExternalLink, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import SettingsModal from '@/components/modals/SettingsModal';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import PracticeCard from '@/components/student/PracticeCard';
+import { PracticeService, Practice } from '@/services/practiceService';
+import { useNotification } from '@/hooks/useNotification';
+import { LessonService, type Lesson, type LessonAssignment } from '@/services/lessonService';
+import LessonCard from '@/components/lessons/LessonCard';
+import AssignedLessonCardNew from '@/components/lessons/AssignedLessonCard';
 
 export default function LandingPage() {
   const { state, dispatch } = useApp();
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, user } = useAuth();
+  const router = useRouter();
+  const { showSuccess, showError } = useNotification();
   const [showSettings, setShowSettings] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const selectExerciseSet = (setIndex: number) => {
-    dispatch({ type: 'SET_CURRENT_SET_INDEX', payload: setIndex });
-    dispatch({ type: 'SET_CURRENT_EXERCISE_INDEX', payload: 0 });
-    startNewSession();
-  };
-
-  const startNewSession = () => {
-    dispatch({ type: 'SET_SESSION_ACTIVE', payload: true });
-    dispatch({ type: 'CLEAR_SESSION_PIECES' });
-    dispatch({ type: 'SET_SHARED_SESSION', payload: { isShared: false } });
-    dispatch({ type: 'SET_CURRENT_VIEW', payload: 'lesson' });
-  };
+  const [myLessons, setMyLessons] = useState<Lesson[]>([]);
+  const [assignedToMeLessons, setAssignedToMeLessons] = useState<LessonAssignment[]>([]);
+  const [practices, setPractices] = useState<Practice[]>([]);
+  const [loadingMyLessons, setLoadingMyLessons] = useState(true);
+  const [loadingAssignedToMe, setLoadingAssignedToMe] = useState(true);
+  const [loadingPractices, setLoadingPractices] = useState(true);
+  const [showMyLessonsSection, setShowMyLessonsSection] = useState(true);
+  const [showAssignedToMeSection, setShowAssignedToMeSection] = useState(true);
+  const [showPracticesSection, setShowPracticesSection] = useState(true);
+  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -49,15 +57,125 @@ export default function LandingPage() {
     }
   };
 
-  const getSetRecordingsCount = (setId: number): number => {
-    let count = 0;
-    Object.keys(state.audioPieces).forEach(exerciseKey => {
-      if (exerciseKey.startsWith(setId + '_')) {
-        count += state.audioPieces[exerciseKey]?.length || 0;
+  // Load lessons and practices
+  useEffect(() => {
+    const loadMyLessons = async () => {
+      if (!user?.id) {
+        setLoadingMyLessons(false);
+        return;
       }
-    });
-    return count;
+
+      try {
+        const lessons = await LessonService.getLessonsByCreator(user.id);
+        setMyLessons(lessons);
+      } catch (error) {
+        console.error('Error loading my lessons:', error);
+      } finally {
+        setLoadingMyLessons(false);
+      }
+    };
+
+    loadMyLessons();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const loadAssignedToMe = async () => {
+      if (!user?.id) {
+        setLoadingAssignedToMe(false);
+        return;
+      }
+
+      try {
+        const assignments = await LessonService.getLessonsAssignedToStudent(user.id);
+        setAssignedToMeLessons(assignments);
+      } catch (error) {
+        console.error('Error loading assigned lessons:', error);
+      } finally {
+        setLoadingAssignedToMe(false);
+      }
+    };
+
+    loadAssignedToMe();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const loadPractices = async () => {
+      try {
+        const practiceList = await PracticeService.getSharedPractices();
+        setPractices(practiceList);
+      } catch (error) {
+        console.error('Error loading practices:', error);
+      } finally {
+        setLoadingPractices(false);
+      }
+    };
+
+    loadPractices();
+  }, []);
+
+  const handleDeletePractice = async () => {
+    try {
+      const practiceList = await PracticeService.getSharedPractices();
+      setPractices(practiceList);
+    } catch (error) {
+      console.error('Error refreshing practices:', error);
+    }
   };
+
+  const handleCopyPracticeLink = (practiceId: string) => {
+    const baseUrl = window.location.origin;
+    const url = `${baseUrl}/practices/${practiceId}`;
+
+    navigator.clipboard.writeText(url);
+    showSuccess('Link copied to clipboard');
+  };
+
+  const handleViewPractice = (practiceId: string) => {
+    router.push(`/practices/${practiceId}`);
+  };
+
+  const toggleLessonExpanded = (lessonId: string) => {
+    setExpandedLessons(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(lessonId)) {
+        newSet.delete(lessonId);
+      } else {
+        newSet.add(lessonId);
+      }
+      return newSet;
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return 'Unknown';
+    }
+  };
+
+  const groupedPractices = practices.reduce((acc, practice) => {
+    const lessonId = practice.lesson_id;
+    if (!acc[lessonId]) {
+      acc[lessonId] = {
+        lessonId,
+        lessonTitle: (practice as any).title || 'Untitled Lesson',
+        practices: []
+      };
+    }
+    acc[lessonId].practices.push(practice);
+    return acc;
+  }, {} as Record<string, { lessonId: string; lessonTitle: string; practices: Practice[] }>);
+
+  const sortedGroupedPractices = Object.values(groupedPractices).sort((a, b) => {
+    const aLatest = Math.max(...a.practices.map(p => new Date(p.created_at).getTime()));
+    const bLatest = Math.max(...b.practices.map(p => new Date(p.created_at).getTime()));
+    return bLatest - aLatest;
+  });
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -106,69 +224,236 @@ export default function LandingPage() {
         </p>
       </div>
 
-      {/* Exercise Sets Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {state.exerciseSets.map((set, index) => {
-          const recordingsCount = getSetRecordingsCount(set.id);
-          
-          return (
-            <div key={set.id} className="set-card">
-              <div 
-                className="set-header"
-                style={{ background: set.color }}
-              >
-                <h3 className="text-xl font-semibold mb-2">{set.name}</h3>
-                <div className="flex justify-between text-sm opacity-90">
-                  <span>{set.exercises.length} exercises</span>
-                  <span>{recordingsCount} recordings</span>
+      {/* Create Lesson Card */}
+      <div className="mb-6">
+        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+                  <Video className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Create Lesson</h2>
+                  <p className="text-white/80 text-sm">Build custom step-by-step lessons</p>
                 </div>
               </div>
-              <div className="set-content">
-                <p className="text-gray-600 mb-4">{set.description}</p>
-                <Button
-                  onClick={() => selectExerciseSet(index)}
-                  className="w-full"
-                  variant="primary"
-                >
-                  Start Practice
-                </Button>
-              </div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Welcome Message */}
-      {Object.keys(state.audioPieces).length === 0 && (
-        <div className="mt-12 text-center">
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 max-w-2xl mx-auto">
-            <h2 className="text-2xl font-semibold text-white mb-4">
-              Welcome to Your Voice Training Journey! 🎤
-            </h2>
-            <p className="text-white/80 mb-6">
-              Choose an exercise set above to begin your vocal training. Each session will help you 
-              improve your breathing, vocal technique, and pitch accuracy.
+            <p className="text-white/90 mb-4">
+              Create structured lessons with videos, images, tips, and practice recordings. Share with your teacher or use for personal practice.
             </p>
-            <div className="grid md:grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-3xl mb-2">🫁</div>
-                <h3 className="font-medium text-white">Breathing</h3>
-                <p className="text-sm text-white/70">Master diaphragmatic breathing</p>
-              </div>
-              <div>
-                <div className="text-3xl mb-2">🎵</div>
-                <h3 className="font-medium text-white">Warm-ups</h3>
-                <p className="text-sm text-white/70">Prepare your voice safely</p>
-              </div>
-              <div>
-                <div className="text-3xl mb-2">🎶</div>
-                <h3 className="font-medium text-white">Pitch Training</h3>
-                <p className="text-sm text-white/70">Develop perfect pitch</p>
-              </div>
-            </div>
+            <Link href="/lessons/create">
+              <Button variant="secondary" className="w-full flex items-center justify-center gap-2">
+                <Video className="w-4 h-4" />
+                Create New Lesson
+              </Button>
+            </Link>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Lessons I Created Section */}
+      {loadingMyLessons ? (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Lessons I Created</h2>
+          <div className="text-center text-white/60 py-8">
+            Loading your lessons...
+          </div>
+        </div>
+      ) : myLessons.length > 0 ? (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-white">Lessons I Created ({myLessons.length})</h2>
+            <button
+              onClick={() => setShowMyLessonsSection(!showMyLessonsSection)}
+              className="text-white/80 hover:text-white transition-colors"
+            >
+              {showMyLessonsSection ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+          {showMyLessonsSection && (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myLessons.map((lesson) => (
+                <LessonCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  onDelete={async () => {
+                    // Refresh the list after delete
+                    if (user?.id) {
+                      const lessons = await LessonService.getLessonsByCreator(user.id)
+                      setMyLessons(lessons)
+                    }
+                  }}
+                  onCopy={async () => {
+                    // Refresh the list after copy
+                    if (user?.id) {
+                      const lessons = await LessonService.getLessonsByCreator(user.id)
+                      setMyLessons(lessons)
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* Lessons Assigned to Me Section (Students) */}
+      {loadingAssignedToMe ? (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">Lessons from Teachers</h2>
+          <div className="text-center text-white/60 py-8">
+            Loading assigned lessons...
+          </div>
+        </div>
+      ) : assignedToMeLessons.length > 0 ? (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <GraduationCap className="w-6 h-6 text-white" />
+              <h2 className="text-2xl font-bold text-white">
+                Lessons from Teachers ({assignedToMeLessons.length})
+              </h2>
+            </div>
+            <button
+              onClick={() => setShowAssignedToMeSection(!showAssignedToMeSection)}
+              className="text-white/80 hover:text-white transition-colors"
+            >
+              {showAssignedToMeSection ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+          {showAssignedToMeSection && (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {assignedToMeLessons.map((assignment) => (
+                <AssignedLessonCardNew key={assignment.id} assignment={assignment} />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* My Shared Practices Section */}
+      {loadingPractices ? (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-white mb-4">My Shared Practices</h2>
+          <div className="text-center text-white/60 py-8">
+            Loading your shared practices...
+          </div>
+        </div>
+      ) : practices.length > 0 ? (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-white">My Shared Practices ({practices.length})</h2>
+            <button
+              onClick={() => setShowPracticesSection(!showPracticesSection)}
+              className="text-white/80 hover:text-white transition-colors"
+            >
+              {showPracticesSection ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+          {showPracticesSection && (
+            <div className="space-y-4">
+              {sortedGroupedPractices.map((group) => {
+                const isExpanded = expandedLessons.has(group.lessonId);
+                return (
+                  <div key={group.lessonId} className="bg-white rounded-lg shadow-md overflow-hidden">
+                    <button
+                      onClick={() => toggleLessonExpanded(group.lessonId)}
+                      className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <ChevronDown
+                          className={`w-5 h-5 text-gray-600 transition-transform ${
+                            isExpanded ? 'rotate-0' : '-rotate-90'
+                          }`}
+                        />
+                        <h3 className="text-lg font-semibold text-gray-900">{group.lessonTitle}</h3>
+                        <span className="text-sm text-gray-500">
+                          ({group.practices.length} {group.practices.length === 1 ? 'practice' : 'practices'})
+                        </span>
+                      </div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="border-t border-gray-200">
+                        {group.practices.map((practice) => {
+                          const commentCount = (practice as any).comment_count || 0;
+                          return (
+                            <div
+                              key={practice.practice_id}
+                              className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                            >
+                              <div className="flex items-center gap-4 flex-1">
+                                <div className="flex items-center gap-1 text-sm text-gray-500 min-w-[80px]">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>{formatDate(practice.created_at)}</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                                    <Mic className="w-4 h-4 text-purple-600" />
+                                    <span>{practice.recording_count}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                                    <MessageSquare className="w-4 h-4 text-blue-600" />
+                                    <span>{commentCount}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleCopyPracticeLink(practice.practice_id)}
+                                  className="p-2 text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                                  title="Copy Link"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleViewPractice(practice.practice_id)}
+                                  className="p-2 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                                  title="View Practice"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    const result = await PracticeService.deletePractice(practice.practice_id);
+                                    if (result.success) {
+                                      showSuccess('Practice deleted successfully');
+                                      handleDeletePractice();
+                                    } else {
+                                      showError(result.error || 'Failed to delete practice');
+                                    }
+                                  }}
+                                  className="p-2 text-red-600 hover:bg-red-100 rounded transition-colors"
+                                  title="Delete Practice"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {/* Settings Modal */}
       {showSettings && (

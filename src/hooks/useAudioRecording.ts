@@ -7,7 +7,7 @@ import type { AudioPiece } from '@/contexts/AppContext';
 import { useRealTimeSilenceDetection } from './useRealTimeSilenceDetection';
 
 export const useAudioRecording = () => {
-  const { state, dispatch, getCurrentExercises, getCurrentSet } = useApp();
+  const { state, dispatch } = useApp();
   const { showSuccess, showError, showWarning } = useNotification();
   
   // Auto-splitting state
@@ -102,13 +102,14 @@ export const useAudioRecording = () => {
         return;
       }
 
-      const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
-      if (!currentExercise) {
-        console.error('No current exercise found');
-        return;
-      }
+      // Use step-based recording for unified practice system
+      const currentStepId = state.currentStepId;
+      const currentStepIndex = state.currentStepIndex;
 
-      const exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise.id}`;
+      const stepId = `step_${currentStepId}`;
+      const exerciseId = currentStepId;
+      const exerciseName = `Step ${currentStepIndex + 1} - Recording ${segmentNumber}`;
+
       const pieceId = `${Date.now()}_seg${segmentNumber}`;
       const timestamp = new Date().toISOString();
 
@@ -117,11 +118,11 @@ export const useAudioRecording = () => {
         blob: audioBlob,
         timestamp: timestamp,
         duration: duration,
-        exerciseId: currentExercise.id,
-        exerciseName: `${currentExercise.name} (Segment ${segmentNumber})`
+        exerciseId: exerciseId,
+        exerciseName: exerciseName
       };
 
-      dispatch({ type: 'ADD_AUDIO_PIECE', payload: { exerciseKey, piece: pieceData } });
+      dispatch({ type: 'ADD_AUDIO_PIECE', payload: { stepId, piece: pieceData } });
 
       const message = state.settings.autoSplitEnabled ? 
         `Segment ${segmentNumber} saved! (${duration.toFixed(1)}s)` :
@@ -133,7 +134,7 @@ export const useAudioRecording = () => {
       console.error('Error processing recording segment:', error);
       showError('Error processing recording: ' + error.message);
     }
-  }, [state.settings.minRecordingLength, state.settings.autoSplitEnabled, state.settings.autoSplitDuration, state.currentExerciseIndex, dispatch, getCurrentExercises, getCurrentSet, showError, showSuccess]);
+  }, [state.settings.minRecordingLength, state.settings.autoSplitEnabled, state.settings.autoSplitDuration, state.currentStepId, state.currentStepIndex, dispatch, showError, showSuccess]);
 
   // Helper function to get file extension from mime type
   const getFileExtensionFromMimeType = useCallback((mimeType: string): string => {
@@ -392,29 +393,30 @@ export const useAudioRecording = () => {
         throw new Error('Recorded audio blob is empty');
       }
       
-      const currentExercise = getCurrentExercises()[state.currentExerciseIndex];
-      if (!currentExercise) {
-        throw new Error('No current exercise found');
-      }
-      
-      const exerciseKey = `${getCurrentSet()?.id || 'shared'}_${currentExercise.id}`;
-      
+      // Use step-based recording for unified practice system
+      const currentStepId = state.currentStepId;
+      const currentStepIndex = state.currentStepIndex;
+
+      const stepId = `step_${currentStepId}`;
+      const exerciseId = currentStepId;
+      const exerciseName = `Step ${currentStepIndex + 1} - Recording`;
+
       // Use actual duration if provided, otherwise estimate
       const recordingDuration = duration || Math.max(chunks.length * 0.1, 1);
-      
+
       const pieceId = Date.now().toString();
       const timestamp = new Date().toISOString();
-      
+
       const pieceData: AudioPiece = {
         id: pieceId,
         blob: audioBlob,
         timestamp: timestamp,
         duration: recordingDuration,
-        exerciseId: currentExercise.id,
-        exerciseName: currentExercise.name
+        exerciseId: exerciseId,
+        exerciseName: exerciseName
       };
-      
-      dispatch({ type: 'ADD_AUDIO_PIECE', payload: { exerciseKey, piece: pieceData } });
+
+      dispatch({ type: 'ADD_AUDIO_PIECE', payload: { stepId, piece: pieceData } });
       
       showSuccess(`Recording saved! (${recordingDuration.toFixed(1)}s)`);
       
@@ -422,7 +424,7 @@ export const useAudioRecording = () => {
       console.error('Error processing recording:', error);
       showError('Error processing recording: ' + error.message);
     }
-  }, [state.currentExerciseIndex, dispatch, getCurrentExercises, getCurrentSet, showError, showSuccess]);
+  }, [state.currentStepId, state.currentStepIndex, dispatch, showError, showSuccess]);
 
   // Keep the old function for compatibility
   const processRecording = useCallback(async () => {
