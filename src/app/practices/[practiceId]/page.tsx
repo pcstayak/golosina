@@ -410,7 +410,18 @@ export default function PracticePage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+          {/* Lesson title and description - centered */}
+          <div className="text-center mb-4">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {lesson.title}
+            </h1>
+            {lesson.description && (
+              <p className="text-sm text-gray-600 mt-1">{lesson.description}</p>
+            )}
+          </div>
+
+          {/* Metadata row */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <Button
               variant="secondary"
               onClick={() => router.push('/')}
@@ -455,16 +466,6 @@ export default function PracticePage() {
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
-            )}
-          </div>
-
-          {/* Lesson title and description */}
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {lesson.title}
-            </h1>
-            {lesson.description && (
-              <p className="text-sm text-gray-600 mt-1">{lesson.description}</p>
             )}
           </div>
         </div>
