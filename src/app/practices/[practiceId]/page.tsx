@@ -409,8 +409,8 @@ export default function PracticePage() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
             <Button
               variant="secondary"
               onClick={() => router.push('/')}
@@ -458,12 +458,13 @@ export default function PracticePage() {
             )}
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          {/* Lesson title and description */}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
               {lesson.title}
             </h1>
             {lesson.description && (
-              <p className="text-gray-600">{lesson.description}</p>
+              <p className="text-sm text-gray-600 mt-1">{lesson.description}</p>
             )}
           </div>
         </div>
