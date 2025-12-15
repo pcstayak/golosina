@@ -74,7 +74,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
         .map(c => buildTree(c.id, currentDepth + 1))
         .filter((c): c is CommentWithReplies => c !== null);
 
-      // Sort children by creation time
+      // Sort children by creation time (oldest first for natural conversation flow)
       children.sort((a, b) =>
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
@@ -89,14 +89,9 @@ const CommentThread: React.FC<CommentThreadProps> = ({
       .map(c => buildTree(c.id, 0))
       .filter((c): c is CommentWithReplies => c !== null);
 
-    // Sort top-level comments
+    // Sort top-level comments by creation date (newest first)
     topLevelComments.sort((a, b) => {
-      if (a.timestamp_seconds !== undefined && b.timestamp_seconds !== undefined) {
-        return a.timestamp_seconds - b.timestamp_seconds;
-      }
-      if (a.timestamp_seconds !== undefined) return -1;
-      if (b.timestamp_seconds !== undefined) return 1;
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
     // Filter by selected comment(s) if provided
