@@ -237,6 +237,29 @@ export default function PracticePage() {
         const updatedComments = await PracticeService.getComments(practiceId);
         setComments(updatedComments);
 
+        // Add the new comment ID to the selected thread so it appears immediately
+        if (result.commentId) {
+          setSelectedCommentThreads(prev => {
+            const currentSelection = prev[recordingId];
+            if (currentSelection && Array.isArray(currentSelection)) {
+              // Add to existing selection if not already there
+              if (!currentSelection.includes(result.commentId!)) {
+                return {
+                  ...prev,
+                  [recordingId]: [...currentSelection, result.commentId!]
+                };
+              }
+            } else if (currentSelection === null) {
+              // If viewing just the form (empty spot clicked), show the new comment
+              return {
+                ...prev,
+                [recordingId]: [result.commentId!]
+              };
+            }
+            return prev;
+          });
+        }
+
         setCommentForms(prev => ({
           ...prev,
           [recordingId]: {
@@ -542,11 +565,6 @@ export default function PracticePage() {
                 {/* Practice Recordings */}
                 {stepRecordings && stepRecordings.files.length > 0 && (
                   <div className="mt-6">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                      <Mic className="w-4 h-4 text-red-600" />
-                      Practice Recordings ({stepRecordings.files.length})
-                    </h3>
-
                     <div className="space-y-6">
                       {stepRecordings.files.map((file, fileIndex) => {
                         const piece = convertedAudioPieces.find(p => p.id === file.timestamp);
