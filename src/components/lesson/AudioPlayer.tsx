@@ -20,6 +20,7 @@ interface AudioPlayerProps {
   showDeleteButton?: boolean;
   comments?: RecordingComment[];
   onAddComment?: (timestampSeconds?: number) => void;
+  onCommentMarkerClick?: (commentIds: string[]) => void;
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({
@@ -33,7 +34,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   exerciseName,
   showDeleteButton = true,
   comments = [],
-  onAddComment
+  onAddComment,
+  onCommentMarkerClick
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const waveformRef = useRef<HTMLDivElement>(null);
@@ -218,7 +220,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const clickX = event.clientX - rect.left;
     const seekTime = calculateSeekTime(clickX, rect.width, duration);
 
-    // Always trigger comment form focus with timestamp, and also seek
+    // Trigger comment form with timestamp when clicking empty spot on waveform
     if (onAddComment) {
       onAddComment(seekTime);
     }
@@ -229,9 +231,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const clusterComments = useCallback((comments: RecordingComment[], waveformWidth: number): CommentCluster[] => {
     if (comments.length === 0) return [];
 
-    // Filter comments with valid timestamps and sort by timestamp
+    // Filter to only top-level comments (no parent_comment_id) with valid timestamps and sort by timestamp
     const validComments = comments
-      .filter(comment => comment.timestamp_seconds != null)
+      .filter(comment => comment.timestamp_seconds != null && !comment.parent_comment_id)
       .sort((a, b) => a.timestamp_seconds! - b.timestamp_seconds!);
 
     if (validComments.length === 0) return [];
@@ -303,7 +305,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setPopoverTargetElement(null);
     setStickyCommentCluster(cluster.comments);
     setStickyTargetElement(element);
-  }, [stickyCommentCluster]);
+
+    // Notify parent component about all selected comments in the cluster
+    if (onCommentMarkerClick && cluster.comments.length > 0) {
+      onCommentMarkerClick(cluster.comments.map(c => c.id));
+    }
+  }, [stickyCommentCluster, onCommentMarkerClick]);
 
   // Handle sticky popover close
   const handleStickyClose = useCallback(() => {
@@ -431,11 +438,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
                   return clusters.map((cluster, index) => {
                     const isMultiple = cluster.comments.length > 1;
+                    // Check if this is an end-of-recording comment (within 0.5 seconds of the end)
+                    const isEndComment = cluster.comments.some(c =>
+                      c.timestamp_seconds != null &&
+                      Math.abs(c.timestamp_seconds - duration) < 0.5
+                    );
+
+                    // Use different color for end comments
+                    const markerColor = isEndComment ? 'bg-green-500' : 'bg-blue-500';
+                    const badgeColor = isEndComment ? 'bg-green-600' : 'bg-blue-600';
 
                     return (
                       <div
                         key={`cluster-${index}`}
-                        className="absolute top-0 bottom-0 w-1 bg-blue-500 z-10 cursor-pointer"
+                        className={`absolute top-0 bottom-0 w-1 ${markerColor} z-10 cursor-pointer`}
                         style={{ left: `${cluster.position}%` }}
                         onMouseEnter={(e) => handleCommentHover(cluster, e.currentTarget)}
                         onMouseLeave={handleCommentLeave}
@@ -443,10 +459,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                           e.stopPropagation(); // Prevent waveform click
                           handleCommentClick(cluster, e.currentTarget);
                         }}
+                        title={isEndComment ? 'Comment about the full recording' : 'Comment at this timestamp'}
                       >
-                        <div className="absolute -top-1 left-0 w-3 h-3 bg-blue-500 rounded-full transform -translate-x-1 flex items-center justify-center">
+                        <div className={`absolute -top-1 left-0 w-3 h-3 ${markerColor} rounded-full transform -translate-x-1 flex items-center justify-center`}>
                           {isMultiple && (
-                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center border border-white">
+                            <div className={`absolute -top-1 -right-1 w-4 h-4 ${badgeColor} text-white text-xs font-bold rounded-full flex items-center justify-center border border-white`}>
                               {cluster.comments.length}
                             </div>
                           )}
@@ -472,6 +489,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
               onClose={handleCommentLeave}
               containerRef={waveformContainerRef}
               isSticky={false}
+              recordingDuration={duration}
             />
 
             {/* Sticky Comment popover */}
@@ -482,6 +500,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
               onClose={handleStickyClose}
               containerRef={waveformContainerRef}
               isSticky={true}
+              recordingDuration={duration}
             />
           </div>
         </div>

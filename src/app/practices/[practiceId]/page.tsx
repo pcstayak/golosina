@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft, Calendar, BookOpen, Mic, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PracticeService, Practice, PracticeComment } from '@/services/practiceService';
@@ -10,11 +11,13 @@ import VideoEmbed from '@/components/lesson/VideoEmbed';
 import { formatTime } from '@/utils/audioAnalysis';
 import { VideoEmbedService } from '@/services/videoEmbedService';
 import AudioPlayer from '@/components/lesson/AudioPlayer';
+import CommentThread from '@/components/lesson/CommentThread';
 import { AudioPiece } from '@/contexts/AppContext';
 
 export default function PracticePage() {
   const params = useParams();
   const router = useRouter();
+  const { user, profile } = useAuth();
   const practiceId = params.practiceId as string;
 
   const [practice, setPractice] = useState<Practice | null>(null);
@@ -33,11 +36,16 @@ export default function PracticePage() {
   // Comment form state
   const [commentForms, setCommentForms] = useState<Record<string, {
     text: string;
-    userName: string;
     timestampSeconds?: number;
     includeTimestamp: boolean;
   }>>({});
   const [submittingComment, setSubmittingComment] = useState<string | null>(null);
+
+  // Selected comment thread state - tracks which comment threads are visible for each recording
+  const [selectedCommentThreads, setSelectedCommentThreads] = useState<Record<string, string[] | null>>({});
+
+  // Track which comment UIs are visible (either from marker click or empty click)
+  const [visibleCommentUIs, setVisibleCommentUIs] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function loadPractice() {
@@ -86,6 +94,7 @@ export default function PracticePage() {
       }
 
       const pieces: AudioPiece[] = [];
+      const allTimestamps = new Set<string>();
 
       for (const step of lesson.steps) {
         const stepId = step.id || `order_${step.step_order}`;
@@ -98,6 +107,8 @@ export default function PracticePage() {
         if (stepRecordings?.files) {
           for (const file of stepRecordings.files) {
             try {
+              allTimestamps.add(file.timestamp);
+
               const response = await fetch(file.url);
               const blob = await response.blob();
 
@@ -115,6 +126,14 @@ export default function PracticePage() {
             }
           }
         }
+      }
+
+      console.log('Total recordings:', pieces.length);
+      console.log('Unique timestamps:', allTimestamps.size);
+      console.log('Timestamps:', Array.from(allTimestamps));
+
+      if (pieces.length !== allTimestamps.size) {
+        console.error('WARNING: Some recordings share the same timestamp!');
       }
 
       setConvertedAudioPieces(pieces);
@@ -135,52 +154,83 @@ export default function PracticePage() {
     setPlayingPieceId(playing ? pieceId : null);
   }, []);
 
-  const handleAddComment = useCallback((recordingTimestamp: string, timestampSeconds?: number) => {
+  const handleAddComment = useCallback((recordingId: string, timestampSeconds?: number) => {
+    // Update form state
     setCommentForms(prev => ({
       ...prev,
-      [recordingTimestamp]: {
-        text: prev[recordingTimestamp]?.text || '',
-        userName: prev[recordingTimestamp]?.userName || '',
+      [recordingId]: {
+        text: prev[recordingId]?.text || '',
         timestampSeconds,
         includeTimestamp: timestampSeconds !== undefined
       }
     }));
 
+    // Clear any selected comment thread (we're creating a new comment, not viewing existing ones)
+    setSelectedCommentThreads(prev => ({
+      ...prev,
+      [recordingId]: null
+    }));
+
+    // Show the comment UI
+    setVisibleCommentUIs(prev => ({
+      ...prev,
+      [recordingId]: true
+    }));
+
     setTimeout(() => {
-      const textarea = document.querySelector(`textarea[data-recording="${recordingTimestamp}"]`) as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.focus();
+      const input = document.querySelector(`input[data-recording="${recordingId}"]`) as HTMLInputElement;
+      if (input) {
+        input.focus();
       }
     }, 100);
   }, []);
 
-  const handleUpdateCommentForm = useCallback((recordingTimestamp: string, field: string, value: any) => {
+  const handleUpdateCommentForm = useCallback((recordingId: string, field: string, value: any) => {
     setCommentForms(prev => ({
       ...prev,
-      [recordingTimestamp]: {
-        ...prev[recordingTimestamp],
-        text: prev[recordingTimestamp]?.text || '',
-        userName: prev[recordingTimestamp]?.userName || '',
-        includeTimestamp: prev[recordingTimestamp]?.includeTimestamp || false,
+      [recordingId]: {
+        ...prev[recordingId],
+        text: prev[recordingId]?.text || '',
+        includeTimestamp: prev[recordingId]?.includeTimestamp || false,
         [field]: value
       }
     }));
   }, []);
 
-  const handleSubmitComment = useCallback(async (recordingTimestamp: string) => {
-    const form = commentForms[recordingTimestamp];
-    if (!form || !form.text.trim() || !form.userName.trim()) return;
+  const handleSubmitComment = useCallback(async (recordingId: string) => {
+    const form = commentForms[recordingId];
+    if (!form || !form.text.trim() || !practice) return;
 
-    setSubmittingComment(recordingTimestamp);
+    // Get current user's display name
+    const currentUserName = profile?.display_name || user?.email?.split('@')[0] || 'Anonymous';
+
+    // Prevent duplicate submissions
+    if (submittingComment === recordingId) {
+      console.log('Already submitting comment for this recording, skipping');
+      return;
+    }
+
+    setSubmittingComment(recordingId);
 
     try {
+      // Find the recording duration for this recordingId
+      const piece = convertedAudioPieces.find(p => recordingId.endsWith(p.id));
+      const recordingDuration = piece?.duration || 0;
+
+      // If no timestamp is explicitly set (user didn't click on waveform),
+      // set the timestamp to the end of the recording
+      const timestampToUse = form.includeTimestamp
+        ? form.timestampSeconds
+        : recordingDuration;
+
       const result = await PracticeService.addComment(
         practiceId,
-        recordingTimestamp,
-        form.userName,
+        recordingId,
+        currentUserName,
         form.text,
-        undefined,
-        form.includeTimestamp ? form.timestampSeconds : undefined
+        user?.id,
+        timestampToUse,
+        undefined
       );
 
       if (result.success) {
@@ -189,9 +239,8 @@ export default function PracticePage() {
 
         setCommentForms(prev => ({
           ...prev,
-          [recordingTimestamp]: {
+          [recordingId]: {
             text: '',
-            userName: form.userName,
             includeTimestamp: false
           }
         }));
@@ -203,7 +252,94 @@ export default function PracticePage() {
     } finally {
       setSubmittingComment(null);
     }
-  }, [commentForms, practiceId]);
+  }, [commentForms, practiceId, submittingComment, convertedAudioPieces, practice, profile, user]);
+
+  const handleReply = useCallback(async (recordingId: string, parentCommentId: string, commentText: string) => {
+    if (!practice) return;
+
+    // Get current user's display name
+    const currentUserName = profile?.display_name || user?.email?.split('@')[0] || 'Anonymous';
+
+    try {
+      const result = await PracticeService.addComment(
+        practiceId,
+        recordingId,
+        currentUserName,
+        commentText,
+        user?.id,
+        undefined,
+        parentCommentId
+      );
+
+      if (result.success) {
+        const updatedComments = await PracticeService.getComments(practiceId);
+        setComments(updatedComments);
+      } else {
+        console.error('Failed to add reply:', result.error);
+      }
+    } catch (err) {
+      console.error('Error submitting reply:', err);
+      throw err;
+    }
+  }, [practiceId, practice, profile, user]);
+
+  const handleCommentMarkerClick = useCallback((recordingId: string, commentIds: string[]) => {
+    setSelectedCommentThreads(prev => {
+      // If the same set of comment IDs is already selected, deselect them (hide UI)
+      const currentIds = prev[recordingId];
+      const isSameSelection = currentIds &&
+        currentIds.length === commentIds.length &&
+        currentIds.every(id => commentIds.includes(id));
+
+      if (isSameSelection) {
+        // Hide the comment UI when deselecting
+        setVisibleCommentUIs(prevVisible => ({
+          ...prevVisible,
+          [recordingId]: false
+        }));
+        return {
+          ...prev,
+          [recordingId]: null
+        };
+      } else {
+        // Get the timestamp from the first comment in the cluster
+        // All comments in a cluster should have the same timestamp since they're clustered by proximity
+        const firstComment = comments.find(c => commentIds.includes(c.id));
+        const clusterTimestamp = firstComment?.timestamp_seconds;
+
+        // Set the comment form timestamp to match the cluster's timestamp
+        setCommentForms(prevForms => ({
+          ...prevForms,
+          [recordingId]: {
+            text: prevForms[recordingId]?.text || '',
+            timestampSeconds: clusterTimestamp,
+            includeTimestamp: clusterTimestamp !== undefined
+          }
+        }));
+
+        // Show the comment UI when selecting
+        setVisibleCommentUIs(prevVisible => ({
+          ...prevVisible,
+          [recordingId]: true
+        }));
+        return {
+          ...prev,
+          [recordingId]: commentIds
+        };
+      }
+    });
+  }, [comments]);
+
+  const handleCloseCommentThread = useCallback((recordingId: string) => {
+    setSelectedCommentThreads(prev => ({
+      ...prev,
+      [recordingId]: null
+    }));
+    setVisibleCommentUIs(prev => ({
+      ...prev,
+      [recordingId]: false
+    }));
+  }, []);
 
   const handlePreviousPractice = () => {
     if (currentIndex > 0) {
@@ -336,16 +472,8 @@ export default function PracticePage() {
             || practice.recordings[step.id || '']
             || practice.recordings['undefined']; // Fallback for broken recordings
 
-          // Debug logging
-          console.log(`Step ${stepIndex} - Looking for:`, `step_${stepId}`, 'or', stepId);
-          console.log(`Step ${stepIndex} - Found recordings:`, stepRecordings);
-
-          if (stepIndex === 0) {
-            console.log('All practice recordings:', practice.recordings);
-          }
-
           const stepComments = comments.filter(c =>
-            stepRecordings?.files.some(f => f.timestamp === c.recording_id)
+            stepRecordings?.files.some(f => `${stepId}_${f.timestamp}` === c.recording_id)
           );
 
           return (
@@ -424,8 +552,9 @@ export default function PracticePage() {
                         const piece = convertedAudioPieces.find(p => p.id === file.timestamp);
                         if (!piece) return null;
 
+                        const recordingId = `${stepId}_${file.timestamp}`;
                         const recordingComments = comments.filter(
-                          c => c.recording_id === file.timestamp
+                          c => c.recording_id === recordingId
                         );
 
                         return (
@@ -453,60 +582,33 @@ export default function PracticePage() {
                               showDeleteButton={false}
                               comments={recordingComments}
                               onAddComment={(timestampSeconds) => {
-                                handleAddComment(file.timestamp, timestampSeconds);
+                                handleAddComment(recordingId, timestampSeconds);
+                              }}
+                              onCommentMarkerClick={(commentIds) => {
+                                handleCommentMarkerClick(recordingId, commentIds);
                               }}
                             />
 
-                            {/* Add Comment Form */}
-                            <div className="bg-gray-50 rounded-lg p-4">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                                Add Comment
-                              </h4>
-
-                              <div className="space-y-3">
-                                <input
-                                  type="text"
-                                  placeholder="Your name"
-                                  value={commentForms[file.timestamp]?.userName || ''}
-                                  onChange={(e) => handleUpdateCommentForm(file.timestamp, 'userName', e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            {/* Integrated Comment Thread - shown when UI is visible */}
+                            {visibleCommentUIs[recordingId] && (
+                              <div className="mt-4">
+                                <CommentThread
+                                  comments={recordingComments}
+                                  onReply={(parentCommentId, commentText) =>
+                                    handleReply(recordingId, parentCommentId, commentText)
+                                  }
+                                  currentUserName={profile?.display_name || user?.email?.split('@')[0] || 'Anonymous'}
+                                  selectedCommentId={selectedCommentThreads[recordingId]}
+                                  onClose={() => handleCloseCommentThread(recordingId)}
+                                  recordingId={recordingId}
+                                  recordingDuration={piece?.duration || 0}
+                                  commentFormState={commentForms[recordingId]}
+                                  onUpdateForm={(field, value) => handleUpdateCommentForm(recordingId, field, value)}
+                                  onSubmitComment={() => handleSubmitComment(recordingId)}
+                                  showForm={true}
                                 />
-                                <textarea
-                                  data-recording={file.timestamp}
-                                  placeholder="Enter your comment..."
-                                  value={commentForms[file.timestamp]?.text || ''}
-                                  onChange={(e) => handleUpdateCommentForm(file.timestamp, 'text', e.target.value)}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
-                                  rows={3}
-                                />
-
-                                {commentForms[file.timestamp]?.timestampSeconds !== undefined && (
-                                  <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                      type="checkbox"
-                                      checked={commentForms[file.timestamp]?.includeTimestamp || false}
-                                      onChange={(e) => handleUpdateCommentForm(file.timestamp, 'includeTimestamp', e.target.checked)}
-                                      className="w-4 h-4"
-                                    />
-                                    <span>
-                                      Include timestamp
-                                      {commentForms[file.timestamp]?.includeTimestamp &&
-                                        ` (${formatTime(commentForms[file.timestamp].timestampSeconds!)})`}
-                                    </span>
-                                  </label>
-                                )}
-
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  onClick={() => handleSubmitComment(file.timestamp)}
-                                  disabled={!commentForms[file.timestamp]?.text?.trim() || !commentForms[file.timestamp]?.userName?.trim()}
-                                >
-                                  <Send className="w-4 h-4 mr-2" />
-                                  Post Comment
-                                </Button>
                               </div>
-                            </div>
+                            )}
                           </div>
                         );
                       })}

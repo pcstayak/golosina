@@ -36,6 +36,7 @@ export interface PracticeComment {
   user_id?: string;
   comment_text: string;
   timestamp_seconds?: number;
+  parent_comment_id?: string | null;
   created_at: string;
 }
 
@@ -426,7 +427,8 @@ export class PracticeService {
     userName: string,
     commentText: string,
     userId?: string,
-    timestampSeconds?: number
+    timestampSeconds?: number,
+    parentCommentId?: string
   ): Promise<{ success: boolean; error?: string; commentId?: string }> {
     if (!supabase) {
       return { success: false, error: 'Supabase is not configured' };
@@ -442,6 +444,7 @@ export class PracticeService {
           user_id: userId,
           comment_text: commentText.trim(),
           timestamp_seconds: timestampSeconds || null,
+          parent_comment_id: parentCommentId || null,
         })
         .select('id')
         .single();

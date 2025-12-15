@@ -11,6 +11,7 @@ interface CommentPopoverProps {
   onClose: () => void;
   containerRef?: React.RefObject<HTMLElement>;
   isSticky?: boolean;
+  recordingDuration?: number;
 }
 
 const CommentPopover: React.FC<CommentPopoverProps> = ({
@@ -19,7 +20,8 @@ const CommentPopover: React.FC<CommentPopoverProps> = ({
   targetElement,
   onClose,
   containerRef,
-  isSticky = false
+  isSticky = false,
+  recordingDuration = 0
 }) => {
   const popoverRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, left: 0, height: 0 });
@@ -180,38 +182,49 @@ const CommentPopover: React.FC<CommentPopoverProps> = ({
 
       {/* Comments list - no scrollbar, exact height */}
       <div className="overflow-hidden">
-        {displayedComments.map((comment, index) => (
-          <div
-            key={comment.id}
-            className="px-2 py-1.5 flex items-start gap-1"
-            style={{ height: '48px' }}
-          >
-            {/* Avatar */}
-            <div className="w-4 h-4 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">
-              {comment.user_name.charAt(0).toUpperCase()}
-            </div>
+        {displayedComments.map((comment, index) => {
+          // Check if this is an end-of-recording comment
+          const isEndComment = comment.timestamp_seconds != null &&
+            recordingDuration > 0 &&
+            Math.abs(comment.timestamp_seconds - recordingDuration) < 0.5;
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              {/* Header line */}
-              <div className="flex items-center justify-between text-xs leading-tight">
-                <span className="font-medium text-gray-900 truncate flex-1 mr-1">
-                  {comment.user_name}
-                </span>
-                <div className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
-                  {comment.timestamp_seconds != null && (
-                    <span>{formatTime(comment.timestamp_seconds)}</span>
-                  )}
+          const avatarColor = isEndComment ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600';
+
+          return (
+            <div
+              key={comment.id}
+              className="px-2 py-1.5 flex items-start gap-1"
+              style={{ height: '48px' }}
+            >
+              {/* Avatar */}
+              <div className={`w-4 h-4 ${avatarColor} rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5`}>
+                {comment.user_name.charAt(0).toUpperCase()}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                {/* Header line */}
+                <div className="flex items-center justify-between text-xs leading-tight">
+                  <span className="font-medium text-gray-900 truncate flex-1 mr-1">
+                    {comment.user_name}
+                  </span>
+                  <div className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
+                    {comment.timestamp_seconds != null && (
+                      <span className={isEndComment ? 'text-green-600' : ''}>
+                        {isEndComment ? 'Full' : formatTime(comment.timestamp_seconds)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Comment text */}
+                <div className="text-xs text-gray-700 leading-tight truncate">
+                  {comment.comment_text}
                 </div>
               </div>
-
-              {/* Comment text */}
-              <div className="text-xs text-gray-700 leading-tight truncate">
-                {comment.comment_text}
-              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {hiddenCount > 0 && (
           <div className="px-2 py-1 text-xs text-gray-500 italic" style={{ height: '24px' }}>
