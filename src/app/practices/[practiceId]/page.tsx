@@ -410,7 +410,7 @@ export default function PracticePage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <Button
               variant="secondary"
               onClick={() => router.push('/')}
@@ -418,6 +418,22 @@ export default function PracticePage() {
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Home
             </Button>
+
+            {/* Stats - Inline in header */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                <span className="text-gray-600">{formatDate(practice.created_at)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <BookOpen className="w-4 h-4 text-green-600" />
+                <span className="text-gray-600">{lesson.steps.length} steps</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Mic className="w-4 h-4 text-purple-600" />
+                <span className="text-gray-600">{recordingCount} recordings</span>
+              </div>
+            </div>
 
             {allPractices.length > 1 && currentIndex >= 0 && (
               <div className="flex items-center gap-2">
@@ -447,41 +463,8 @@ export default function PracticePage() {
               {lesson.title}
             </h1>
             {lesson.description && (
-              <p className="text-gray-600 mb-4">{lesson.description}</p>
+              <p className="text-gray-600">{lesson.description}</p>
             )}
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                <Calendar className="w-5 h-5 text-blue-600" />
-                <div>
-                  <div className="text-sm text-gray-600">Practiced On</div>
-                  <div className="font-semibold text-gray-900">
-                    {formatDate(practice.created_at)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                <BookOpen className="w-5 h-5 text-green-600" />
-                <div>
-                  <div className="text-sm text-gray-600">Lesson Steps</div>
-                  <div className="font-semibold text-gray-900">
-                    {lesson.steps.length}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
-                <Mic className="w-5 h-5 text-purple-600" />
-                <div>
-                  <div className="text-sm text-gray-600">Recordings</div>
-                  <div className="font-semibold text-gray-900">
-                    {recordingCount}
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
