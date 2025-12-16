@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useApp } from '@/contexts/AppContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
-import { ArrowLeft, Share2 } from 'lucide-react'
+import { ArrowLeft, Share2, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import StepDisplay from '@/components/lessons/StepDisplay'
 import RecordingControls from '@/components/lesson/RecordingControls'
@@ -32,6 +32,11 @@ export default function LessonPracticePage() {
   // Get all recordings across all steps
   const allRecordings = Object.values(state.currentPracticePieces).flat()
   const hasRecordings = allRecordings.length > 0
+
+  // Get current step and recordings for current step only
+  const currentStep = lesson?.steps[state.currentStepIndex]
+  const currentStepId = state.currentStepId || ''
+  const currentStepRecordings = state.currentPracticePieces[currentStepId] || []
 
   useEffect(() => {
     const fetchLesson = async () => {
@@ -184,6 +189,32 @@ export default function LessonPracticePage() {
     }
   }, [])
 
+  const handlePreviousStep = useCallback(() => {
+    if (!lesson || state.currentStepIndex <= 0) return
+
+    const newIndex = state.currentStepIndex - 1
+    const step = lesson.steps[newIndex]
+    const stepId = step.id || `order_${step.step_order}`
+
+    dispatch({
+      type: 'SET_CURRENT_STEP',
+      payload: { stepId, stepIndex: newIndex }
+    })
+  }, [lesson, state.currentStepIndex, dispatch])
+
+  const handleNextStep = useCallback(() => {
+    if (!lesson || state.currentStepIndex >= lesson.steps.length - 1) return
+
+    const newIndex = state.currentStepIndex + 1
+    const step = lesson.steps[newIndex]
+    const stepId = step.id || `order_${step.step_order}`
+
+    dispatch({
+      type: 'SET_CURRENT_STEP',
+      payload: { stepId, stepIndex: newIndex }
+    })
+  }, [lesson, state.currentStepIndex, dispatch])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -250,17 +281,44 @@ export default function LessonPracticePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Lesson Steps */}
           <div className="lg:col-span-2 space-y-6">
-            <h2 className="text-xl font-semibold text-gray-800">
-              Lesson Steps ({lesson.steps.length})
-            </h2>
-            {lesson.steps.map((step, index) => (
+            {/* Step Navigation Header */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Step {state.currentStepIndex + 1} of {lesson.steps.length}
+              </h2>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handlePreviousStep}
+                  disabled={state.currentStepIndex === 0}
+                  className="flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleNextStep}
+                  disabled={state.currentStepIndex === lesson.steps.length - 1}
+                  className="flex items-center gap-1"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Current Step Display */}
+            {currentStep && (
               <StepDisplay
-                key={step.id || index}
-                step={step}
-                stepNumber={index + 1}
+                key={currentStep.id || state.currentStepIndex}
+                step={currentStep}
+                stepNumber={state.currentStepIndex + 1}
                 showComments={!!assignmentId}
               />
-            ))}
+            )}
           </div>
 
           {/* Recording Section */}
@@ -276,27 +334,21 @@ export default function LessonPracticePage() {
 
               <RecordingControls />
 
-              {allRecordings.length > 0 && (
+              {currentStepRecordings.length > 0 && (
                 <div className="mt-6 space-y-4">
                   <h3 className="text-sm font-semibold text-gray-700">
-                    Recordings ({allRecordings.length})
+                    Recordings for this step ({currentStepRecordings.length})
                   </h3>
-                  {allRecordings.map((piece, index) => (
+                  {currentStepRecordings.map((piece, index) => (
                     <AudioPlayer
                       key={piece.id}
                       piece={piece}
                       index={index}
                       onDelete={() => {
-                        // Find which step key this recording belongs to
-                        const stepKey = Object.entries(state.currentPracticePieces).find(
-                          ([key, pieces]) => pieces.some(p => p.id === piece.id)
-                        )?.[0];
-                        if (stepKey) {
-                          dispatch({
-                            type: 'REMOVE_AUDIO_PIECE',
-                            payload: { stepId: stepKey, pieceId: piece.id },
-                          });
-                        }
+                        dispatch({
+                          type: 'REMOVE_AUDIO_PIECE',
+                          payload: { stepId: currentStepId, pieceId: piece.id },
+                        });
                       }}
                       onDownload={downloadPiece}
                       onTitleUpdate={undefined}
@@ -309,10 +361,19 @@ export default function LessonPracticePage() {
                 </div>
               )}
 
-              {allRecordings.length === 0 && !state.isRecording && (
+              {currentStepRecordings.length === 0 && !state.isRecording && (
                 <div className="mt-6 p-4 bg-gray-50 rounded-lg text-center">
                   <p className="text-sm text-gray-600">
-                    No recordings yet. Click the microphone to start.
+                    No recordings for this step yet. Click the microphone to start.
+                  </p>
+                </div>
+              )}
+
+              {/* Total recordings across all steps indicator */}
+              {allRecordings.length > 0 && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg text-center">
+                  <p className="text-xs text-blue-700 font-medium">
+                    Total: {allRecordings.length} recording{allRecordings.length !== 1 ? 's' : ''} across all steps
                   </p>
                 </div>
               )}
