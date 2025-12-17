@@ -8,6 +8,7 @@ import VideoEmbed from '@/components/lesson/VideoEmbed';
 import { VideoEmbedService } from '@/services/videoEmbedService';
 import AudioPlayer from '@/components/lesson/AudioPlayer';
 import { PracticeComment as RecordingComment } from '@/services/practiceService';
+import LyricsWithAnnotations from './LyricsWithAnnotations';
 
 export interface MediaComment {
   id: string;
@@ -27,6 +28,11 @@ interface MediaPreviewProps {
   onDeleteComment: (commentId: string) => void;
   isEditable: boolean;
   lyrics?: string;
+  mediaId?: string;
+  userId?: string;
+  isTeacher?: boolean;
+  assignmentId?: string;
+  availableStudents?: Array<{ id: string; name: string }>;
 }
 
 const MediaPreview: React.FC<MediaPreviewProps> = ({
@@ -38,7 +44,12 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
   onAddComment,
   onDeleteComment,
   isEditable,
-  lyrics
+  lyrics,
+  mediaId,
+  userId,
+  isTeacher = false,
+  assignmentId,
+  availableStudents = []
 }) => {
   // State for video URL with timestamp (for reloading embedded videos)
   const [currentVideoUrl, setCurrentVideoUrl] = useState('');
@@ -336,7 +347,24 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
       )}
 
       {/* Lyrics Display with Annotations */}
-      {lyrics && (
+      {lyrics && mediaId && userId && (
+        <div className="mt-4">
+          <div className="p-4 bg-gray-50 rounded-lg border">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Lyrics</h3>
+            <LyricsWithAnnotations
+              lyrics={lyrics}
+              mediaId={mediaId}
+              userId={userId}
+              isTeacher={isTeacher}
+              assignmentId={assignmentId}
+              availableStudents={availableStudents}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Fallback for lyrics without annotation support */}
+      {lyrics && (!mediaId || !userId) && (
         <div className="mt-4">
           <div className="p-4 bg-gray-50 rounded-lg border">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Lyrics</h3>
@@ -344,10 +372,8 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
               {lyrics}
             </div>
           </div>
-
-          {/* Annotations coming in future update - placeholder for now */}
           <div className="mt-2 text-xs text-gray-500 italic">
-            Annotation feature coming soon - select text to add notes
+            Sign in to add annotations
           </div>
         </div>
       )}

@@ -288,6 +288,7 @@ export default function LessonPracticePage() {
                 step={currentStep}
                 stepNumber={state.currentStepIndex + 1}
                 showComments={!!assignmentId}
+                assignmentId={assignmentId || undefined}
               />
             )}
 

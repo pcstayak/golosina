@@ -6,14 +6,18 @@ import VideoEmbed from '@/components/lesson/VideoEmbed'
 import { VideoEmbedService } from '@/services/videoEmbedService'
 import MediaPreview from '@/components/lessons/MediaPreview'
 import type { LessonStep } from '@/services/lessonService'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface StepDisplayProps {
   step: LessonStep
   stepNumber: number
   showComments?: boolean
+  assignmentId?: string
+  availableStudents?: Array<{ id: string; name: string }>
 }
 
-export default function StepDisplay({ step, stepNumber, showComments = false }: StepDisplayProps) {
+export default function StepDisplay({ step, stepNumber, showComments = false, assignmentId, availableStudents = [] }: StepDisplayProps) {
+  const { user, profile } = useAuth()
   const [isExpanded, setIsExpanded] = useState(true)
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
 
@@ -62,6 +66,11 @@ export default function StepDisplay({ step, stepNumber, showComments = false }: 
                     onDeleteComment={() => {}}
                     isEditable={false}
                     lyrics={allMedia[currentMediaIndex].lyrics}
+                    mediaId={allMedia[currentMediaIndex].id}
+                    userId={user?.id}
+                    isTeacher={profile?.role === 'teacher'}
+                    assignmentId={assignmentId}
+                    availableStudents={availableStudents}
                   />
                 </div>
               ) : (
