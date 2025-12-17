@@ -61,18 +61,21 @@ export default function PracticePage() {
         setPractice(practiceData);
         setIsOwner(PracticeService.isPracticeOwned(practiceId));
 
-        const lessonData = await LessonService.getLesson(practiceData.lesson_id);
-        if (lessonData) {
-          setLesson(lessonData);
+        // Fetch lesson if lesson_id exists (not archived)
+        if (practiceData.lesson_id) {
+          const lessonData = await LessonService.getLesson(practiceData.lesson_id);
+          if (lessonData) {
+            setLesson(lessonData);
+          }
+
+          const lessonPractices = await PracticeService.getPracticesForLesson(practiceData.lesson_id);
+          setAllPractices(lessonPractices);
+          const index = lessonPractices.findIndex(p => p.practice_id === practiceId);
+          setCurrentIndex(index);
         }
 
         const commentsData = await PracticeService.getComments(practiceId);
         setComments(commentsData);
-
-        const lessonPractices = await PracticeService.getPracticesForLesson(practiceData.lesson_id);
-        setAllPractices(lessonPractices);
-        const index = lessonPractices.findIndex(p => p.practice_id === practiceId);
-        setCurrentIndex(index);
       } catch (err) {
         console.error('Error loading practice:', err);
         setError('Failed to load practice');
@@ -386,11 +389,31 @@ export default function PracticePage() {
     );
   }
 
-  if (error || !practice || !lesson) {
+  if (error || !practice) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="text-gray-800 text-xl mb-4">{error || 'Practice not found'}</div>
+          <Button onClick={() => router.push('/')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle archived practice (lesson was deleted)
+  if (!lesson) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gray-800 text-xl mb-4">
+            This practice session is archived
+          </div>
+          <div className="text-gray-600 mb-4">
+            The original lesson has been deleted, but your practice recordings are preserved.
+          </div>
           <Button onClick={() => router.push('/')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Go Back
@@ -413,7 +436,7 @@ export default function PracticePage() {
           {/* Lesson title and description - centered */}
           <div className="text-center mb-4">
             <h1 className="text-2xl font-bold text-gray-900">
-              {lesson.title}
+              {lesson.title}{!practice.lesson_id && ' (archived)'}
             </h1>
             {lesson.description && (
               <p className="text-sm text-gray-600 mt-1">{lesson.description}</p>

@@ -27,7 +27,7 @@ export default function CreateLessonPage() {
       step_order: 0,
       title: '',
       description: '',
-      tips: '',
+      tips: [],
       media: [],
     },
   ])
@@ -92,7 +92,7 @@ export default function CreateLessonPage() {
         step_order: steps.length,
         title: '',
         description: '',
-        tips: '',
+        tips: [],
         media: [],
       },
     ])
@@ -168,7 +168,7 @@ export default function CreateLessonPage() {
           step_order: 0,
           title: '',
           description: '',
-          tips: '',
+          tips: [],
           media: [],
         },
       ])
@@ -235,9 +235,9 @@ export default function CreateLessonPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-50 bg-white border-b shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/">
             <Button variant="secondary" size="sm" className="flex items-center gap-2">
               <ArrowLeft className="w-4 h-4" />
@@ -268,14 +268,17 @@ export default function CreateLessonPage() {
             </Button>
           </div>
         </div>
+      </div>
 
+      {/* Main content */}
+      <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Main Form */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-800 mb-6">Create New Lesson</h1>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
                 Lesson Title *
               </label>
               <input
@@ -283,36 +286,39 @@ export default function CreateLessonPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Beginner Vocal Warm-up"
-                className="w-full px-3 py-2 border rounded-md"
+                className="flex-1 px-3 py-2 border rounded-md"
                 required
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="flex items-start gap-4">
+              <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0 pt-2">
                 Description
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe what this lesson is about..."
-                className="w-full px-3 py-2 border rounded-md"
+                className="flex-1 px-3 py-2 border rounded-md"
                 rows={3}
               />
             </div>
 
             {profile?.role === 'teacher' && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isTemplate"
-                  checked={isTemplate}
-                  onChange={(e) => setIsTemplate(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-                />
-                <label htmlFor="isTemplate" className="text-sm text-gray-700">
-                  Save as template (can be assigned to students)
-                </label>
+              <div className="flex items-center gap-4">
+                <div className="w-32 flex-shrink-0"></div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isTemplate"
+                    checked={isTemplate}
+                    onChange={(e) => setIsTemplate(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isTemplate" className="text-sm text-gray-700">
+                    Save as template (can be assigned to students)
+                  </label>
+                </div>
               </div>
             )}
           </div>

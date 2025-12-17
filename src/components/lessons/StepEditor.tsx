@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import { X, GripVertical } from 'lucide-react'
+import { X, GripVertical, Plus } from 'lucide-react'
 import MediaInput from './MediaInput'
 import type { LessonStep } from '@/services/lessonService'
 
@@ -117,9 +117,9 @@ export default function StepEditor({
       </div>
 
       {isExpanded && (
-        <div className="p-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="p-4 space-y-3">
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
               Step Title *
             </label>
             <input
@@ -127,41 +127,73 @@ export default function StepEditor({
               value={step.title}
               onChange={(e) => handleFieldChange('title', e.target.value)}
               placeholder="e.g., Breathing Exercise"
-              className="w-full px-3 py-2 border rounded-md"
+              className="flex-1 px-3 py-2 border rounded-md"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="flex items-start gap-4">
+            <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0 pt-2">
               Description
             </label>
             <textarea
               value={step.description || ''}
               onChange={(e) => handleFieldChange('description', e.target.value)}
               placeholder="Explain what the student should do in this step..."
-              className="w-full px-3 py-2 border rounded-md"
+              className="flex-1 px-3 py-2 border rounded-md"
               rows={3}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          {/* Tips - Bullet Point List */}
+          <div className="flex items-start gap-4">
+            <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0 pt-2">
               Tips
             </label>
-            <textarea
-              value={step.tips || ''}
-              onChange={(e) => handleFieldChange('tips', e.target.value)}
-              placeholder="Add helpful tips or common mistakes to avoid..."
-              className="w-full px-3 py-2 border rounded-md"
-              rows={2}
-            />
+            <div className="flex-1 space-y-2">
+              {(step.tips || []).map((tip, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <span className="text-gray-500">•</span>
+                  <input
+                    type="text"
+                    value={tip}
+                    onChange={(e) => {
+                      const newTips = [...(step.tips || [])];
+                      newTips[index] = e.target.value;
+                      handleFieldChange('tips', newTips);
+                    }}
+                    placeholder="Enter a tip..."
+                    className="flex-1 px-3 py-2 border rounded-md"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newTips = (step.tips || []).filter((_, i) => i !== index);
+                      handleFieldChange('tips', newTips.length > 0 ? newTips : undefined);
+                    }}
+                    className="p-1 text-red-600 hover:text-red-700"
+                    title="Remove tip"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const newTips = [...(step.tips || []), ''];
+                  handleFieldChange('tips', newTips);
+                }}
+                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+              >
+                <Plus className="w-4 h-4" />
+                Add Tip
+              </button>
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Media Content
-            </label>
             <MediaInput
               media={step.media}
               onChange={(media) => handleFieldChange('media', media)}

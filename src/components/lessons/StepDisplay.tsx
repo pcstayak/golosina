@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import VideoCarousel from '@/components/lesson/VideoCarousel'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import VideoEmbed from '@/components/lesson/VideoEmbed'
 import { VideoEmbedService } from '@/services/videoEmbedService'
+import MediaPreview from '@/components/lessons/MediaPreview'
 import type { LessonStep } from '@/services/lessonService'
 
 interface StepDisplayProps {
@@ -14,8 +15,10 @@ interface StepDisplayProps {
 
 export default function StepDisplay({ step, stepNumber, showComments = false }: StepDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(true)
-  const videoMedia = step.media.filter((m) => m.media_type === 'video')
-  const imageMedia = step.media.filter((m) => m.media_type === 'image' || m.media_type === 'gif')
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
+
+  // Combine all media types and sort by display_order
+  const allMedia = [...step.media].sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
 
   return (
     <div className="bg-white rounded-lg border">
@@ -42,71 +45,102 @@ export default function StepDisplay({ step, stepNumber, showComments = false }: 
             <p className="text-gray-700 whitespace-pre-wrap mb-4">{step.description}</p>
           )}
 
-      {/* Media Content */}
-      {videoMedia.length > 0 && (
-        <div className="mb-6">
-          {videoMedia.length === 1 ? (
-            <div>
-              {videoMedia[0].embed_id ? (
-                <VideoEmbed
-                  embedUrl={VideoEmbedService.getEmbedUrl(
-                    (videoMedia[0].media_platform as any) || 'youtube',
-                    videoMedia[0].embed_id
-                  )}
-                  platform={videoMedia[0].media_platform as any}
-                  title={videoMedia[0].caption}
-                />
+          {/* Unified Media Carousel */}
+          {allMedia.length > 0 && (
+            <div className="mb-6">
+              {/* Current Media Display */}
+              {allMedia[currentMediaIndex].media_type === 'video' || allMedia[currentMediaIndex].media_type === 'audio' ? (
+                // Video/Audio - MediaPreview handles its own container sizing
+                <div className="w-full">
+                  <MediaPreview
+                    mediaUrl={allMedia[currentMediaIndex].media_url}
+                    mediaType={allMedia[currentMediaIndex].media_type}
+                    mediaPlatform={allMedia[currentMediaIndex].media_platform}
+                    embedId={allMedia[currentMediaIndex].embed_id}
+                    comments={allMedia[currentMediaIndex].comments || []}
+                    onAddComment={() => {}}
+                    onDeleteComment={() => {}}
+                    isEditable={false}
+                    lyrics={allMedia[currentMediaIndex].lyrics}
+                  />
+                </div>
               ) : (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
-                  <p className="text-sm text-yellow-800">
-                    Video embed ID missing. URL: {videoMedia[0].media_url}
-                  </p>
+                // Image/GIF - use 16:9 container with navigation
+                <div className="relative">
+                  <div className="relative" style={{ paddingTop: '56.25%' }}>
+                    <div className="absolute inset-0 flex items-center justify-center p-4 bg-gray-100 rounded-lg">
+                      <img
+                        src={allMedia[currentMediaIndex].media_url}
+                        alt={allMedia[currentMediaIndex].caption || `Media ${currentMediaIndex + 1}`}
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Navigation Buttons - positioned on fixed container */}
+                  {allMedia.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setCurrentMediaIndex((prev) => (prev === 0 ? allMedia.length - 1 : prev - 1))}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all z-10"
+                        aria-label="Previous media"
+                      >
+                        <ChevronLeft className="w-5 h-5 text-gray-800" />
+                      </button>
+
+                      <button
+                        onClick={() => setCurrentMediaIndex((prev) => (prev === allMedia.length - 1 ? 0 : prev + 1))}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition-all z-10"
+                        aria-label="Next media"
+                      >
+                        <ChevronRight className="w-5 h-5 text-gray-800" />
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
-              {videoMedia[0].caption && (
-                <p className="text-sm text-gray-600 mt-2">{videoMedia[0].caption}</p>
+
+              {/* Caption - outside fixed container, scales vertically */}
+              {allMedia[currentMediaIndex].caption && (
+                <p className="mt-3 text-sm text-gray-700">{allMedia[currentMediaIndex].caption}</p>
+              )}
+
+              {/* Dot Indicators - Only show if more than one media item */}
+              {allMedia.length > 1 && (
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  {allMedia.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentMediaIndex(index)}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        index === currentMediaIndex
+                          ? 'bg-blue-600 w-8'
+                          : 'bg-gray-300 hover:bg-gray-400'
+                      }`}
+                      aria-label={`Go to media ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Media Counter - Only show if more than one media item */}
+              {allMedia.length > 1 && (
+                <p className="mt-2 text-center text-sm text-gray-600">
+                  Media {currentMediaIndex + 1} of {allMedia.length}
+                </p>
               )}
             </div>
-          ) : (
-            <VideoCarousel
-              videos={videoMedia.map((m) => ({
-                video_url: m.media_url,
-                video_platform: m.media_platform as any,
-                embed_id: m.embed_id || '',
-                description: m.caption,
-                display_order: m.display_order,
-              }))}
-            />
           )}
-        </div>
-      )}
-
-      {imageMedia.length > 0 && (
-        <div className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {imageMedia.map((media, index) => (
-              <div key={index} className="rounded-lg overflow-hidden border">
-                <img
-                  src={media.media_url}
-                  alt={media.caption || `Image ${index + 1}`}
-                  className="w-full h-auto"
-                />
-                {media.caption && (
-                  <div className="p-2 bg-gray-50">
-                    <p className="text-sm text-gray-600">{media.caption}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
           {/* Tips */}
-          {step.tips && (
+          {step.tips && step.tips.length > 0 && (
             <div className="mb-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg">
-              <h3 className="text-sm font-semibold text-yellow-900 mb-1">💡 Tips</h3>
-              <p className="text-sm text-yellow-800 whitespace-pre-wrap">{step.tips}</p>
+              <h3 className="text-sm font-semibold text-yellow-900 mb-2">💡 Tips</h3>
+              <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
+                {step.tips.map((tip, index) => (
+                  <li key={index}>{tip}</li>
+                ))}
+              </ul>
             </div>
           )}
 

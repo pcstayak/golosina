@@ -1,13 +1,23 @@
 import { supabase } from '@/lib/supabase';
 
+export interface MediaComment {
+  id: string;
+  timestamp_seconds: number;
+  comment_text: string;
+  created_by: string;
+  created_at: string;
+}
+
 export interface LessonStepMedia {
   id?: string;
-  media_type: 'video' | 'image' | 'gif';
+  media_type: 'video' | 'image' | 'gif' | 'audio';
   media_url: string;
   media_platform?: string;
   embed_id?: string;
   display_order: number;
   caption?: string;
+  lyrics?: string;
+  comments?: MediaComment[];
 }
 
 export interface LessonStepComment {
@@ -22,7 +32,7 @@ export interface LessonStep {
   step_order: number;
   title: string;
   description?: string;
-  tips?: string;
+  tips?: string[];
   media: LessonStepMedia[];
   comments?: LessonStepComment[];
 }
@@ -59,7 +69,7 @@ export class LessonService {
     steps: Array<{
       title: string;
       description?: string;
-      tips?: string;
+      tips?: string[];
       media: Array<Omit<LessonStepMedia, 'id'>>;
     }>;
   }): Promise<{ success: boolean; lessonId?: string; error?: string }> {
@@ -108,22 +118,44 @@ export class LessonService {
 
         // Create media for this step
         if (step.media && step.media.length > 0) {
-          const mediaInserts = step.media.map((media) => ({
-            lesson_step_id: stepData.id,
-            media_type: media.media_type,
-            media_url: media.media_url,
-            media_platform: media.media_platform,
-            embed_id: media.embed_id,
-            display_order: media.display_order,
-            caption: media.caption,
-          }));
+          for (const media of step.media) {
+            const { data: mediaData, error: mediaError } = await supabase
+              .from('lesson_step_media')
+              .insert({
+                lesson_step_id: stepData.id,
+                media_type: media.media_type,
+                media_url: media.media_url,
+                media_platform: media.media_platform,
+                embed_id: media.embed_id,
+                display_order: media.display_order,
+                caption: media.caption,
+                lyrics: media.lyrics,
+              })
+              .select()
+              .single();
 
-          const { error: mediaError } = await supabase
-            .from('lesson_step_media')
-            .insert(mediaInserts);
+            if (mediaError) {
+              console.error('Error inserting media:', mediaError);
+              continue;
+            }
 
-          if (mediaError) {
-            console.error('Error inserting media:', mediaError);
+            // Insert media comments if they exist
+            if (media.comments && media.comments.length > 0 && mediaData) {
+              const commentInserts = media.comments.map((comment) => ({
+                media_id: mediaData.id,
+                timestamp_seconds: comment.timestamp_seconds,
+                comment_text: comment.comment_text,
+                created_by: comment.created_by,
+              }));
+
+              const { error: commentsError } = await supabase
+                .from('lesson_media_comments')
+                .insert(commentInserts);
+
+              if (commentsError) {
+                console.error('Error inserting media comments:', commentsError);
+              }
+            }
           }
         }
       }
@@ -193,22 +225,44 @@ export class LessonService {
 
           // Create media for this step
           if (step.media && step.media.length > 0) {
-            const mediaInserts = step.media.map((media) => ({
-              lesson_step_id: stepData.id,
-              media_type: media.media_type,
-              media_url: media.media_url,
-              media_platform: media.media_platform,
-              embed_id: media.embed_id,
-              display_order: media.display_order,
-              caption: media.caption,
-            }));
+            for (const media of step.media) {
+              const { data: mediaData, error: mediaError } = await supabase
+                .from('lesson_step_media')
+                .insert({
+                  lesson_step_id: stepData.id,
+                  media_type: media.media_type,
+                  media_url: media.media_url,
+                  media_platform: media.media_platform,
+                  embed_id: media.embed_id,
+                  display_order: media.display_order,
+                  caption: media.caption,
+                  lyrics: media.lyrics,
+                })
+                .select()
+                .single();
 
-            const { error: mediaError } = await supabase
-              .from('lesson_step_media')
-              .insert(mediaInserts);
+              if (mediaError) {
+                console.error('Error creating media:', mediaError);
+                continue;
+              }
 
-            if (mediaError) {
-              console.error('Error creating media:', mediaError);
+              // Insert media comments if they exist
+              if (media.comments && media.comments.length > 0 && mediaData) {
+                const commentInserts = media.comments.map((comment) => ({
+                  media_id: mediaData.id,
+                  timestamp_seconds: comment.timestamp_seconds,
+                  comment_text: comment.comment_text,
+                  created_by: comment.created_by,
+                }));
+
+                const { error: commentsError } = await supabase
+                  .from('lesson_media_comments')
+                  .insert(commentInserts);
+
+                if (commentsError) {
+                  console.error('Error inserting media comments:', commentsError);
+                }
+              }
             }
           }
         }
@@ -290,14 +344,42 @@ export class LessonService {
         }
       }
 
+      // Fetch comments for all media
+      const mediaIds = mediaData.map((m) => m.id);
+      let mediaCommentsData: any[] = [];
+
+      if (mediaIds.length > 0) {
+        const { data: fetchedComments, error: commentsError } = await supabase
+          .from('lesson_media_comments')
+          .select('*')
+          .in('media_id', mediaIds)
+          .order('timestamp_seconds', { ascending: true });
+
+        if (commentsError) {
+          console.error('Error fetching media comments:', commentsError);
+        } else {
+          mediaCommentsData = fetchedComments || [];
+        }
+      }
+
+      // Attach comments to media items
+      const mediaWithComments = mediaData.map((media) => ({
+        ...media,
+        comments: mediaCommentsData.filter((c) => c.media_id === media.id),
+      }));
+
       // Combine steps with media
       const steps: LessonStep[] = (stepsData || []).map((step) => ({
         id: step.id,
         step_order: step.step_order,
         title: step.title,
         description: step.description,
-        tips: step.tips,
-        media: mediaData.filter((m) => m.lesson_step_id === step.id),
+        tips: step.tips
+          ? (Array.isArray(step.tips)
+              ? step.tips
+              : step.tips.split('\n').filter((t: string) => t.trim()))
+          : undefined,
+        media: mediaWithComments.filter((m) => m.lesson_step_id === step.id),
       }));
 
       return {
@@ -362,6 +444,30 @@ export class LessonService {
         }
       }
 
+      // Fetch comments for all media
+      const mediaIds = mediaData.map((m) => m.id);
+      let mediaCommentsData: any[] = [];
+
+      if (mediaIds.length > 0) {
+        const { data: fetchedComments, error: commentsError } = await supabase
+          .from('lesson_media_comments')
+          .select('*')
+          .in('media_id', mediaIds)
+          .order('timestamp_seconds', { ascending: true });
+
+        if (commentsError) {
+          console.error('Error fetching media comments:', commentsError);
+        } else {
+          mediaCommentsData = fetchedComments || [];
+        }
+      }
+
+      // Attach comments to media items
+      const mediaWithComments = mediaData.map((media) => ({
+        ...media,
+        comments: mediaCommentsData.filter((c) => c.media_id === media.id),
+      }));
+
       // Combine data
       return lessonsData.map((lesson) => {
         const lessonSteps = (stepsData || []).filter((s) => s.lesson_id === lesson.id);
@@ -370,8 +476,12 @@ export class LessonService {
           step_order: step.step_order,
           title: step.title,
           description: step.description,
-          tips: step.tips,
-          media: mediaData.filter((m) => m.lesson_step_id === step.id),
+          tips: step.tips
+            ? (Array.isArray(step.tips)
+                ? step.tips
+                : step.tips.split('\n').filter((t: string) => t.trim()))
+            : undefined,
+          media: mediaWithComments.filter((m) => m.lesson_step_id === step.id),
         }));
 
         return {

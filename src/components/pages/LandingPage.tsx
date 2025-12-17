@@ -159,7 +159,7 @@ export default function LandingPage() {
   };
 
   const groupedPractices = practices.reduce((acc, practice) => {
-    const lessonId = practice.lesson_id;
+    const lessonId = practice.lesson_id || 'archived';
     if (!acc[lessonId]) {
       acc[lessonId] = {
         lessonId,

@@ -9,15 +9,31 @@ import { PracticeComment as RecordingComment } from '@/services/practiceService'
 import CommentPopover from '@/components/ui/CommentPopover';
 
 interface AudioPlayerProps {
-  piece: AudioPiece;
-  index: number;
-  onDelete: (pieceId: string) => void;
-  onDownload: (piece: AudioPiece) => void;
+  // Source: Either piece (for blob-based practice recordings) OR url/duration (for URL-based media)
+  piece?: AudioPiece;
+  url?: string;
+  duration?: number;
+  title?: string;
+  videoUrl?: string; // If provided, show video player synced with waveform
+
+  // Recording identification
+  index?: number;
+  exerciseName?: string;
+
+  // Actions
+  onDelete?: (pieceId: string) => void;
+  onDownload?: (piece: AudioPiece) => void;
   onTitleUpdate?: (pieceId: string, title: string) => void;
-  isPlaying: boolean;
-  onPlayStateChange: (pieceId: string, playing: boolean) => void;
-  exerciseName: string;
+
+  // Playback state (only for piece-based mode)
+  isPlaying?: boolean;
+  onPlayStateChange?: (pieceId: string, playing: boolean) => void;
+
+  // UI options
   showDeleteButton?: boolean;
+  showControls?: boolean; // For URL mode, controls are always shown
+
+  // Comments
   comments?: RecordingComment[];
   onAddComment?: (timestampSeconds?: number) => void;
   onCommentMarkerClick?: (commentIds: string[]) => void;
@@ -25,30 +41,44 @@ interface AudioPlayerProps {
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({
   piece,
-  index,
+  url,
+  duration: initialDuration,
+  title,
+  videoUrl,
+  index = 0,
+  exerciseName,
   onDelete,
   onDownload,
   onTitleUpdate,
-  isPlaying,
+  isPlaying: externalIsPlaying,
   onPlayStateChange,
-  exerciseName,
   showDeleteButton = true,
+  showControls = true,
   comments = [],
   onAddComment,
   onCommentMarkerClick
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const waveformRef = useRef<HTMLDivElement>(null);
   const waveformContainerRef = useRef<HTMLDivElement>(null);
 
+  // Determine if we're in URL mode or piece mode
+  const isUrlMode = !!url || !!videoUrl;
+  const sourceUrl = url || videoUrl;
+
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(piece.duration);
+  const [duration, setDuration] = useState(initialDuration || piece?.duration || 0);
   const [isLoading, setIsLoading] = useState(false);
   const [waveformData, setWaveformData] = useState<WaveformData | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editingTitle, setEditingTitle] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // Internal playing state for URL mode
+  const [internalIsPlaying, setInternalIsPlaying] = useState(false);
+  const isPlaying = isUrlMode ? internalIsPlaying : (externalIsPlaying ?? false);
 
   // Comment popover state
   const [hoveredCommentCluster, setHoveredCommentCluster] = useState<RecordingComment[] | null>(null);
@@ -70,10 +100,22 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const generateWaveform = async () => {
       setIsLoading(true);
       try {
-        const data = await analyzeAudioBlob(piece.blob, 80); // 80 bars for waveform
-        if (isMounted) {
-          setWaveformData(data);
-          setDuration(data.duration || piece.duration);
+        if (piece?.blob) {
+          // Blob-based mode (practice recordings)
+          const data = await analyzeAudioBlob(piece.blob, 80);
+          if (isMounted) {
+            setWaveformData(data);
+            setDuration(data.duration || piece.duration);
+          }
+        } else if (sourceUrl) {
+          // URL-based mode (uploaded media)
+          const response = await fetch(sourceUrl);
+          const blob = await response.blob();
+          const data = await analyzeAudioBlob(blob, 80);
+          if (isMounted) {
+            setWaveformData(data);
+            setDuration(data.duration || initialDuration || 0);
+          }
         }
       } catch (error) {
         console.error('Error generating waveform:', error);
@@ -84,81 +126,105 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
       }
     };
 
-    generateWaveform();
+    if (piece?.blob || sourceUrl) {
+      generateWaveform();
+    }
 
     return () => {
       isMounted = false;
     };
-  }, [piece.blob, piece.duration]);
+  }, [piece?.blob, piece?.duration, sourceUrl, initialDuration]);
 
   // Create and cleanup audio URL
   useEffect(() => {
-    const url = URL.createObjectURL(piece.blob);
-    setAudioUrl(url);
+    if (piece?.blob) {
+      // Blob-based mode: create object URL
+      const url = URL.createObjectURL(piece.blob);
+      setAudioUrl(url);
 
-    return () => {
-      URL.revokeObjectURL(url);
-    };
-  }, [piece.blob]);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else if (sourceUrl) {
+      // URL-based mode: use URL directly
+      setAudioUrl(sourceUrl);
+    }
+  }, [piece?.blob, sourceUrl]);
 
-  // Audio event handlers
+  // Audio/Video event handlers
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !audioUrl) return;
+    const mediaElement = videoUrl ? videoRef.current : audioRef.current;
+    if (!mediaElement || !audioUrl) return;
 
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleLoadedMetadata = () => setDuration(audio.duration);
+    const handleTimeUpdate = () => setCurrentTime(mediaElement.currentTime);
+    const handleLoadedMetadata = () => setDuration(mediaElement.duration);
     const handleEnded = () => {
       setCurrentTime(0);
-      onPlayStateChange(piece.id, false);
+      if (isUrlMode) {
+        setInternalIsPlaying(false);
+      } else if (piece && onPlayStateChange) {
+        onPlayStateChange(piece.id, false);
+      }
     };
 
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('ended', handleEnded);
+    mediaElement.addEventListener('timeupdate', handleTimeUpdate);
+    mediaElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+    mediaElement.addEventListener('ended', handleEnded);
 
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('ended', handleEnded);
+      mediaElement.removeEventListener('timeupdate', handleTimeUpdate);
+      mediaElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      mediaElement.removeEventListener('ended', handleEnded);
     };
-  }, [audioUrl, piece.id, onPlayStateChange]);
+  }, [audioUrl, videoUrl, piece, onPlayStateChange, isUrlMode]);
 
-  // Handle play/pause state changes from parent
+  // Handle play/pause state changes
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    const mediaElement = videoUrl ? videoRef.current : audioRef.current;
+    if (!mediaElement) return;
 
     if (isPlaying) {
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-        onPlayStateChange(piece.id, false);
+      mediaElement.play().catch(error => {
+        console.error('Error playing media:', error);
+        if (isUrlMode) {
+          setInternalIsPlaying(false);
+        } else if (piece && onPlayStateChange) {
+          onPlayStateChange(piece.id, false);
+        }
       });
     } else {
-      audio.pause();
+      mediaElement.pause();
     }
-  }, [isPlaying, piece.id, onPlayStateChange]);
+  }, [isPlaying, piece, onPlayStateChange, isUrlMode, videoUrl]);
 
   const handlePlayPause = useCallback(() => {
-    onPlayStateChange(piece.id, !isPlaying);
-  }, [piece.id, isPlaying, onPlayStateChange]);
+    if (isUrlMode) {
+      setInternalIsPlaying(!isPlaying);
+    } else if (piece && onPlayStateChange) {
+      onPlayStateChange(piece.id, !isPlaying);
+    }
+  }, [isUrlMode, piece, isPlaying, onPlayStateChange]);
 
   const handleStop = useCallback(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
+    const mediaElement = videoUrl ? videoRef.current : audioRef.current;
+    if (mediaElement) {
+      mediaElement.pause();
+      mediaElement.currentTime = 0;
       setCurrentTime(0);
     }
-    onPlayStateChange(piece.id, false);
-  }, [piece.id, onPlayStateChange]);
+    if (isUrlMode) {
+      setInternalIsPlaying(false);
+    } else if (piece && onPlayStateChange) {
+      onPlayStateChange(piece.id, false);
+    }
+  }, [isUrlMode, piece, onPlayStateChange, videoUrl]);
 
   const handleSeek = useCallback((time: number) => {
-    const audio = audioRef.current;
-    if (audio) {
-      audio.currentTime = Math.max(0, Math.min(time, duration));
+    const mediaElement = videoUrl ? videoRef.current : audioRef.current;
+    if (mediaElement) {
+      mediaElement.currentTime = Math.max(0, Math.min(time, duration));
     }
-  }, [duration]);
+  }, [duration, videoUrl]);
 
   const handleSkipBackward = useCallback(() => {
     handleSeek(currentTime - 10);
@@ -170,8 +236,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   // Title editing handlers
   const getDisplayTitle = useCallback(() => {
-    return piece.customTitle || `Recording ${index + 1}`;
-  }, [piece.customTitle, index]);
+    if (title) return title;
+    if (piece?.customTitle) return piece.customTitle;
+    return `Recording ${index + 1}`;
+  }, [title, piece?.customTitle, index]);
 
   const handleTitleClick = useCallback(() => {
     if (!onTitleUpdate) return;
@@ -180,14 +248,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   }, [getDisplayTitle, onTitleUpdate]);
 
   const handleTitleSave = useCallback(() => {
-    if (!onTitleUpdate) return;
+    if (!onTitleUpdate || !piece) return;
     const trimmedTitle = editingTitle.trim();
     if (trimmedTitle && trimmedTitle !== getDisplayTitle()) {
       onTitleUpdate(piece.id, trimmedTitle);
     }
     setIsEditingTitle(false);
     setEditingTitle('');
-  }, [editingTitle, getDisplayTitle, onTitleUpdate, piece.id]);
+  }, [editingTitle, getDisplayTitle, onTitleUpdate, piece]);
 
   const handleTitleCancel = useCallback(() => {
     setIsEditingTitle(false);
@@ -322,8 +390,21 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   return (
     <div className="audio-player">
-      {/* Hidden audio element */}
-      {audioUrl && (
+      {/* Video element (if videoUrl is provided) */}
+      {videoUrl && audioUrl && (
+        <div className="mb-4">
+          <video
+            ref={videoRef}
+            src={audioUrl}
+            className="w-full rounded-lg"
+            controls
+            preload="metadata"
+          />
+        </div>
+      )}
+
+      {/* Hidden audio element (if no video) */}
+      {!videoUrl && audioUrl && (
         <audio
           ref={audioRef}
           src={audioUrl}
@@ -367,7 +448,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
               </div>
             )}
             <div className="text-xs text-gray-500 truncate">
-              {formatTime(duration)} • {new Date(piece.timestamp).toLocaleTimeString()}
+              {formatTime(duration)}
+              {piece?.timestamp && ` • ${new Date(piece.timestamp).toLocaleTimeString()}`}
             </div>
           </div>
         </div>
@@ -560,18 +642,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
           </Button>
 
           {/* Download */}
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => onDownload(piece)}
-            className="p-1.5 ml-2"
-            title="Download recording"
-          >
-            <Download className="w-3 h-3" />
-          </Button>
+          {piece && onDownload && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => onDownload(piece)}
+              className="p-1.5 ml-2"
+              title="Download recording"
+            >
+              <Download className="w-3 h-3" />
+            </Button>
+          )}
 
           {/* Delete */}
-          {showDeleteButton && (
+          {showDeleteButton && piece && onDelete && (
             <Button
               size="sm"
               variant="danger"

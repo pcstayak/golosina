@@ -281,35 +281,6 @@ export default function LessonPracticePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Lesson Steps */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Step Navigation Header */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-800">
-                Step {state.currentStepIndex + 1} of {lesson.steps.length}
-              </h2>
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handlePreviousStep}
-                  disabled={state.currentStepIndex === 0}
-                  className="flex items-center gap-1"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleNextStep}
-                  disabled={state.currentStepIndex === lesson.steps.length - 1}
-                  className="flex items-center gap-1"
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
             {/* Current Step Display */}
             {currentStep && (
               <StepDisplay
@@ -319,6 +290,33 @@ export default function LessonPracticePage() {
                 showComments={!!assignmentId}
               />
             )}
+
+            {/* Step Navigation Footer */}
+            <div className="flex items-center justify-center gap-4">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handlePreviousStep}
+                disabled={state.currentStepIndex === 0}
+                className="flex items-center gap-1"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </Button>
+              <span className="text-base font-medium text-gray-700 px-4">
+                Step {state.currentStepIndex + 1} of {lesson.steps.length}
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleNextStep}
+                disabled={state.currentStepIndex === lesson.steps.length - 1}
+                className="flex items-center gap-1"
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Recording Section */}
