@@ -32,50 +32,84 @@ export function formatLyrics(lyrics: string): string {
     return cleaned;
   });
 
-  // Step 4: Remove excessive empty lines (max 1 consecutive)
-  const dedupedLines: string[] = [];
-  let lastWasEmpty = false;
+  // Step 4: Remove parenthetical repetitions on their own lines
+  const filteredLines = cleanedLines.filter(line => {
+    // Remove lines that are only parenthetical content
+    const parentheticalOnly = /^\(.*\)$/;
+    return !parentheticalOnly.test(line);
+  });
 
-  for (const line of cleanedLines) {
+  // Step 5: Group lines into stanzas intelligently
+  // Only treat multiple consecutive empty lines OR section markers as stanza breaks
+  const sectionPattern = /^\[(.*?)\]$/i; // Matches [Chorus], [Verse 1], etc.
+  const stanzas: string[][] = [];
+  let currentStanza: string[] = [];
+  let consecutiveEmptyCount = 0;
+
+  for (const line of filteredLines) {
     if (line === '') {
-      if (!lastWasEmpty) {
-        dedupedLines.push(line);
+      consecutiveEmptyCount++;
+      // Only break stanza on 2+ consecutive empty lines
+      if (consecutiveEmptyCount >= 2 && currentStanza.length > 0) {
+        stanzas.push(currentStanza);
+        currentStanza = [];
       }
-      lastWasEmpty = true;
     } else {
-      dedupedLines.push(line);
-      lastWasEmpty = false;
+      consecutiveEmptyCount = 0;
+
+      // Check if this is a section marker - always starts new stanza
+      if (sectionPattern.test(line) && currentStanza.length > 0) {
+        stanzas.push(currentStanza);
+        currentStanza = [];
+      }
+
+      currentStanza.push(line);
     }
   }
 
-  // Step 5: Detect and format sections (chorus, verse, bridge, etc.)
-  const formattedLines: string[] = [];
-  const sectionPattern = /^\[(.*?)\]$/i; // Matches [Chorus], [Verse 1], etc.
+  // Add the last stanza if it has content
+  if (currentStanza.length > 0) {
+    stanzas.push(currentStanza);
+  }
 
-  for (let i = 0; i < dedupedLines.length; i++) {
-    const line = dedupedLines[i];
-    const match = line.match(sectionPattern);
+  // Step 6: Format stanzas with section markers
+  const formattedLines: string[] = [];
+
+  for (let i = 0; i < stanzas.length; i++) {
+    const stanza = stanzas[i];
+
+    // Check if first line is a section marker
+    const firstLine = stanza[0];
+    const match = firstLine.match(sectionPattern);
 
     if (match) {
-      // This is a section marker
-      const sectionName = match[1].trim();
-
-      // Ensure blank line before section (unless it's the first line)
-      if (i > 0 && dedupedLines[i - 1] !== '') {
+      // Ensure blank line before section (unless it's the first stanza)
+      if (i > 0) {
         formattedLines.push('');
       }
 
       // Add the section marker in uppercase
+      const sectionName = match[1].trim();
       formattedLines.push(`[${sectionName.toUpperCase()}]`);
 
-      // No blank line immediately after section marker
-      continue;
-    }
+      // Add the rest of the stanza (excluding the section marker)
+      for (let j = 1; j < stanza.length; j++) {
+        formattedLines.push(stanza[j]);
+      }
+    } else {
+      // Regular stanza - add blank line before if not first
+      if (i > 0) {
+        formattedLines.push('');
+      }
 
-    formattedLines.push(line);
+      // Add all lines in the stanza
+      for (const line of stanza) {
+        formattedLines.push(line);
+      }
+    }
   }
 
-  // Step 6: Trim leading/trailing empty lines
+  // Step 7: Trim leading/trailing empty lines
   while (formattedLines.length > 0 && formattedLines[0] === '') {
     formattedLines.shift();
   }
