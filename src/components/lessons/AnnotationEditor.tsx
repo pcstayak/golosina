@@ -3,16 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { X } from 'lucide-react';
-import type { LyricsAnnotation } from '@/services/annotationsService';
+import type { LyricsAnnotation, AnnotationContext } from '@/services/annotationsService';
+import { AnnotationsService } from '@/services/annotationsService';
 
 interface AnnotationEditorProps {
   annotation?: LyricsAnnotation;
   highlightedText: string;
-  onSave: (annotationText: string, annotationType: 'global' | 'student_specific' | 'private', studentId?: string) => void;
+  onSave: (annotationText: string, visibleToTeacher?: boolean) => void;
   onCancel: () => void;
   onDelete?: () => void;
-  isTeacher: boolean;
-  availableStudents?: Array<{ id: string; name: string }>;
+  context: AnnotationContext;
 }
 
 const AnnotationEditor: React.FC<AnnotationEditorProps> = ({
@@ -21,14 +21,12 @@ const AnnotationEditor: React.FC<AnnotationEditorProps> = ({
   onSave,
   onCancel,
   onDelete,
-  isTeacher,
-  availableStudents = [],
+  context,
 }) => {
   const [annotationText, setAnnotationText] = useState(annotation?.annotation_text || '');
-  const [annotationType, setAnnotationType] = useState<'global' | 'student_specific' | 'private'>(
-    annotation?.annotation_type || (isTeacher ? 'global' : 'private')
+  const [visibleToTeacher, setVisibleToTeacher] = useState(
+    annotation?.visible_to_teacher ?? true
   );
-  const [selectedStudentId, setSelectedStudentId] = useState(annotation?.student_id || '');
   const [charCount, setCharCount] = useState(0);
 
   const MAX_CHARS = 500;
@@ -40,8 +38,35 @@ const AnnotationEditor: React.FC<AnnotationEditorProps> = ({
   const handleSave = () => {
     if (!annotationText.trim()) return;
 
-    const studentId = annotationType === 'student_specific' ? selectedStudentId : undefined;
-    onSave(annotationText.trim(), annotationType, studentId);
+    // For practice mode, pass visibleToTeacher flag
+    if (context.mode === 'practice') {
+      onSave(annotationText.trim(), visibleToTeacher);
+    } else {
+      onSave(annotationText.trim());
+    }
+  };
+
+  // Get UI labels based on context
+  const getContextLabel = () => {
+    switch (context.mode) {
+      case 'lesson_creation':
+        return 'All Students';
+      case 'assignment':
+        return 'This Student';
+      case 'practice':
+        return 'Private Note';
+    }
+  };
+
+  const getContextDescription = () => {
+    switch (context.mode) {
+      case 'lesson_creation':
+        return 'This annotation will be visible to all students learning this lesson';
+      case 'assignment':
+        return 'This annotation is specific to this student assignment';
+      case 'practice':
+        return 'This is your private note. You can optionally share it with your teacher';
+    }
   };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -97,85 +122,29 @@ const AnnotationEditor: React.FC<AnnotationEditorProps> = ({
             </div>
           </div>
 
-          {/* Annotation Type (Teachers only) */}
-          {isTeacher && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Visibility
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="global"
-                    checked={annotationType === 'global'}
-                    onChange={(e) => setAnnotationType(e.target.value as 'global')}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">
-                    <span className="font-medium">All Students</span>
-                    <span className="text-gray-500"> - visible to everyone</span>
-                  </span>
-                </label>
-
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="student_specific"
-                    checked={annotationType === 'student_specific'}
-                    onChange={(e) => setAnnotationType(e.target.value as 'student_specific')}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">
-                    <span className="font-medium">Specific Student</span>
-                    <span className="text-gray-500"> - visible to one student</span>
-                  </span>
-                </label>
-
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="private"
-                    checked={annotationType === 'private'}
-                    onChange={(e) => setAnnotationType(e.target.value as 'private')}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">
-                    <span className="font-medium">Private</span>
-                    <span className="text-gray-500"> - only you can see this</span>
-                  </span>
-                </label>
-              </div>
-
-              {/* Student Selector (when student_specific is selected) */}
-              {annotationType === 'student_specific' && (
-                <div className="mt-3">
-                  <label htmlFor="student-select" className="block text-sm font-medium text-gray-700 mb-1">
-                    Select Student
-                  </label>
-                  <select
-                    id="student-select"
-                    value={selectedStudentId}
-                    onChange={(e) => setSelectedStudentId(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Choose a student...</option>
-                    {availableStudents.map((student) => (
-                      <option key={student.id} value={student.id}>
-                        {student.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Students see simple note */}
-          {!isTeacher && (
-            <p className="text-xs text-gray-500 italic">
-              Your notes are private to you and visible to your teacher
+          {/* Context-based visibility info */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs font-medium text-blue-900 mb-1">
+              Annotation Type: {getContextLabel()}
             </p>
+            <p className="text-xs text-blue-700">
+              {getContextDescription()}
+            </p>
+          </div>
+
+          {/* Share with teacher checkbox (practice mode only) */}
+          {context.mode === 'practice' && (
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={visibleToTeacher}
+                onChange={(e) => setVisibleToTeacher(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">
+                Share with teacher
+              </span>
+            </label>
           )}
         </div>
 
@@ -205,10 +174,7 @@ const AnnotationEditor: React.FC<AnnotationEditorProps> = ({
               size="sm"
               variant="primary"
               onClick={handleSave}
-              disabled={
-                !annotationText.trim() ||
-                (annotationType === 'student_specific' && !selectedStudentId)
-              }
+              disabled={!annotationText.trim()}
             >
               {annotation ? 'Update' : 'Save'}
             </Button>

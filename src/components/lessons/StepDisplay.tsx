@@ -13,10 +13,9 @@ interface StepDisplayProps {
   stepNumber: number
   showComments?: boolean
   assignmentId?: string
-  availableStudents?: Array<{ id: string; name: string }>
 }
 
-export default function StepDisplay({ step, stepNumber, showComments = false, assignmentId, availableStudents = [] }: StepDisplayProps) {
+export default function StepDisplay({ step, stepNumber, showComments = false, assignmentId }: StepDisplayProps) {
   const { user, profile } = useAuth()
   const [isExpanded, setIsExpanded] = useState(true)
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
@@ -70,7 +69,6 @@ export default function StepDisplay({ step, stepNumber, showComments = false, as
                     userId={user?.id}
                     isTeacher={profile?.role === 'teacher'}
                     assignmentId={assignmentId}
-                    availableStudents={availableStudents}
                   />
                 </div>
               ) : (

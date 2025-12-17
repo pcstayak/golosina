@@ -16,6 +16,14 @@ export interface LyricsAnnotation {
   updated_at: string;
 }
 
+export interface AnnotationContext {
+  mode: 'lesson_creation' | 'assignment' | 'practice';
+  userId: string;
+  isTeacher: boolean;
+  studentId?: string;
+  assignmentId?: string;
+}
+
 export interface CreateAnnotationParams {
   media_id: string;
   start_index: number;
@@ -37,6 +45,120 @@ export interface UpdateAnnotationParams {
 }
 
 export class AnnotationsService {
+  /**
+   * Determine annotation type based on context
+   */
+  static getAnnotationTypeFromContext(context: AnnotationContext): 'global' | 'student_specific' | 'private' {
+    if (context.mode === 'lesson_creation') {
+      return 'global';
+    } else if (context.mode === 'assignment') {
+      return 'student_specific';
+    } else {
+      return 'private';
+    }
+  }
+
+  /**
+   * Get annotations for media with context awareness
+   */
+  static async getAnnotationsWithContext(
+    mediaId: string,
+    context: AnnotationContext
+  ): Promise<LyricsAnnotation[]> {
+    if (!supabase) {
+      console.warn('Supabase not configured');
+      return [];
+    }
+
+    try {
+      let query = supabase
+        .from('lesson_media_lyrics_annotations')
+        .select('*')
+        .eq('media_id', mediaId);
+
+      if (context.mode === 'lesson_creation') {
+        // Lesson creation: Show only global annotations
+        const { data, error } = await query.eq('annotation_type', 'global');
+        if (error) {
+          console.error('Error fetching annotations:', error);
+          return [];
+        }
+        return data || [];
+      } else if (context.mode === 'assignment') {
+        // Assignment: Show global (read-only) + student-specific for this student/assignment
+        const { data, error } = await query;
+        if (error) {
+          console.error('Error fetching annotations:', error);
+          return [];
+        }
+        return (data || []).filter(annotation => {
+          if (annotation.annotation_type === 'global') {
+            return true;
+          }
+          if (annotation.annotation_type === 'student_specific') {
+            return (
+              (context.studentId && annotation.student_id === context.studentId) ||
+              (context.assignmentId && annotation.assignment_id === context.assignmentId)
+            );
+          }
+          return false;
+        });
+      } else {
+        // Practice: Show global + student-specific (for this student/assignment) + own private
+        const { data, error } = await query;
+        if (error) {
+          console.error('Error fetching annotations:', error);
+          return [];
+        }
+        return (data || []).filter(annotation => {
+          if (annotation.annotation_type === 'global') {
+            return true;
+          }
+          if (annotation.annotation_type === 'student_specific') {
+            return (
+              (context.studentId && annotation.student_id === context.studentId) ||
+              (context.assignmentId && annotation.assignment_id === context.assignmentId)
+            );
+          }
+          if (annotation.annotation_type === 'private') {
+            return annotation.created_by === context.userId;
+          }
+          return false;
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching annotations:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Check if annotation is editable based on context
+   */
+  static isAnnotationEditable(annotation: LyricsAnnotation, context: AnnotationContext): boolean {
+    // Only creator can edit their own annotations
+    if (annotation.created_by !== context.userId) {
+      return false;
+    }
+
+    // In lesson creation mode, can only edit global annotations
+    if (context.mode === 'lesson_creation') {
+      return annotation.annotation_type === 'global';
+    }
+
+    // In assignment mode, can only edit student-specific annotations
+    if (context.mode === 'assignment') {
+      return annotation.annotation_type === 'student_specific';
+    }
+
+    // In practice mode, can only edit private annotations
+    if (context.mode === 'practice') {
+      return annotation.annotation_type === 'private';
+    }
+
+    return false;
+  }
+
   /**
    * Get all annotations for a media item, filtered by user context
    * Teachers see: global + student-specific (for their assignments) + private (if visible_to_teacher)

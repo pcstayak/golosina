@@ -3,16 +3,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Plus } from 'lucide-react';
 import AnnotationEditor from './AnnotationEditor';
-import { AnnotationsService, type LyricsAnnotation } from '@/services/annotationsService';
+import { AnnotationsService, type LyricsAnnotation, type AnnotationContext } from '@/services/annotationsService';
 import { useNotification } from '@/hooks/useNotification';
 
 interface LyricsWithAnnotationsProps {
   lyrics: string;
   mediaId: string;
-  userId: string;
-  isTeacher: boolean;
-  assignmentId?: string;
-  availableStudents?: Array<{ id: string; name: string }>;
+  context: AnnotationContext;
 }
 
 interface TextSelection {
@@ -29,10 +26,7 @@ interface AnnotationPopover {
 const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
   lyrics,
   mediaId,
-  userId,
-  isTeacher,
-  assignmentId,
-  availableStudents = [],
+  context,
 }) => {
   const { showSuccess, showError } = useNotification();
   const lyricsRef = useRef<HTMLDivElement>(null);
@@ -49,16 +43,11 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
   useEffect(() => {
     loadAnnotations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaId, userId, assignmentId]);
+  }, [mediaId, context.userId, context.assignmentId, context.studentId, context.mode]);
 
   const loadAnnotations = async () => {
     setIsLoading(true);
-    const data = await AnnotationsService.getAnnotationsForMedia(
-      mediaId,
-      userId,
-      isTeacher,
-      assignmentId
-    );
+    const data = await AnnotationsService.getAnnotationsWithContext(mediaId, context);
     setAnnotations(data);
     setIsLoading(false);
   };
@@ -113,10 +102,11 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
 
   const handleSaveAnnotation = async (
     annotationText: string,
-    annotationType: 'global' | 'student_specific' | 'private',
-    studentId?: string
+    visibleToTeacher?: boolean
   ) => {
     if (!selectedText && !editingAnnotation) return;
+
+    const annotationType = AnnotationsService.getAnnotationTypeFromContext(context);
 
     if (editingAnnotation) {
       // Update existing annotation
@@ -124,10 +114,9 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
         editingAnnotation.id,
         {
           annotation_text: annotationText,
-          annotation_type: annotationType,
-          student_id: studentId,
+          visible_to_teacher: visibleToTeacher,
         },
-        userId
+        context.userId
       );
 
       if (updated) {
@@ -145,10 +134,10 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
         highlighted_text: selectedText.text,
         annotation_text: annotationText,
         annotation_type: annotationType,
-        student_id: studentId,
-        assignment_id: assignmentId,
-        created_by: userId,
-        visible_to_teacher: true,
+        student_id: context.studentId,
+        assignment_id: context.assignmentId,
+        created_by: context.userId,
+        visible_to_teacher: visibleToTeacher ?? true,
       });
 
       if (created) {
@@ -170,7 +159,7 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
   const handleDeleteAnnotation = async () => {
     if (!editingAnnotation) return;
 
-    const success = await AnnotationsService.deleteAnnotation(editingAnnotation.id, userId);
+    const success = await AnnotationsService.deleteAnnotation(editingAnnotation.id, context.userId);
 
     if (success) {
       showSuccess('Annotation deleted');
@@ -195,8 +184,10 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
   const handleClickAnnotation = (annotation: LyricsAnnotation, event: React.MouseEvent) => {
     event.stopPropagation();
 
-    // Only allow editing own annotations
-    if (annotation.created_by !== userId) {
+    // Check if annotation is editable based on context
+    const isEditable = AnnotationsService.isAnnotationEditable(annotation, context);
+
+    if (!isEditable) {
       // Show read-only popover
       const rect = (event.target as HTMLElement).getBoundingClientRect();
       const containerRect = lyricsRef.current?.getBoundingClientRect();
@@ -258,15 +249,18 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
       });
     }
 
-    // Get highlight class based on annotation type
-    const getHighlightClass = (annotationType: string) => {
-      switch (annotationType) {
+    // Get highlight class based on annotation type and editability
+    const getHighlightClass = (annotation: LyricsAnnotation) => {
+      const isEditable = AnnotationsService.isAnnotationEditable(annotation, context);
+      const baseOpacity = isEditable ? '' : 'opacity-60';
+
+      switch (annotation.annotation_type) {
         case 'global':
-          return 'bg-yellow-100 border-b-2 border-yellow-400 cursor-pointer hover:bg-yellow-200 transition-colors';
+          return `bg-yellow-100 border-b-2 border-yellow-400 cursor-pointer hover:bg-yellow-200 transition-colors ${baseOpacity}`;
         case 'student_specific':
-          return 'bg-blue-100 border-b-2 border-blue-400 cursor-pointer hover:bg-blue-200 transition-colors';
+          return `bg-blue-100 border-b-2 border-blue-400 cursor-pointer hover:bg-blue-200 transition-colors ${baseOpacity}`;
         case 'private':
-          return 'bg-gray-100 border-b-2 border-gray-400 cursor-pointer hover:bg-gray-200 transition-colors';
+          return `bg-gray-100 border-b-2 border-gray-400 cursor-pointer hover:bg-gray-200 transition-colors ${baseOpacity}`;
         default:
           return '';
       }
@@ -276,12 +270,13 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
       <div className="relative">
         {segments.map((segment, index) => {
           if (segment.annotation) {
+            const isEditable = AnnotationsService.isAnnotationEditable(segment.annotation, context);
             return (
               <span
                 key={index}
-                className={getHighlightClass(segment.annotation.annotation_type)}
+                className={getHighlightClass(segment.annotation)}
                 onClick={(e) => handleClickAnnotation(segment.annotation!, e)}
-                title={segment.annotation.annotation_text.slice(0, 100)}
+                title={`${isEditable ? 'Click to edit: ' : ''}${segment.annotation.annotation_text.slice(0, 100)}`}
               >
                 {segment.text}
               </span>
@@ -353,8 +348,7 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
           onSave={handleSaveAnnotation}
           onCancel={handleCancelEditor}
           onDelete={editingAnnotation ? handleDeleteAnnotation : undefined}
-          isTeacher={isTeacher}
-          availableStudents={availableStudents}
+          context={context}
         />
       )}
 

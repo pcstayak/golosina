@@ -329,7 +329,7 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
                 rows={8}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Use the Format button to clean up spacing and structure.
+                Use the Format button to clean up spacing and structure. Add annotations to media after saving.
               </p>
             </div>
           )}

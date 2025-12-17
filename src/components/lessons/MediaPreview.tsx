@@ -354,10 +354,12 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
             <LyricsWithAnnotations
               lyrics={lyrics}
               mediaId={mediaId}
-              userId={userId}
-              isTeacher={isTeacher}
-              assignmentId={assignmentId}
-              availableStudents={availableStudents}
+              context={{
+                mode: isEditable ? 'lesson_creation' : 'practice',
+                userId: userId,
+                isTeacher: isTeacher,
+                assignmentId: assignmentId,
+              }}
             />
           </div>
         </div>
