@@ -335,12 +335,19 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
         </div>
       )}
 
-      {/* Lyrics Display */}
+      {/* Lyrics Display with Annotations */}
       {lyrics && (
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Lyrics</h3>
-          <div className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
-            {lyrics}
+        <div className="mt-4">
+          <div className="p-4 bg-gray-50 rounded-lg border">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Lyrics</h3>
+            <div className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
+              {lyrics}
+            </div>
+          </div>
+
+          {/* Annotations coming in future update - placeholder for now */}
+          <div className="mt-2 text-xs text-gray-500 italic">
+            Annotation feature coming soon - select text to add notes
           </div>
         </div>
       )}

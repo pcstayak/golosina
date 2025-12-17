@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
-import { Plus, X, Video, Image as ImageIcon, Upload, Loader2 } from 'lucide-react'
+import { Plus, X, Video, Image as ImageIcon, Upload, Loader2, Search } from 'lucide-react'
 import { VideoEmbedService } from '@/services/videoEmbedService'
 import { supabase } from '@/lib/supabase'
 import type { LessonStepMedia } from '@/services/lessonService'
 import MediaPreview, { MediaComment } from './MediaPreview'
+import LyricsSearchModal from './LyricsSearchModal'
 
 interface MediaInputProps {
   media: LessonStepMedia[]
@@ -24,6 +25,7 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
   const [error, setError] = useState('')
   const [isUploading, setIsUploading] = useState(false)
   const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null)
+  const [showLyricsSearch, setShowLyricsSearch] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleAdd = () => {
@@ -283,16 +285,28 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
           {/* Lyrics textarea - only show for video/audio */}
           {(mediaType === 'video' || mediaType === 'audio') && (
             <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Lyrics (optional)
+                </label>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowLyricsSearch(true)}
+                  className="flex items-center gap-1 text-xs"
+                >
+                  <Search className="w-3 h-3" />
+                  Search Lyrics
+                </Button>
+              </div>
               <textarea
                 value={lyrics}
                 onChange={(e) => setLyrics(e.target.value)}
-                placeholder="Lyrics (optional)"
+                placeholder="Enter lyrics or click 'Search Lyrics' to find automatically..."
                 className="w-full px-3 py-2 border rounded-md text-sm"
                 rows={6}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Add song lyrics or text content. You can search for lyrics in Phase 2.
-              </p>
             </div>
           )}
 
@@ -411,6 +425,13 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
           ))}
         </div>
       )}
+
+      {/* Lyrics Search Modal */}
+      <LyricsSearchModal
+        isOpen={showLyricsSearch}
+        onClose={() => setShowLyricsSearch(false)}
+        onSelect={(foundLyrics) => setLyrics(foundLyrics)}
+      />
     </div>
   )
 }
