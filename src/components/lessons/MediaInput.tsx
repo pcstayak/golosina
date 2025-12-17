@@ -442,6 +442,9 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
                     onDeleteComment={(commentId) => handleDeleteComment(index, commentId)}
                     isEditable={true}
                     lyrics={item.lyrics}
+                    mediaId={item.id || `temp-${index}`}
+                    userId={userId}
+                    isTeacher={true}
                   />
                 </div>
               )}
