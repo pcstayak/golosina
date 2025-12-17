@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/Button'
-import { Plus, X, Video, Image as ImageIcon, Upload, Loader2, Search } from 'lucide-react'
+import { Plus, X, Video, Image as ImageIcon, Upload, Loader2, Search, Wand2 } from 'lucide-react'
 import { VideoEmbedService } from '@/services/videoEmbedService'
 import { supabase } from '@/lib/supabase'
 import type { LessonStepMedia } from '@/services/lessonService'
 import MediaPreview, { MediaComment } from './MediaPreview'
 import LyricsSearchModal from './LyricsSearchModal'
+import { formatLyrics } from '@/utils/lyricsFormatter'
 
 interface MediaInputProps {
   media: LessonStepMedia[]
@@ -197,6 +198,12 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
     onChange(updatedMedia)
   }
 
+  const handleFormatLyrics = () => {
+    if (lyrics.trim()) {
+      setLyrics(formatLyrics(lyrics))
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="border rounded-lg p-4 bg-gray-50">
@@ -289,24 +296,41 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
                 <label className="text-sm font-medium text-gray-700">
                   Lyrics (optional)
                 </label>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowLyricsSearch(true)}
-                  className="flex items-center gap-1 text-xs"
-                >
-                  <Search className="w-3 h-3" />
-                  Search Lyrics
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleFormatLyrics}
+                    disabled={!lyrics.trim()}
+                    className="flex items-center gap-1 text-xs"
+                    title="Clean up formatting"
+                  >
+                    <Wand2 className="w-3 h-3" />
+                    Format
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowLyricsSearch(true)}
+                    className="flex items-center gap-1 text-xs"
+                  >
+                    <Search className="w-3 h-3" />
+                    Search
+                  </Button>
+                </div>
               </div>
               <textarea
                 value={lyrics}
                 onChange={(e) => setLyrics(e.target.value)}
-                placeholder="Enter lyrics or click 'Search Lyrics' to find automatically..."
-                className="w-full px-3 py-2 border rounded-md text-sm"
-                rows={6}
+                placeholder="Enter lyrics or click 'Search' to find automatically..."
+                className="w-full px-3 py-2 border rounded-md text-sm font-mono"
+                rows={8}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Use the Format button to clean up spacing and structure.
+              </p>
             </div>
           )}
 

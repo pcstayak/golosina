@@ -1,31 +1,43 @@
 import { supabase } from '@/lib/supabase';
+import { formatLyrics } from '@/utils/lyricsFormatter';
 
 export interface LyricsSearchResult {
   title: string;
   artist: string;
   lyrics: string;
-  source: 'genius' | 'internal' | 'musixmatch';
+  source: 'lyrics.ovh' | 'internal';
   uploadedBy?: string;
 }
 
 export class LyricsService {
-  // Search Genius.com for lyrics (web scraping - free, no API key)
-  static async searchGenius(title: string, artist: string): Promise<LyricsSearchResult | null> {
+  // Search external APIs via our server-side endpoint
+  static async searchExternal(title: string, artist: string): Promise<LyricsSearchResult | null> {
     try {
-      // Use a proxy or server-side endpoint to avoid CORS
-      // For now, we'll use a simple fetch to Genius search
-      const query = encodeURIComponent(`${title} ${artist}`);
+      const params = new URLSearchParams({
+        title,
+        artist: artist || '',
+      });
 
-      // Note: This is a simplified version. In production, you'd want to:
-      // 1. Use a server-side API route to avoid CORS
-      // 2. Parse HTML to extract lyrics
-      // 3. Handle rate limiting
+      const response = await fetch(`/api/lyrics/search?${params}`);
 
-      // For MVP, we'll return null and implement this server-side later
-      console.log('Genius search not yet implemented server-side:', { title, artist });
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.lyrics) {
+        return {
+          title: data.title,
+          artist: data.artist,
+          lyrics: data.lyrics,
+          source: 'lyrics.ovh' as const,
+        };
+      }
+
       return null;
     } catch (error) {
-      console.error('Error searching Genius:', error);
+      console.error('Error searching external lyrics:', error);
       return null;
     }
   }
@@ -57,7 +69,7 @@ export class LyricsService {
       return (data || []).map(item => ({
         title: item.title,
         artist: item.artist || '',
-        lyrics: item.lyrics,
+        lyrics: formatLyrics(item.lyrics),
         source: 'internal' as const,
         uploadedBy: item.uploaded_by
       }));

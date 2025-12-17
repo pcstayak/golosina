@@ -30,16 +30,26 @@ export default function LyricsSearchModal({ isOpen, onClose, onSelect }: LyricsS
     setSelectedIndex(null);
 
     try {
-      // Search internal database first
+      const allResults: LyricsSearchResult[] = [];
+
+      // Search external API first (if artist is provided)
+      if (artist.trim()) {
+        const externalResult = await LyricsService.searchExternal(title, artist);
+        if (externalResult) {
+          allResults.push(externalResult);
+        }
+      }
+
+      // Search internal database
       const internalResults = await LyricsService.searchInternal(title, artist);
+      allResults.push(...internalResults);
 
-      // TODO: Add Genius API search when implemented server-side
-      // const geniusResult = await LyricsService.searchGenius(title, artist);
-      // if (geniusResult) {
-      //   results.push(geniusResult);
-      // }
+      setResults(allResults);
 
-      setResults(internalResults);
+      // If no results found, show a message
+      if (allResults.length === 0) {
+        console.log('No lyrics found');
+      }
     } catch (error) {
       console.error('Error searching lyrics:', error);
     } finally {
@@ -160,7 +170,7 @@ export default function LyricsSearchModal({ isOpen, onClose, onSelect }: LyricsS
                       {result.source === 'internal' ? (
                         <>From teacher: {result.uploadedBy}</>
                       ) : (
-                        <>From {result.source}</>
+                        <>From {result.source === 'lyrics.ovh' ? 'Lyrics.ovh' : result.source}</>
                       )}
                     </div>
                     <div className="text-xs text-gray-600 mt-2 line-clamp-3">
