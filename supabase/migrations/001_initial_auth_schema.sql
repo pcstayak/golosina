@@ -1,5 +1,6 @@
 -- Enable necessary extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Note: We use gen_random_uuid() which is built-in in Postgres 13+
+-- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create enum types for user roles and specializations
 CREATE TYPE user_role AS ENUM ('student', 'teacher', 'admin');
@@ -72,7 +73,7 @@ CREATE TABLE public.teacher_profiles (
 
 -- Teacher credentials table
 CREATE TABLE public.teacher_credentials (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   teacher_id UUID REFERENCES public.teacher_profiles(id) ON DELETE CASCADE NOT NULL,
   credential_type TEXT NOT NULL, -- 'degree', 'certification', 'award', 'other'
   institution TEXT NOT NULL,
@@ -116,7 +117,7 @@ CREATE TABLE public.student_profiles (
 
 -- User sessions table for tracking login sessions
 CREATE TABLE public.user_sessions (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE NOT NULL,
   session_token TEXT NOT NULL,
   device_info TEXT,
@@ -131,8 +132,8 @@ CREATE TABLE public.user_sessions (
 
 -- Audit log for security tracking
 CREATE TABLE public.auth_audit_log (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  user_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID,
   action TEXT NOT NULL, -- 'login', 'logout', 'register', 'password_change', 'profile_update'
   ip_address INET,
   user_agent TEXT,
@@ -140,6 +141,18 @@ CREATE TABLE public.auth_audit_log (
   success BOOLEAN NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Add foreign key constraint as deferrable to avoid issues during user creation
+ALTER TABLE public.auth_audit_log
+ADD CONSTRAINT auth_audit_log_user_id_fkey
+FOREIGN KEY (user_id) REFERENCES public.user_profiles(id)
+ON DELETE SET NULL
+DEFERRABLE INITIALLY DEFERRED;
+
+-- Grant INSERT permissions to postgres role for trigger functions
+GRANT INSERT ON public.user_profiles TO postgres;
+GRANT INSERT ON public.teacher_profiles TO postgres;
+GRANT INSERT ON public.student_profiles TO postgres;
 
 -- Create indexes for performance
 CREATE INDEX idx_user_profiles_email ON public.user_profiles(email);
@@ -259,7 +272,7 @@ DECLARE
   user_provider TEXT;
 BEGIN
   -- Get the authentication provider
-  user_provider := COALESCE(NEW.app_metadata->>'provider', 'email');
+  user_provider := COALESCE(NEW.raw_app_meta_data->>'provider', 'email');
 
   -- Only handle email users in this function
   IF user_provider = 'email' THEN

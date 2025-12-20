@@ -39,6 +39,12 @@ CREATE POLICY "Authenticated users can delete recording comments" ON public.reco
 DROP POLICY IF EXISTS "Allow public reads" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public uploads" ON storage.objects;
 
+-- Drop existing authenticated policies if they exist (so we can recreate them)
+DROP POLICY IF EXISTS "Authenticated users can upload lesson recordings" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can view lesson recordings" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can update lesson recordings" ON storage.objects;
+DROP POLICY IF EXISTS "Authenticated users can delete lesson recordings" ON storage.objects;
+
 -- Add policy for authenticated users to upload to the existing bucket
 CREATE POLICY "Authenticated users can upload lesson recordings"
   ON storage.objects FOR INSERT

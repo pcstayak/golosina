@@ -3,19 +3,19 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
   user_provider TEXT;
-  user_role user_role DEFAULT 'student';
+  user_role public.user_role DEFAULT 'student';
   terms_accepted BOOLEAN DEFAULT FALSE;
   privacy_accepted BOOLEAN DEFAULT FALSE;
   marketing_consent BOOLEAN DEFAULT FALSE;
 BEGIN
   -- Get the authentication provider
-  user_provider := COALESCE(NEW.app_metadata->>'provider', 'email');
+  user_provider := COALESCE(NEW.raw_app_meta_data->>'provider', 'email');
 
   -- Only handle email users in this function
   IF user_provider = 'email' THEN
     -- Extract role if provided
     IF NEW.raw_user_meta_data->>'role' IS NOT NULL THEN
-      user_role := (NEW.raw_user_meta_data->>'role')::user_role;
+      user_role := (NEW.raw_user_meta_data->>'role')::public.user_role;
     END IF;
 
     -- Extract terms acceptance for email signup
@@ -77,13 +77,13 @@ CREATE OR REPLACE FUNCTION public.handle_new_oauth_user()
 RETURNS TRIGGER AS $$
 DECLARE
   user_provider TEXT;
-  user_role user_role DEFAULT 'student';
+  user_role public.user_role DEFAULT 'student';
   display_name TEXT;
   first_name TEXT;
   last_name TEXT;
 BEGIN
   -- Get the authentication provider
-  user_provider := COALESCE(NEW.app_metadata->>'provider', 'email');
+  user_provider := COALESCE(NEW.raw_app_meta_data->>'provider', 'email');
 
   -- Only handle OAuth users in this function (not email users)
   IF user_provider != 'email' THEN
@@ -122,7 +122,7 @@ BEGIN
 
     -- Extract role if provided
     IF NEW.raw_user_meta_data->>'role' IS NOT NULL THEN
-      user_role := (NEW.raw_user_meta_data->>'role')::user_role;
+      user_role := (NEW.raw_user_meta_data->>'role')::public.user_role;
     END IF;
 
     -- Insert user profile with explicit schema reference
@@ -148,8 +148,8 @@ BEGIN
       TRUE, -- OAuth users implicitly accept privacy policy
       FALSE, -- Don't assume marketing consent for OAuth users
       CASE
-        WHEN first_name IS NOT NULL AND last_name IS NOT NULL THEN 'basic'::profile_completion_status
-        ELSE 'incomplete'::profile_completion_status
+        WHEN first_name IS NOT NULL AND last_name IS NOT NULL THEN 'basic'::public.profile_completion_status
+        ELSE 'incomplete'::public.profile_completion_status
       END
     );
 
@@ -188,3 +188,14 @@ CREATE TRIGGER on_auth_oauth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE PROCEDURE public.handle_new_oauth_user();
+
+-- Grant INSERT permissions to postgres role to bypass RLS in triggers
+GRANT INSERT ON public.user_profiles TO postgres;
+GRANT INSERT ON public.teacher_profiles TO postgres;
+GRANT INSERT ON public.student_profiles TO postgres;
+
+-- Grant execute permissions for trigger functions
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_new_oauth_user() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO service_role;
+GRANT EXECUTE ON FUNCTION public.handle_new_oauth_user() TO service_role;
