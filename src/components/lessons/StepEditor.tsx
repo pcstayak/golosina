@@ -17,6 +17,7 @@ interface StepEditorProps {
   onDragOver?: () => void
   onDrop?: () => void
   isDragging?: boolean
+  userId?: string
 }
 
 export default function StepEditor({
@@ -30,6 +31,7 @@ export default function StepEditor({
   onDragOver,
   onDrop,
   isDragging,
+  userId,
 }: StepEditorProps) {
   const [isExpanded, setIsExpanded] = useState(true)
 
@@ -197,6 +199,7 @@ export default function StepEditor({
             <MediaInput
               media={step.media}
               onChange={(media) => handleFieldChange('media', media)}
+              userId={userId}
             />
           </div>
         </div>

@@ -364,7 +364,15 @@ export class LessonService {
 
       // Attach comments to media items
       const mediaWithComments = mediaData.map((media) => ({
-        ...media,
+        id: media.id,
+        lesson_step_id: media.lesson_step_id,
+        media_type: media.media_type,
+        media_url: media.media_url,
+        media_platform: media.media_platform,
+        embed_id: media.embed_id,
+        display_order: media.display_order,
+        caption: media.caption,
+        lyrics: media.lyrics,
         comments: mediaCommentsData.filter((c) => c.media_id === media.id),
       }));
 
@@ -464,7 +472,15 @@ export class LessonService {
 
       // Attach comments to media items
       const mediaWithComments = mediaData.map((media) => ({
-        ...media,
+        id: media.id,
+        lesson_step_id: media.lesson_step_id,
+        media_type: media.media_type,
+        media_url: media.media_url,
+        media_platform: media.media_platform,
+        embed_id: media.embed_id,
+        display_order: media.display_order,
+        caption: media.caption,
+        lyrics: media.lyrics,
         comments: mediaCommentsData.filter((c) => c.media_id === media.id),
       }));
 
@@ -703,6 +719,59 @@ export class LessonService {
       return data || [];
     } catch (error) {
       console.error('Error fetching step comments:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get students that a teacher can assign lessons to (only active relationships)
+   */
+  static async getAssignableStudents(teacherId: string): Promise<Array<{
+    id: string;
+    email: string;
+    first_name?: string;
+    last_name?: string;
+    display_name?: string;
+  }>> {
+    if (!supabase) {
+      console.error('Supabase is not configured');
+      return [];
+    }
+
+    try {
+      // Get active student relationships
+      const { data: relationships, error: relError } = await supabase
+        .from('teacher_student_relationships')
+        .select('student_id')
+        .eq('teacher_id', teacherId)
+        .eq('status', 'active');
+
+      if (relError) {
+        console.error('Error fetching student relationships:', relError);
+        return [];
+      }
+
+      if (!relationships || relationships.length === 0) {
+        return [];
+      }
+
+      const studentIds = relationships.map((r) => r.student_id);
+
+      // Get student profiles
+      const { data: students, error: studentsError } = await supabase
+        .from('user_profiles')
+        .select('id, email, first_name, last_name, display_name')
+        .in('id', studentIds)
+        .order('display_name');
+
+      if (studentsError) {
+        console.error('Error fetching students:', studentsError);
+        return [];
+      }
+
+      return students || [];
+    } catch (error) {
+      console.error('Error fetching assignable students:', error);
       return [];
     }
   }

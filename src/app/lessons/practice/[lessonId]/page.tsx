@@ -68,7 +68,14 @@ export default function LessonPracticePage() {
 
           // Fetch step comments if this is an assigned lesson
           if (assignmentId) {
-            // TODO: Fetch and attach step comments
+            const stepsWithComments = await Promise.all(
+              fetchedLesson.steps.map(async (step) => {
+                if (!step.id) return step
+                const comments = await LessonService.getStepComments(step.id, assignmentId)
+                return { ...step, comments }
+              })
+            )
+            fetchedLesson.steps = stepsWithComments
           }
 
           dispatch({ type: 'SET_CURRENT_VIEW', payload: 'practice' })

@@ -357,6 +357,7 @@ export default function EditLessonPage() {
                 onDragOver={() => handleDragOver(index)}
                 onDrop={() => handleDrop(index)}
                 isDragging={draggedIndex === index}
+                userId={user?.id}
               />
             </div>
           ))}

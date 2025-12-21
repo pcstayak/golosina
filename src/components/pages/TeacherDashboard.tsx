@@ -1,12 +1,39 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useApp } from '@/contexts/AppContext'
+import { useRouter } from 'next/navigation'
+import { TeacherStudentService } from '@/services/teacherStudentService'
 
 export default function TeacherDashboard() {
   const { profile, user, signOut } = useAuth()
-  const { dispatch } = useApp()
+  const router = useRouter()
+
+  const [activeStudentsCount, setActiveStudentsCount] = useState(0)
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      if (!user?.id) return
+
+      try {
+        const [students, requests] = await Promise.all([
+          TeacherStudentService.getTeacherStudents(user.id),
+          TeacherStudentService.getTeacherPendingRequests(user.id)
+        ])
+
+        setActiveStudentsCount(students.length)
+        setPendingRequestsCount(requests.length)
+      } catch (error) {
+        console.error('Error loading student counts:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadCounts()
+  }, [user?.id])
 
   const handleLogout = async () => {
     try {
@@ -17,7 +44,7 @@ export default function TeacherDashboard() {
   }
 
   const handleLaunchVoiceTrainer = () => {
-    dispatch({ type: 'SET_CURRENT_VIEW', payload: 'landing' })
+    router.push('/')
   }
 
   return (
@@ -41,9 +68,25 @@ export default function TeacherDashboard() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-purple-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold text-purple-800 mb-2">My Students</h3>
-              <p className="text-purple-600">Manage your student roster and track progress</p>
-              <button className="mt-3 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors">
+              <div className="flex items-start justify-between mb-2">
+                <h3 className="text-lg font-semibold text-purple-800">My Students</h3>
+                {pendingRequestsCount > 0 && (
+                  <span className="px-2 py-1 text-xs font-semibold bg-red-500 text-white rounded-full">
+                    {pendingRequestsCount}
+                  </span>
+                )}
+              </div>
+              <p className="text-purple-600 mb-1">Manage your student roster and track progress</p>
+              {!loading && (
+                <p className="text-sm text-purple-700 mb-3">
+                  {activeStudentsCount} active {activeStudentsCount === 1 ? 'student' : 'students'}
+                  {pendingRequestsCount > 0 && `, ${pendingRequestsCount} pending`}
+                </p>
+              )}
+              <button
+                onClick={() => router.push('/teacher/students')}
+                className="mt-3 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+              >
                 View Students
               </button>
             </div>
@@ -51,9 +94,20 @@ export default function TeacherDashboard() {
             <div className="bg-blue-50 p-6 rounded-lg">
               <h3 className="text-lg font-semibold text-blue-800 mb-2">Lesson Plans</h3>
               <p className="text-blue-600">Create and manage voice training lesson plans</p>
-              <button className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-                Create Lessons
-              </button>
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={() => router.push('/teacher/lesson-plans')}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                >
+                  View Lessons
+                </button>
+                <button
+                  onClick={() => router.push('/lessons/create')}
+                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                >
+                  Create New
+                </button>
+              </div>
             </div>
 
             <div className="bg-green-50 p-6 rounded-lg">
@@ -96,7 +150,9 @@ export default function TeacherDashboard() {
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Quick Stats</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">0</div>
+                <div className="text-2xl font-bold text-purple-600">
+                  {loading ? '...' : activeStudentsCount}
+                </div>
                 <div className="text-sm text-gray-600">Active Students</div>
               </div>
               <div className="text-center">
@@ -104,8 +160,10 @@ export default function TeacherDashboard() {
                 <div className="text-sm text-gray-600">Lesson Plans</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">0</div>
-                <div className="text-sm text-gray-600">Hours Taught</div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {loading ? '...' : pendingRequestsCount}
+                </div>
+                <div className="text-sm text-gray-600">Pending Requests</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-600">0</div>
