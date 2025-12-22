@@ -59,6 +59,10 @@ export interface Settings {
   autoSplitThreshold: number;
   autoSplitDuration: number;
   minRecordingLength: number;
+  dropSilentRecordings: boolean;
+  // Edge trimming settings
+  trimSilenceFromEdges: boolean;
+  maxEdgeSilence: number;
   // Recording UI settings
   recordingDebugMode: boolean;
 }
@@ -103,8 +107,10 @@ type AppAction =
   | { type: 'SET_SESSION_ACTIVE'; payload: boolean }
   | { type: 'SET_MICROPHONE_PERMISSION'; payload: boolean }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<Settings> }
+  | { type: 'UPDATE_RECORDING_SETTINGS'; payload: { autoSplitEnabled?: boolean; autoSplitDuration?: number; minRecordingLength?: number; dropSilentRecordings?: boolean; trimSilenceFromEdges?: boolean; maxEdgeSilence?: number } }
   | { type: 'ADD_AUDIO_PIECE'; payload: { stepId: string; piece: AudioPiece } }
   | { type: 'REMOVE_AUDIO_PIECE'; payload: { stepId: string; pieceId: string } }
+  | { type: 'REPLACE_AUDIO_PIECE'; payload: { stepId: string; pieceId: string; piece: AudioPiece } }
   | { type: 'UPDATE_AUDIO_PIECE_TITLE'; payload: { stepId: string; pieceId: string; title: string } }
   | { type: 'CLEAR_PRACTICE_PIECES' }
   | { type: 'SET_CURRENT_RECORDING_SEGMENT'; payload: number }
@@ -139,7 +145,11 @@ const initialState: AppState = {
     autoSplitEnabled: true,
     autoSplitThreshold: 0.02,
     autoSplitDuration: 1.0,
-    minRecordingLength: 0.5,
+    minRecordingLength: 3.0,
+    dropSilentRecordings: true,
+    // Edge trimming defaults
+    trimSilenceFromEdges: true,
+    maxEdgeSilence: 2.0,
     // Recording UI defaults
     recordingDebugMode: false
   },
@@ -170,6 +180,23 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, microphonePermissionGranted: action.payload };
     case 'UPDATE_SETTINGS':
       return { ...state, settings: { ...state.settings, ...action.payload } };
+    case 'UPDATE_RECORDING_SETTINGS':
+      const updatedSettings = { ...state.settings, ...action.payload };
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('recording-settings', JSON.stringify({
+            autoSplitEnabled: updatedSettings.autoSplitEnabled,
+            autoSplitDuration: updatedSettings.autoSplitDuration,
+            minRecordingLength: updatedSettings.minRecordingLength,
+            dropSilentRecordings: updatedSettings.dropSilentRecordings,
+            trimSilenceFromEdges: updatedSettings.trimSilenceFromEdges,
+            maxEdgeSilence: updatedSettings.maxEdgeSilence
+          }));
+        } catch (error) {
+          console.error('Failed to save recording settings to localStorage:', error);
+        }
+      }
+      return { ...state, settings: updatedSettings };
     case 'ADD_AUDIO_PIECE':
       const { stepId, piece } = action.payload;
       return {
@@ -194,6 +221,23 @@ function appReducer(state: AppState, action: AppAction): AppState {
         currentPracticePieces: {
           ...state.currentPracticePieces,
           [removeKey]: state.currentPracticePieces[removeKey]?.filter(p => p.id !== pieceId) || []
+        }
+      };
+    case 'REPLACE_AUDIO_PIECE':
+      const { stepId: replaceKey, pieceId: replacePieceId, piece: replacePiece } = action.payload;
+      return {
+        ...state,
+        audioPieces: {
+          ...state.audioPieces,
+          [replaceKey]: state.audioPieces[replaceKey]?.map(p =>
+            p.id === replacePieceId ? replacePiece : p
+          ) || []
+        },
+        currentPracticePieces: {
+          ...state.currentPracticePieces,
+          [replaceKey]: state.currentPracticePieces[replaceKey]?.map(p =>
+            p.id === replacePieceId ? replacePiece : p
+          ) || []
         }
       };
     case 'UPDATE_AUDIO_PIECE_TITLE':
@@ -247,8 +291,39 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+function loadRecordingSettings(): Partial<Settings> {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  try {
+    const stored = localStorage.getItem('recording-settings');
+    if (stored) {
+      const settings = JSON.parse(stored);
+      return {
+        autoSplitEnabled: settings.autoSplitEnabled ?? true,
+        autoSplitDuration: settings.autoSplitDuration ?? 1.0,
+        minRecordingLength: settings.minRecordingLength ?? 3.0,
+        dropSilentRecordings: settings.dropSilentRecordings ?? true,
+        trimSilenceFromEdges: settings.trimSilenceFromEdges ?? true,
+        maxEdgeSilence: settings.maxEdgeSilence ?? 2.0
+      };
+    }
+  } catch (error) {
+    console.error('Failed to load recording settings from localStorage:', error);
+  }
+
+  return {};
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(appReducer, initialState);
+  const [state, dispatch] = useReducer(appReducer, {
+    ...initialState,
+    settings: {
+      ...initialState.settings,
+      ...loadRecordingSettings()
+    }
+  });
 
   const contextValue: AppContextType = {
     state,

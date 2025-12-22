@@ -35,7 +35,8 @@ export const useRealTimeSilenceDetection = (
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const silenceStartTimeRef = useRef<number | null>(null);
-  const lastSpeechTimeRef = useRef<number>(Date.now());
+  const lastSpeechTimeRef = useRef<number | null>(null);
+  const hasSpeechDetectedRef = useRef<boolean>(false);
 
   const cleanup = useCallback(() => {
     if (animationFrameRef.current) {
@@ -55,6 +56,8 @@ export const useRealTimeSilenceDetection = (
 
     analyserRef.current = null;
     silenceStartTimeRef.current = null;
+    lastSpeechTimeRef.current = null;
+    hasSpeechDetectedRef.current = false;
 
     setState(prev => ({ ...prev, isActive: false, currentLevel: 0, isSilent: false, silenceDuration: 0 }));
   }, []);
@@ -80,9 +83,12 @@ export const useRealTimeSilenceDetection = (
       microphoneRef.current = audioContextRef.current.createMediaStreamSource(audioStream);
       microphoneRef.current.connect(analyserRef.current);
 
-      // Initialize timing
-      lastSpeechTimeRef.current = Date.now();
+      // Initialize timing - no speech detected yet
+      lastSpeechTimeRef.current = null;
       silenceStartTimeRef.current = null;
+      hasSpeechDetectedRef.current = false;
+
+      console.log('Silence detection initialized - waiting for speech');
 
       setState(prev => ({ ...prev, isActive: true }));
 
@@ -111,46 +117,76 @@ export const useRealTimeSilenceDetection = (
         const isSilent = normalizedLevel < config.threshold;
 
         if (isSilent) {
-          // Start tracking silence if not already
-          if (silenceStartTimeRef.current === null) {
-            silenceStartTimeRef.current = currentTime;
-          }
-
-          const silenceDuration = (currentTime - silenceStartTimeRef.current) / 1000;
-          
-          setState(prev => ({ 
-            ...prev, 
-            currentLevel: normalizedLevel, 
-            isSilent: true, 
-            silenceDuration 
-          }));
-
-          // Check if silence duration exceeds threshold
-          if (silenceDuration >= config.duration) {
-            // Ensure we have a minimum recording length since last speech
-            const timeSinceLastSpeech = (currentTime - lastSpeechTimeRef.current) / 1000;
-            
-            if (timeSinceLastSpeech >= config.minRecordingLength) {
-              config.onSilenceDetected();
-              silenceStartTimeRef.current = null; // Reset silence tracking
-              lastSpeechTimeRef.current = currentTime; // Reset speech tracking
+          // Only start tracking silence if speech has been detected in this segment
+          if (hasSpeechDetectedRef.current) {
+            // Start tracking silence if not already
+            if (silenceStartTimeRef.current === null) {
+              silenceStartTimeRef.current = currentTime;
             }
+
+            const silenceDuration = (currentTime - silenceStartTimeRef.current) / 1000;
+
+            setState(prev => ({
+              ...prev,
+              currentLevel: normalizedLevel,
+              isSilent: true,
+              silenceDuration
+            }));
+
+            // Check if silence duration exceeds threshold
+            if (silenceDuration >= config.duration) {
+              // Ensure we have a minimum recording length since last speech started
+              const timeSinceLastSpeech = lastSpeechTimeRef.current
+                ? (currentTime - lastSpeechTimeRef.current) / 1000
+                : 0;
+
+              console.log('Silence after speech detected', {
+                silenceDuration: silenceDuration.toFixed(2),
+                timeSinceLastSpeech: timeSinceLastSpeech.toFixed(2),
+                minRequired: config.minRecordingLength
+              });
+
+              if (timeSinceLastSpeech >= config.minRecordingLength) {
+                console.log('Triggering silence detection callback - splitting audio');
+                config.onSilenceDetected();
+                silenceStartTimeRef.current = null; // Reset silence tracking
+                lastSpeechTimeRef.current = null; // Reset speech tracking
+                hasSpeechDetectedRef.current = false; // Reset for next segment
+              } else {
+                console.log('Recording too short - waiting for more content');
+              }
+            }
+          } else {
+            // Silence before any speech - just update level, don't track silence duration
+            setState(prev => ({
+              ...prev,
+              currentLevel: normalizedLevel,
+              isSilent: true,
+              silenceDuration: 0
+            }));
           }
         } else {
           // Speech detected
-          if (silenceStartTimeRef.current !== null) {
-            // Transitioning from silence to speech
+          if (!hasSpeechDetectedRef.current) {
+            console.log('First speech detected in this segment!');
+            hasSpeechDetectedRef.current = true;
+            lastSpeechTimeRef.current = currentTime;
             config.onSpeechDetected();
-            silenceStartTimeRef.current = null;
+          } else if (silenceStartTimeRef.current !== null) {
+            // Transitioning from silence to speech (continuing speech after pause)
+            console.log('Speech resumed after silence');
+            config.onSpeechDetected();
           }
-          
+
+          // Always update last speech time when there's speech
           lastSpeechTimeRef.current = currentTime;
-          
-          setState(prev => ({ 
-            ...prev, 
-            currentLevel: normalizedLevel, 
-            isSilent: false, 
-            silenceDuration: 0 
+          silenceStartTimeRef.current = null;
+
+          setState(prev => ({
+            ...prev,
+            currentLevel: normalizedLevel,
+            isSilent: false,
+            silenceDuration: 0
           }));
         }
 

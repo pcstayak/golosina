@@ -36,7 +36,8 @@ export default function LessonPracticePage() {
   // Get current step and recordings for current step only
   const currentStep = lesson?.steps[state.currentStepIndex]
   const currentStepId = state.currentStepId || ''
-  const currentStepRecordings = state.currentPracticePieces[currentStepId] || []
+  const recordingStepId = `step_${currentStepId}`
+  const currentStepRecordings = state.currentPracticePieces[recordingStepId] || []
 
   useEffect(() => {
     const fetchLesson = async () => {
@@ -301,88 +302,104 @@ export default function LessonPracticePage() {
 
             {/* Step Navigation Footer */}
             <div className="flex items-center justify-center gap-4">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handlePreviousStep}
-                disabled={state.currentStepIndex === 0}
-                className="flex items-center gap-1"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Previous
-              </Button>
+              {state.currentStepIndex > 0 && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handlePreviousStep}
+                  className="flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </Button>
+              )}
               <span className="text-base font-medium text-gray-700 px-4">
                 Step {state.currentStepIndex + 1} of {lesson.steps.length}
               </span>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleNextStep}
-                disabled={state.currentStepIndex === lesson.steps.length - 1}
-                className="flex items-center gap-1"
-              >
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+              {state.currentStepIndex === lesson.steps.length - 1 ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSaveAndShare}
+                  disabled={isSaving || !hasRecordings}
+                  className="flex items-center gap-1"
+                >
+                  {isSaving ? 'Saving...' : 'Save & Share'}
+                  <Share2 className="w-4 h-4" />
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleNextStep}
+                  disabled={state.currentStepIndex === lesson.steps.length - 1}
+                  className="flex items-center gap-1"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
 
           {/* Recording Section */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm border p-6 sticky top-4">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">
                 Practice Recording
               </h2>
 
-              <p className="text-sm text-gray-600 mb-4">
-                Record yourself practicing this lesson
-              </p>
-
               <RecordingControls />
 
+              {state.isRecording && (
+                <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <p className="text-xs text-red-700 font-medium">
+                      Recording in progress
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {currentStepRecordings.length > 0 && (
-                <div className="mt-6 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-700">
-                    Recordings for this step ({currentStepRecordings.length})
-                  </h3>
-                  {currentStepRecordings.map((piece, index) => (
-                    <AudioPlayer
-                      key={piece.id}
-                      piece={piece}
-                      index={index}
-                      onDelete={() => {
-                        dispatch({
-                          type: 'REMOVE_AUDIO_PIECE',
-                          payload: { stepId: currentStepId, pieceId: piece.id },
-                        });
-                      }}
-                      onDownload={downloadPiece}
-                      onTitleUpdate={undefined}
-                      isPlaying={currentlyPlaying === piece.id}
-                      onPlayStateChange={handlePlayStateChange}
-                      exerciseName={piece.exerciseName || "Practice Recording"}
-                      showDeleteButton={true}
-                    />
-                  ))}
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-800">
+                      Your Recordings ({currentStepRecordings.length})
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Record more anytime
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    {currentStepRecordings.map((piece, index) => (
+                      <AudioPlayer
+                        key={piece.id}
+                        piece={piece}
+                        index={index}
+                        onDelete={() => {
+                          dispatch({
+                            type: 'REMOVE_AUDIO_PIECE',
+                            payload: { stepId: recordingStepId, pieceId: piece.id },
+                          });
+                        }}
+                        onDownload={downloadPiece}
+                        onTitleUpdate={undefined}
+                        isPlaying={currentlyPlaying === piece.id}
+                        onPlayStateChange={handlePlayStateChange}
+                        exerciseName={piece.exerciseName || "Practice Recording"}
+                        showDeleteButton={true}
+                        showWaveform={false}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {currentStepRecordings.length === 0 && !state.isRecording && (
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg text-center">
-                  <p className="text-sm text-gray-600">
-                    No recordings for this step yet. Click the microphone to start.
-                  </p>
-                </div>
-              )}
+              {currentStepRecordings.length === 0 && !state.isRecording}
 
-              {/* Total recordings across all steps indicator */}
-              {allRecordings.length > 0 && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg text-center">
-                  <p className="text-xs text-blue-700 font-medium">
-                    Total: {allRecordings.length} recording{allRecordings.length !== 1 ? 's' : ''} across all steps
-                  </p>
-                </div>
-              )}
+
             </div>
           </div>
         </div>

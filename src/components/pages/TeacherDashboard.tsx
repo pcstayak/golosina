@@ -109,41 +109,6 @@ export default function TeacherDashboard() {
                 </button>
               </div>
             </div>
-
-            <div className="bg-green-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold text-green-800 mb-2">Progress Reports</h3>
-              <p className="text-green-600">View detailed student progress and analytics</p>
-              <button className="mt-3 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-                View Reports
-              </button>
-            </div>
-
-            <div className="bg-yellow-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold text-yellow-800 mb-2">Voice Trainer Access</h3>
-              <p className="text-yellow-600">Access the main voice training application</p>
-              <button 
-                onClick={handleLaunchVoiceTrainer}
-                className="mt-3 px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
-              >
-                Launch Trainer
-              </button>
-            </div>
-
-            <div className="bg-indigo-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold text-indigo-800 mb-2">Shared Sessions</h3>
-              <p className="text-indigo-600">Share training sessions with students</p>
-              <button className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors">
-                Manage Shares
-              </button>
-            </div>
-
-            <div className="bg-pink-50 p-6 rounded-lg">
-              <h3 className="text-lg font-semibold text-pink-800 mb-2">Profile Settings</h3>
-              <p className="text-pink-600">Update your teaching profile and preferences</p>
-              <button className="mt-3 px-4 py-2 bg-pink-600 text-white rounded hover:bg-pink-700 transition-colors">
-                Edit Profile
-              </button>
-            </div>
           </div>
 
           <div className="mt-8 bg-gray-50 p-4 rounded-lg">

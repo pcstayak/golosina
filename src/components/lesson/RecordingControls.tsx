@@ -3,12 +3,14 @@
 import { useApp } from '@/contexts/AppContext';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 import { Button } from '@/components/ui/Button';
-import { Mic, Square, Loader } from 'lucide-react';
+import { Mic, Square, Loader, ChevronDown, ChevronUp, Scissors } from 'lucide-react';
 import AudioLevelMeter from '@/components/ui/AudioLevelMeter';
+import { useState } from 'react';
 
 export default function RecordingControls() {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const { toggleRecording, currentAudioLevel, silenceDetection } = useAudioRecording();
+  const [showSettings, setShowSettings] = useState(false);
 
   const handleRecordingToggle = async () => {
     try {
@@ -18,11 +20,22 @@ export default function RecordingControls() {
     }
   };
 
+  const handleUpdateRecordingSettings = (updates: {
+    autoSplitEnabled?: boolean;
+    autoSplitDuration?: number;
+    minRecordingLength?: number;
+    dropSilentRecordings?: boolean;
+    trimSilenceFromEdges?: boolean;
+    maxEdgeSilence?: number;
+  }) => {
+    dispatch({ type: 'UPDATE_RECORDING_SETTINGS', payload: updates });
+  };
+
   // Render simple mode
   if (!state.settings.recordingDebugMode) {
     return (
       <div className="flex flex-col items-center space-y-3">
-        <div className="flex items-center gap-3">
+        <div className="relative inline-block">
           <button
             onClick={handleRecordingToggle}
             className={`
@@ -38,11 +51,10 @@ export default function RecordingControls() {
             {state.isRecording ? <Square className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
           </button>
 
-          {/* Processing indicator for auto-splitting */}
+          {/* Processing indicator for auto-splitting - absolutely positioned to avoid layout shift */}
           {state.isAutoSplitting && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Loader className="w-4 h-4 animate-spin" />
-              <span>Slicing audio...</span>
+            <div className="absolute -top-1 -right-1 bg-blue-500 rounded-full p-1.5 shadow-md animate-in fade-in duration-200">
+              <Scissors className="w-3.5 h-3.5 text-white" />
             </div>
           )}
         </div>
@@ -53,6 +65,118 @@ export default function RecordingControls() {
             Click the microphone to start recording
           </p>
         )}
+
+        {/* Expandable Recording Settings */}
+        <div className="w-full max-w-md">
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors mx-auto"
+          >
+            {showSettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <span>Recording Settings</span>
+          </button>
+
+          {showSettings && (
+            <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+              {/* Auto-split after silence */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={state.settings.autoSplitEnabled}
+                    onChange={(e) => handleUpdateRecordingSettings({ autoSplitEnabled: e.target.checked })}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Auto-split after silence
+                </label>
+                {state.settings.autoSplitEnabled && (
+                  <div className="flex items-center gap-2 ml-6">
+                    <input
+                      type="number"
+                      min="0.5"
+                      max="5"
+                      step="0.1"
+                      value={state.settings.autoSplitDuration}
+                      onChange={(e) => handleUpdateRecordingSettings({ autoSplitDuration: parseFloat(e.target.value) || 1.0 })}
+                      className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <span className="text-sm text-gray-600">seconds</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Drop short recordings */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={state.settings.minRecordingLength > 0}
+                    onChange={(e) => handleUpdateRecordingSettings({
+                      minRecordingLength: e.target.checked ? 3.0 : 0
+                    })}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Drop recordings shorter than
+                </label>
+                {state.settings.minRecordingLength > 0 && (
+                  <div className="flex items-center gap-2 ml-6">
+                    <input
+                      type="number"
+                      min="0.5"
+                      max="10"
+                      step="0.5"
+                      value={state.settings.minRecordingLength}
+                      onChange={(e) => handleUpdateRecordingSettings({ minRecordingLength: parseFloat(e.target.value) || 3.0 })}
+                      className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <span className="text-sm text-gray-600">seconds</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Drop silent recordings */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={state.settings.dropSilentRecordings}
+                    onChange={(e) => handleUpdateRecordingSettings({ dropSilentRecordings: e.target.checked })}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Drop silent recordings
+                </label>
+              </div>
+
+              {/* Trim silence from edges */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={state.settings.trimSilenceFromEdges}
+                    onChange={(e) => handleUpdateRecordingSettings({ trimSilenceFromEdges: e.target.checked })}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Trim silence from edges
+                </label>
+                {state.settings.trimSilenceFromEdges && (
+                  <div className="flex items-center gap-2 ml-6">
+                    <span className="text-sm text-gray-600">Keep max</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      value={state.settings.maxEdgeSilence}
+                      onChange={(e) => handleUpdateRecordingSettings({ maxEdgeSilence: parseFloat(e.target.value) || 2.0 })}
+                      className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <span className="text-sm text-gray-600">seconds</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -125,6 +249,118 @@ export default function RecordingControls() {
           </p>
         </div>
       )}
+
+      {/* Expandable Recording Settings (Debug Mode) */}
+      <div className="w-full max-w-md">
+        <button
+          onClick={() => setShowSettings(!showSettings)}
+          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors mx-auto"
+        >
+          {showSettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          <span>Recording Settings</span>
+        </button>
+
+        {showSettings && (
+          <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+            {/* Auto-split after silence */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={state.settings.autoSplitEnabled}
+                  onChange={(e) => handleUpdateRecordingSettings({ autoSplitEnabled: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                Auto-split after silence
+              </label>
+              {state.settings.autoSplitEnabled && (
+                <div className="flex items-center gap-2 ml-6">
+                  <input
+                    type="number"
+                    min="0.5"
+                    max="5"
+                    step="0.1"
+                    value={state.settings.autoSplitDuration}
+                    onChange={(e) => handleUpdateRecordingSettings({ autoSplitDuration: parseFloat(e.target.value) || 1.0 })}
+                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <span className="text-sm text-gray-600">seconds</span>
+                </div>
+              )}
+            </div>
+
+            {/* Drop short recordings */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={state.settings.minRecordingLength > 0}
+                  onChange={(e) => handleUpdateRecordingSettings({
+                    minRecordingLength: e.target.checked ? 3.0 : 0
+                  })}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                Drop recordings shorter than
+              </label>
+              {state.settings.minRecordingLength > 0 && (
+                <div className="flex items-center gap-2 ml-6">
+                  <input
+                    type="number"
+                    min="0.5"
+                    max="10"
+                    step="0.5"
+                    value={state.settings.minRecordingLength}
+                    onChange={(e) => handleUpdateRecordingSettings({ minRecordingLength: parseFloat(e.target.value) || 3.0 })}
+                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <span className="text-sm text-gray-600">seconds</span>
+                </div>
+              )}
+            </div>
+
+            {/* Drop silent recordings */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={state.settings.dropSilentRecordings}
+                  onChange={(e) => handleUpdateRecordingSettings({ dropSilentRecordings: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                Drop silent recordings
+              </label>
+            </div>
+
+            {/* Trim silence from edges */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={state.settings.trimSilenceFromEdges}
+                  onChange={(e) => handleUpdateRecordingSettings({ trimSilenceFromEdges: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                Trim silence from edges
+              </label>
+              {state.settings.trimSilenceFromEdges && (
+                <div className="flex items-center gap-2 ml-6">
+                  <span className="text-sm text-gray-600">Keep max</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={state.settings.maxEdgeSilence}
+                    onChange={(e) => handleUpdateRecordingSettings({ maxEdgeSilence: parseFloat(e.target.value) || 2.0 })}
+                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <span className="text-sm text-gray-600">seconds</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
