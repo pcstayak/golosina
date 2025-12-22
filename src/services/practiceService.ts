@@ -22,10 +22,28 @@ export interface Practice {
   recordings: Record<string, PracticeRecordingSet>;
   recording_count: number;
   is_shared: boolean;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  last_viewed_at?: string;
+  last_viewed_by?: string;
   created_at: string;
   updated_at: string;
   comment_count?: number;
   title?: string;
+}
+
+export interface PracticeWithDetails extends Practice {
+  student_profile?: {
+    id: string;
+    first_name?: string;
+    last_name?: string;
+    display_name?: string;
+    email?: string;
+  };
+  lesson?: {
+    title: string;
+    description?: string;
+  };
 }
 
 export interface PracticeComment {
@@ -544,6 +562,148 @@ export class PracticeService {
       console.error('Error getting owned practices:', error);
       return [];
     }
+  }
+
+  static async getTeacherStudentPractices(teacherId: string): Promise<PracticeWithDetails[]> {
+    if (!supabase) {
+      console.error('Supabase is not configured');
+      return [];
+    }
+
+    try {
+      const { data: studentIds, error: relError } = await supabase
+        .from('teacher_student_relationships')
+        .select('student_id')
+        .eq('teacher_id', teacherId)
+        .eq('status', 'active');
+
+      if (relError) {
+        console.error('Error fetching student relationships:', relError);
+        return [];
+      }
+
+      if (!studentIds || studentIds.length === 0) {
+        return [];
+      }
+
+      const studentIdList = studentIds.map((r) => r.student_id);
+
+      const { data: practices, error: practicesError } = await supabase
+        .from('practices')
+        .select('*')
+        .in('created_by', studentIdList)
+        .eq('is_shared', true)
+        .order('created_at', { ascending: false });
+
+      if (practicesError) {
+        console.error('Error fetching practices:', practicesError);
+        return [];
+      }
+
+      if (!practices || practices.length === 0) {
+        return [];
+      }
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('id, email, first_name, last_name, display_name')
+        .in('id', studentIdList);
+
+      if (profilesError) {
+        console.error('Error fetching student profiles:', profilesError);
+      }
+
+      const profilesMap = new Map(
+        (profiles || []).map((p) => [p.id, p])
+      );
+
+      const lessonIds = practices
+        .map((p) => p.lesson_id)
+        .filter((id): id is string => id !== null);
+
+      let lessonsMap = new Map<string, { title: string; description?: string }>();
+      if (lessonIds.length > 0) {
+        const { data: lessons, error: lessonsError } = await supabase
+          .from('lessons')
+          .select('id, title, description')
+          .in('id', lessonIds);
+
+        if (lessonsError) {
+          console.error('Error fetching lessons:', lessonsError);
+        } else {
+          lessonsMap = new Map(
+            (lessons || []).map((l) => [l.id, { title: l.title, description: l.description }])
+          );
+        }
+      }
+
+      const practiceIds = practices.map((p) => p.practice_id);
+      const { data: comments, error: commentsError } = await supabase
+        .from('practice_comments')
+        .select('practice_id')
+        .in('practice_id', practiceIds);
+
+      if (commentsError) {
+        console.error('Error fetching comment counts:', commentsError);
+      }
+
+      const commentCounts = new Map<string, number>();
+      (comments || []).forEach((c) => {
+        commentCounts.set(c.practice_id, (commentCounts.get(c.practice_id) || 0) + 1);
+      });
+
+      return practices.map((practice) => {
+        const studentProfile = profilesMap.get(practice.created_by);
+        const lesson = practice.lesson_id ? lessonsMap.get(practice.lesson_id) : undefined;
+
+        return {
+          ...practice,
+          student_profile: studentProfile,
+          lesson: lesson || { title: 'Untitled Lesson' },
+          comment_count: commentCounts.get(practice.practice_id) || 0,
+          title: lesson?.title || 'Untitled Lesson',
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching teacher student practices:', error);
+      return [];
+    }
+  }
+
+  static async markPracticeAsReviewed(
+    practiceId: string,
+    teacherId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!supabase) {
+      return { success: false, error: 'Supabase is not configured' };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('practices')
+        .update({
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: teacherId,
+        })
+        .eq('practice_id', practiceId);
+
+      if (error) {
+        console.error('Error marking practice as reviewed:', error);
+        return { success: false, error: 'Failed to mark practice as reviewed' };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking practice as reviewed:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    }
+  }
+
+  static getStepCount(practice: Practice): number {
+    if (!practice.recordings || typeof practice.recordings !== 'object') {
+      return 0;
+    }
+    return Object.keys(practice.recordings).length;
   }
 
   private static getFileExtensionFromMimeType(mimeType: string): string {
