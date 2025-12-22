@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
-import { ArrowLeft, Calendar, BookOpen, Mic, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Calendar, BookOpen, Mic, Send, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { PracticeService, Practice, PracticeComment } from '@/services/practiceService';
 import { LessonService, Lesson } from '@/services/lessonService';
 import VideoEmbed from '@/components/lesson/VideoEmbed';
@@ -14,6 +14,8 @@ import AudioPlayer from '@/components/lesson/AudioPlayer';
 import CommentThread from '@/components/lesson/CommentThread';
 import { AudioPiece } from '@/contexts/AppContext';
 import MediaPreview from '@/components/lessons/MediaPreview';
+import { TeacherStudentService } from '@/services/teacherStudentService';
+import { NotificationService } from '@/services/notificationService';
 
 export default function PracticePage() {
   const params = useParams();
@@ -27,6 +29,9 @@ export default function PracticePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [isTeacher, setIsTeacher] = useState(false);
+  const [canReview, setCanReview] = useState(false);
+  const [markingAsReviewed, setMarkingAsReviewed] = useState(false);
   const [allPractices, setAllPractices] = useState<Practice[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
 
@@ -62,6 +67,17 @@ export default function PracticePage() {
         setPractice(practiceData);
         setIsOwner(PracticeService.isPracticeOwned(practiceId));
 
+        const teacherRole = profile?.role === 'teacher';
+        setIsTeacher(teacherRole);
+
+        if (teacherRole && user?.id && practiceData.created_by !== user.id) {
+          const hasRelationship = await TeacherStudentService.canAssignLesson(
+            user.id,
+            practiceData.created_by
+          );
+          setCanReview(hasRelationship);
+        }
+
         // Fetch lesson if lesson_id exists (not archived)
         if (practiceData.lesson_id) {
           const lessonData = await LessonService.getLesson(practiceData.lesson_id);
@@ -77,6 +93,17 @@ export default function PracticePage() {
 
         const commentsData = await PracticeService.getComments(practiceId);
         setComments(commentsData);
+
+        // Mark practice notifications as read when the user views the practice
+        if (user?.id) {
+          await NotificationService.markPracticeNotificationsAsRead(user.id, practiceId);
+
+          // Only update last_viewed_at if this is not the practice owner viewing their own work
+          // This tracks when teachers/reviewers last viewed the practice
+          if (user.id !== practiceData.created_by) {
+            await NotificationService.updatePracticeLastViewed(practiceId, user.id);
+          }
+        }
       } catch (err) {
         console.error('Error loading practice:', err);
         setError('Failed to load practice');
@@ -88,7 +115,7 @@ export default function PracticePage() {
     if (practiceId) {
       loadPractice();
     }
-  }, [practiceId]);
+  }, [practiceId, profile?.role, user?.id]);
 
   useEffect(() => {
     const convertRecordings = async () => {
@@ -382,6 +409,30 @@ export default function PracticePage() {
     }
   };
 
+  const handleMarkAsReviewed = async () => {
+    if (!user?.id || !practice) return;
+
+    try {
+      setMarkingAsReviewed(true);
+      const result = await PracticeService.markPracticeAsReviewed(practiceId, user.id);
+
+      if (result.success) {
+        setPractice(prev => prev ? {
+          ...prev,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user.id
+        } : null);
+      } else {
+        alert('Failed to mark as reviewed: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error marking as reviewed:', error);
+      alert('Failed to mark as reviewed');
+    } finally {
+      setMarkingAsReviewed(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -470,27 +521,46 @@ export default function PracticePage() {
               </div>
             </div>
 
-            {allPractices.length > 1 && currentIndex >= 0 && (
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {canReview && !practice.reviewed_at && (
                 <Button
-                  variant="secondary"
-                  onClick={handlePreviousPractice}
-                  disabled={currentIndex === 0}
+                  variant="primary"
+                  onClick={handleMarkAsReviewed}
+                  disabled={markingAsReviewed}
+                  className="flex items-center gap-2"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <CheckCircle className="w-4 h-4" />
+                  {markingAsReviewed ? 'Marking...' : 'Mark as Reviewed'}
                 </Button>
-                <span className="text-sm text-gray-600 px-3">
-                  {currentIndex + 1} / {allPractices.length}
-                </span>
-                <Button
-                  variant="secondary"
-                  onClick={handleNextPractice}
-                  disabled={currentIndex === allPractices.length - 1}
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
+              )}
+              {practice.reviewed_at && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm">
+                  <CheckCircle className="w-4 h-4" />
+                  Reviewed
+                </div>
+              )}
+              {allPractices.length > 1 && currentIndex >= 0 && (
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={handlePreviousPractice}
+                    disabled={currentIndex === 0}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm text-gray-600 px-3">
+                    {currentIndex + 1} / {allPractices.length}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    onClick={handleNextPractice}
+                    disabled={currentIndex === allPractices.length - 1}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

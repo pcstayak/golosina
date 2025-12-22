@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { TeacherStudentService } from '@/services/teacherStudentService'
+import HomeworkReview from '@/components/teacher/HomeworkReview'
 
 export default function TeacherDashboard() {
   const { profile, user, signOut } = useAuth()
@@ -135,6 +136,11 @@ export default function TeacherDashboard() {
                 <div className="text-sm text-gray-600">Shared Sessions</div>
               </div>
             </div>
+          </div>
+
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Student Homework</h2>
+            <HomeworkReview />
           </div>
         </div>
       </div>

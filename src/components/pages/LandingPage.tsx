@@ -14,6 +14,7 @@ import { useNotification } from '@/hooks/useNotification';
 import { LessonService, type Lesson, type LessonAssignment } from '@/services/lessonService';
 import LessonCard from '@/components/lessons/LessonCard';
 import AssignedLessonCardNew from '@/components/lessons/AssignedLessonCard';
+import NotificationList from '@/components/student/NotificationList';
 
 export default function LandingPage() {
   const { state, dispatch } = useApp();
@@ -223,6 +224,13 @@ export default function LandingPage() {
           Your AI-powered voice training companion
         </p>
       </div>
+
+      {/* Notifications Section - Only show for students (non-admin, non-teacher) */}
+      {user?.id && profile?.role !== 'admin' && profile?.role !== 'teacher' && (
+        <div className="mb-6">
+          <NotificationList maxItems={5} />
+        </div>
+      )}
 
       {/* Create Lesson Card */}
       <div className="mb-6">
