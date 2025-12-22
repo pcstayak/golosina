@@ -16,7 +16,7 @@ export interface PracticeRecordingSet {
 export interface Practice {
   id: string;
   practice_id: string;
-  lesson_id: string;
+  lesson_id: string | null;
   assignment_id?: string;
   created_by: string;
   recordings: Record<string, PracticeRecordingSet>;
@@ -363,7 +363,7 @@ export class PracticeService {
             return {
               ...practice,
               comment_count: 0,
-              title: 'Untitled Lesson'
+              title: 'Untitled Lesson (archived)'
             };
           }
 
@@ -373,17 +373,25 @@ export class PracticeService {
             .select('*', { count: 'exact', head: true })
             .eq('practice_id', practice.practice_id);
 
-          // Get lesson title
-          const { data: lessonData } = await supabase
-            .from('lessons')
-            .select('title')
-            .eq('id', practice.lesson_id)
-            .single();
+          // Get lesson title - handle null lesson_id (archived)
+          let lessonTitle = 'Untitled Lesson';
+          if (practice.lesson_id) {
+            const { data: lessonData } = await supabase
+              .from('lessons')
+              .select('title')
+              .eq('id', practice.lesson_id)
+              .single();
+
+            lessonTitle = lessonData?.title || 'Untitled Lesson';
+          } else {
+            // Lesson was deleted - mark as archived
+            lessonTitle = 'Untitled Lesson (archived)';
+          }
 
           return {
             ...practice,
             comment_count: count || 0,
-            title: lessonData?.title || 'Untitled Lesson'
+            title: lessonTitle
           };
         })
       );

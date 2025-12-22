@@ -28,19 +28,20 @@ export default function EditLessonPage() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
-  // Fetch lesson data only once on mount - use a ref to prevent refetching on tab focus
-  const hasLoadedRef = useRef(false)
+  // Fetch lesson data - refetch when lessonId changes
   useEffect(() => {
     const fetchLesson = async () => {
-      if (hasLoadedRef.current) {
-        return
-      }
-
       if (!lessonId) {
         setLessonNotFound(true)
         setIsLoading(false)
         return
       }
+
+      if (!user) {
+        return
+      }
+
+      setIsLoading(true)
 
       try {
         const lesson = await LessonService.getLesson(lessonId)
@@ -59,6 +60,17 @@ export default function EditLessonPage() {
         }
 
         // Pre-populate form with existing data
+        console.log('[EditLesson] Loaded lesson:', {
+          id: lesson.id,
+          title: lesson.title,
+          steps: lesson.steps.length,
+          firstStepMedia: lesson.steps[0]?.media?.map(m => ({
+            id: m.id,
+            lesson_step_id: (m as any).lesson_step_id,
+            url: m.media_url?.substring(0, 50)
+          }))
+        });
+
         setTitle(lesson.title)
         setDescription(lesson.description || '')
         setIsTemplate(lesson.is_template)
@@ -69,7 +81,6 @@ export default function EditLessonPage() {
           }))
         )
         setIsLoading(false)
-        hasLoadedRef.current = true
       } catch (error) {
         console.error('Error fetching lesson:', error)
         showError('Failed to load lesson')
@@ -77,10 +88,9 @@ export default function EditLessonPage() {
       }
     }
 
-    if (user) {
-      fetchLesson()
-    }
-  }, [user]) // Run when user loads, but ref prevents refetching
+    fetchLesson()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId, user?.id]) // Refetch when lessonId or user changes
 
   const handleAddStep = () => {
     setSteps([
@@ -90,7 +100,7 @@ export default function EditLessonPage() {
         step_order: steps.length,
         title: '',
         description: '',
-        tips: '',
+        tips: [],
         media: [],
       },
     ])
@@ -172,6 +182,7 @@ export default function EditLessonPage() {
         title,
         description,
         steps: steps.map((step) => ({
+          id: step.id,
           step_order: step.step_order,
           title: step.title,
           description: step.description,
@@ -243,9 +254,9 @@ export default function EditLessonPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-50 bg-white border-b shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <Button
             variant="secondary"
             size="sm"
@@ -267,14 +278,17 @@ export default function EditLessonPage() {
             {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
+      </div>
 
+      {/* Main content */}
+      <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Main Form */}
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-800 mb-6">Edit Lesson</h1>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
                 Lesson Title *
               </label>
               <input
@@ -282,37 +296,40 @@ export default function EditLessonPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Beginner Vocal Warm-up"
-                className="w-full px-3 py-2 border rounded-md"
+                className="flex-1 px-3 py-2 border rounded-md"
                 required
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="flex items-start gap-4">
+              <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0 pt-2">
                 Description
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe what this lesson is about..."
-                className="w-full px-3 py-2 border rounded-md"
+                className="flex-1 px-3 py-2 border rounded-md"
                 rows={3}
               />
             </div>
 
             {profile?.role === 'teacher' && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isTemplate"
-                  checked={isTemplate}
-                  onChange={(e) => setIsTemplate(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-                  disabled
-                />
-                <label htmlFor="isTemplate" className="text-sm text-gray-500">
-                  Template status (cannot be changed after creation)
-                </label>
+              <div className="flex items-center gap-4">
+                <div className="w-32 flex-shrink-0"></div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isTemplate"
+                    checked={isTemplate}
+                    onChange={(e) => setIsTemplate(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                    disabled
+                  />
+                  <label htmlFor="isTemplate" className="text-sm text-gray-500">
+                    Template status (cannot be changed after creation)
+                  </label>
+                </div>
               </div>
             )}
           </div>
@@ -351,6 +368,7 @@ export default function EditLessonPage() {
                 onDragOver={() => handleDragOver(index)}
                 onDrop={() => handleDrop(index)}
                 isDragging={draggedIndex === index}
+                userId={user?.id}
               />
             </div>
           ))}

@@ -5,6 +5,7 @@ import { useNotification } from './useNotification';
 import { useCallback, useRef, useState, useEffect } from 'react';
 import type { AudioPiece } from '@/contexts/AppContext';
 import { useRealTimeSilenceDetection } from './useRealTimeSilenceDetection';
+import { isAudioSilent, trimSilenceFromEdges } from '@/utils/audioAnalysis';
 
 export const useAudioRecording = () => {
   const { state, dispatch } = useApp();
@@ -32,12 +33,19 @@ export const useAudioRecording = () => {
 
   // Auto-splitting callbacks
   const handleSilenceDetected = useCallback(() => {
+    console.log('Silence detected callback triggered', {
+      isRecording: state.isRecording,
+      autoSplitEnabled: state.settings.autoSplitEnabled,
+      recorderState: currentRecorderRef.current?.state
+    });
+
     if (!state.isRecording || !state.settings.autoSplitEnabled) return;
-    
+
     dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: true });
-    
+
     // Finish current segment
     if (currentRecorderRef.current && currentRecorderRef.current.state === 'recording') {
+      console.log('Stopping current recorder to split audio');
       currentRecorderRef.current.stop();
     }
   }, [state.isRecording, state.settings.autoSplitEnabled, dispatch]);
@@ -73,19 +81,10 @@ export const useAudioRecording = () => {
       return;
     }
 
-    // Check minimum recording length
+    // Check minimum recording length first
     if (duration < state.settings.minRecordingLength) {
+      console.log(`Skipping segment ${segmentNumber} - too short (${duration.toFixed(2)}s < ${state.settings.minRecordingLength}s)`);
       return;
-    }
-
-    // For auto-split segments, filter out segments that are likely just silence
-    // If the segment duration is close to the auto-split duration, it's probably mostly silence
-    if (state.settings.autoSplitEnabled && segmentNumber > 1) {
-      const silenceThreshold = state.settings.autoSplitDuration;
-      
-      if (duration <= silenceThreshold + 0.3) { // 0.3s tolerance for timing variations
-        return;
-      }
     }
 
     try {
@@ -97,9 +96,26 @@ export const useAudioRecording = () => {
         type: actualMimeType
       });
 
+      console.log(`Processing segment ${segmentNumber}:`, {
+        chunks: chunks.length,
+        duration: duration.toFixed(2),
+        blobSize: audioBlob.size,
+        mimeType: actualMimeType
+      });
+
       if (audioBlob.size === 0) {
         console.warn('Empty audio blob for segment', segmentNumber);
         return;
+      }
+
+      // Check if recording is silent BEFORE adding to state (if setting is enabled)
+      // This is fast because we can skip it if the audio is actually not silent
+      if (state.settings.dropSilentRecordings) {
+        const isSilent = await isAudioSilent(audioBlob, state.settings.autoSplitThreshold);
+        if (isSilent) {
+          console.log(`Skipping segment ${segmentNumber} - recording is silent`);
+          return;
+        }
       }
 
       // Use step-based recording for unified practice system
@@ -122,19 +138,48 @@ export const useAudioRecording = () => {
         exerciseName: exerciseName
       };
 
+      // Add the recording to state IMMEDIATELY for instant feedback
       dispatch({ type: 'ADD_AUDIO_PIECE', payload: { stepId, piece: pieceData } });
 
-      const message = state.settings.autoSplitEnabled ? 
+      const message = state.settings.autoSplitEnabled ?
         `Segment ${segmentNumber} saved! (${duration.toFixed(1)}s)` :
         `Recording saved! (${duration.toFixed(1)}s)`;
-      
+
       showSuccess(message);
+
+      // Trim silence from edges in the background (if setting is enabled)
+      // This doesn't block the UI - the recording is already visible
+      if (state.settings.trimSilenceFromEdges) {
+        // Run trimming asynchronously without blocking
+        trimSilenceFromEdges(
+          audioBlob,
+          state.settings.autoSplitThreshold,
+          state.settings.maxEdgeSilence
+        ).then(trimmedBlob => {
+          // Only update if the blob actually changed (trimming occurred)
+          if (trimmedBlob !== audioBlob && trimmedBlob.size !== audioBlob.size) {
+            console.log(`Background trimming complete for segment ${segmentNumber}`);
+
+            // Update the blob in state with the trimmed version
+            const updatedPiece: AudioPiece = {
+              ...pieceData,
+              blob: trimmedBlob
+            };
+
+            // Replace the audio piece with trimmed version
+            dispatch({ type: 'REPLACE_AUDIO_PIECE', payload: { stepId, pieceId, piece: updatedPiece } });
+          }
+        }).catch(error => {
+          console.error('Error trimming audio in background:', error);
+          // Don't show error to user - the untrimmed recording is already saved
+        });
+      }
 
     } catch (error: any) {
       console.error('Error processing recording segment:', error);
       showError('Error processing recording: ' + error.message);
     }
-  }, [state.settings.minRecordingLength, state.settings.autoSplitEnabled, state.settings.autoSplitDuration, state.currentStepId, state.currentStepIndex, dispatch, showError, showSuccess]);
+  }, [state.settings.minRecordingLength, state.settings.autoSplitEnabled, state.settings.autoSplitDuration, state.settings.dropSilentRecordings, state.settings.autoSplitThreshold, state.settings.trimSilenceFromEdges, state.settings.maxEdgeSilence, state.currentStepId, state.currentStepIndex, dispatch, showError, showSuccess]);
 
   // Helper function to get file extension from mime type
   const getFileExtensionFromMimeType = useCallback((mimeType: string): string => {
@@ -207,6 +252,12 @@ export const useAudioRecording = () => {
     };
 
     recorder.onstop = () => {
+      console.log(`Recorder stopped - segment ${newSegment}`, {
+        isRecording: isRecordingRef.current,
+        autoSplitEnabled: autoSplitEnabledRef.current,
+        chunksCollected: currentChunksRef.current.length
+      });
+
       if (recordingStartTimeRef.current) {
         const duration = (Date.now() - recordingStartTimeRef.current) / 1000;
         processRecordingSegment(currentChunksRef.current, duration, newSegment);
@@ -216,6 +267,7 @@ export const useAudioRecording = () => {
       // Only need to check if recording is active and auto-split is enabled
       // isAutoSplitting is just a transitional state for UI feedback
       if (isRecordingRef.current && autoSplitEnabledRef.current) {
+        console.log('Auto-split: Starting next segment after delay');
         // Small delay to ensure smooth transition
         setTimeout(() => {
           if (isRecordingRef.current && startNewRecordingSegmentRef.current) {
@@ -223,6 +275,7 @@ export const useAudioRecording = () => {
           }
         }, 100);
       } else {
+        console.log('Recording session ended - cleaning up');
         // Recording stopped normally - clean up refs
         dispatch({ type: 'SET_CURRENT_RECORDING_SEGMENT', payload: 1 });
         currentRecorderRef.current = null;
@@ -236,8 +289,13 @@ export const useAudioRecording = () => {
       showError('Recording error: ' + event.error.message);
     };
 
+    console.log(`Starting recorder - segment ${newSegment}`, {
+      mimeType: audioFormat.mimeType,
+      audioBitsPerSecond: audioFormat.audioBitsPerSecond
+    });
+
     recorder.start(100);
-    
+
     // Reset auto-splitting state after a brief delay for UI feedback
     if (state.isAutoSplitting) {
       setTimeout(() => {
