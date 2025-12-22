@@ -46,8 +46,10 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
   }, [mediaId, context.userId, context.assignmentId, context.studentId, context.mode]);
 
   const loadAnnotations = async () => {
+    console.log('[LyricsWithAnnotations] Loading annotations for mediaId:', mediaId, 'Context mode:', context.mode);
     setIsLoading(true);
     const data = await AnnotationsService.getAnnotationsWithContext(mediaId, context);
+    console.log('[LyricsWithAnnotations] Loaded annotations:', data.length, 'annotations');
     setAnnotations(data);
     setIsLoading(false);
   };
@@ -127,6 +129,13 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
       }
     } else if (selectedText) {
       // Create new annotation
+      console.log('[LyricsWithAnnotations] Creating annotation:', {
+        mediaId,
+        annotationType,
+        context_mode: context.mode,
+        userId: context.userId
+      });
+
       const created = await AnnotationsService.createAnnotation({
         media_id: mediaId,
         start_index: selectedText.startIndex,
@@ -141,9 +150,11 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
       });
 
       if (created) {
+        console.log('[LyricsWithAnnotations] ✅ Annotation created successfully, reloading');
         showSuccess('Annotation added');
         await loadAnnotations();
       } else {
+        console.error('[LyricsWithAnnotations] ❌ createAnnotation returned null!');
         showError('Failed to add annotation');
       }
     }
@@ -276,7 +287,7 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
                 key={index}
                 className={getHighlightClass(segment.annotation)}
                 onClick={(e) => handleClickAnnotation(segment.annotation!, e)}
-                title={`${isEditable ? 'Click to edit: ' : ''}${segment.annotation.annotation_text.slice(0, 100)}`}
+                title={`${segment.annotation.annotation_text.slice(0, 100)}`}
               >
                 {segment.text}
               </span>

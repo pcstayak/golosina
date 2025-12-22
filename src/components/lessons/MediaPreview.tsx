@@ -32,6 +32,7 @@ interface MediaPreviewProps {
   userId?: string;
   isTeacher?: boolean;
   assignmentId?: string;
+  studentId?: string;
   availableStudents?: Array<{ id: string; name: string }>;
 }
 
@@ -49,6 +50,7 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
   userId,
   isTeacher = false,
   assignmentId,
+  studentId,
   availableStudents = []
 }) => {
   // State for video URL with timestamp (for reloading embedded videos)
@@ -355,10 +357,11 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
               lyrics={lyrics}
               mediaId={mediaId}
               context={{
-                mode: isEditable ? 'lesson_creation' : 'practice',
+                mode: isEditable ? 'lesson_creation' : (isTeacher && studentId && !assignmentId ? 'assignment' : 'practice'),
                 userId: userId,
                 isTeacher: isTeacher,
                 assignmentId: assignmentId,
+                studentId: studentId,
               }}
             />
           </div>

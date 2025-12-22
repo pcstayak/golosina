@@ -344,6 +344,7 @@ export default function AnnotateLessonPage() {
                         mediaId={mediaItem.id}
                         userId={user!.id}
                         isTeacher={true}
+                        studentId={studentId || undefined}
                       />
                     ) : (
                       <img

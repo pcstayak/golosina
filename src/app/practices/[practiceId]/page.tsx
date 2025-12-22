@@ -13,6 +13,7 @@ import { VideoEmbedService } from '@/services/videoEmbedService';
 import AudioPlayer from '@/components/lesson/AudioPlayer';
 import CommentThread from '@/components/lesson/CommentThread';
 import { AudioPiece } from '@/contexts/AppContext';
+import MediaPreview from '@/components/lessons/MediaPreview';
 
 export default function PracticePage() {
   const params = useParams();
@@ -539,27 +540,34 @@ export default function PracticePage() {
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">
                       Reference Media
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-4">
                       {step.media.map((media, mediaIndex) => (
                         <div key={media.id || mediaIndex} className="space-y-2">
-                          {media.media_type === 'video' && media.media_platform && media.embed_id && (
-                            <VideoEmbed
-                              embedUrl={VideoEmbedService.getEmbedUrl(
-                                media.media_platform as any,
-                                media.embed_id
-                              )}
-                              platform={media.media_platform as any}
-                              title={media.caption}
+                          {(media.media_type === 'video' || media.media_type === 'audio') ? (
+                            <MediaPreview
+                              mediaUrl={media.media_url}
+                              mediaType={media.media_type}
+                              mediaPlatform={media.media_platform}
+                              embedId={media.embed_id}
+                              comments={[]}
+                              onAddComment={() => {}}
+                              onDeleteComment={() => {}}
+                              isEditable={false}
+                              lyrics={media.lyrics}
+                              mediaId={media.id}
+                              userId={user?.id}
+                              isTeacher={profile?.role === 'teacher'}
+                              assignmentId={practice.assignment_id}
+                              studentId={practice.created_by}
                             />
-                          )}
-                          {(media.media_type === 'image' || media.media_type === 'gif') && (
+                          ) : (
                             <img
                               src={media.media_url}
                               alt={media.caption || `Media ${mediaIndex + 1}`}
                               className="w-full rounded-lg"
                             />
                           )}
-                          {media.caption && (
+                          {media.caption && (media.media_type === 'image' || media.media_type === 'gif') && (
                             <p className="text-sm text-gray-600 text-center">
                               {media.caption}
                             </p>

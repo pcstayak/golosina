@@ -83,6 +83,7 @@ export class AnnotationsService {
           console.error('Error fetching annotations:', error);
           return [];
         }
+        console.log('[AnnotationsService] Fetched global annotations for mediaId:', mediaId, 'Count:', data?.length || 0, 'Data:', data);
         return data || [];
       } else if (context.mode === 'assignment') {
         // Assignment: Show global (read-only) + student-specific for this student/assignment
@@ -104,27 +105,59 @@ export class AnnotationsService {
           return false;
         });
       } else {
-        // Practice: Show global + student-specific (for this student/assignment) + own private
+        // Practice: Show global + student-specific (for this student/assignment) + own private + student's private (if teacher and visible_to_teacher)
         const { data, error } = await query;
         if (error) {
           console.error('Error fetching annotations:', error);
           return [];
         }
-        return (data || []).filter(annotation => {
+        console.log('[AnnotationsService] Practice mode context:', {
+          userId: context.userId,
+          isTeacher: context.isTeacher,
+          studentId: context.studentId,
+          assignmentId: context.assignmentId,
+          totalAnnotations: data?.length || 0
+        });
+        const filtered = (data || []).filter(annotation => {
           if (annotation.annotation_type === 'global') {
+            console.log('[AnnotationsService] ✅ Including global annotation:', annotation.id);
             return true;
           }
           if (annotation.annotation_type === 'student_specific') {
-            return (
+            const include = (
               (context.studentId && annotation.student_id === context.studentId) ||
               (context.assignmentId && annotation.assignment_id === context.assignmentId)
             );
+            console.log(`[AnnotationsService] ${include ? '✅' : '❌'} Student-specific annotation:`, annotation.id);
+            return include;
           }
           if (annotation.annotation_type === 'private') {
-            return annotation.created_by === context.userId;
+            // Show if viewer created it
+            if (annotation.created_by === context.userId) {
+              console.log('[AnnotationsService] ✅ Including own private annotation:', annotation.id);
+              return true;
+            }
+            // Show if teacher is viewing student's private annotations that are visible to teacher
+            if (context.isTeacher && context.studentId && annotation.created_by === context.studentId && annotation.visible_to_teacher) {
+              console.log('[AnnotationsService] ✅ Including student private annotation (visible to teacher):', {
+                id: annotation.id,
+                created_by: annotation.created_by,
+                visible_to_teacher: annotation.visible_to_teacher
+              });
+              return true;
+            }
+            console.log('[AnnotationsService] ❌ Excluding private annotation:', {
+              id: annotation.id,
+              created_by: annotation.created_by,
+              visible_to_teacher: annotation.visible_to_teacher,
+              reason: 'Not created by viewer and not visible to teacher'
+            });
+            return false;
           }
           return false;
         });
+        console.log('[AnnotationsService] Filtered result:', filtered.length, 'annotations');
+        return filtered;
       }
     } catch (error) {
       console.error('Error fetching annotations:', error);
@@ -246,6 +279,13 @@ export class AnnotationsService {
     }
 
     try {
+      console.log('[AnnotationsService] Attempting to create annotation:', {
+        media_id: params.media_id,
+        annotation_type: params.annotation_type,
+        created_by: params.created_by,
+        text_preview: params.annotation_text.substring(0, 50)
+      });
+
       const { data, error } = await supabase
         .from('lesson_media_lyrics_annotations')
         .insert({
@@ -264,13 +304,25 @@ export class AnnotationsService {
         .single();
 
       if (error) {
-        console.error('Error creating annotation:', error);
+        console.error('[AnnotationsService] ERROR creating annotation:', error);
+        console.error('[AnnotationsService] Error details:', JSON.stringify(error, null, 2));
         return null;
       }
 
+      if (!data) {
+        console.error('[AnnotationsService] ERROR: Insert succeeded but no data returned!');
+        return null;
+      }
+
+      console.log('[AnnotationsService] ✅ Successfully created annotation:', {
+        id: data.id,
+        media_id: data.media_id,
+        annotation_type: data.annotation_type,
+        text: data.annotation_text
+      });
       return data;
     } catch (error) {
-      console.error('Error creating annotation:', error);
+      console.error('[AnnotationsService] EXCEPTION creating annotation:', error);
       return null;
     }
   }

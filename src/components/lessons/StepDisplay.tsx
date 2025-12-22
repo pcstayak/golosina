@@ -69,6 +69,7 @@ export default function StepDisplay({ step, stepNumber, showComments = false, as
                     userId={user?.id}
                     isTeacher={profile?.role === 'teacher'}
                     assignmentId={assignmentId}
+                    studentId={assignmentId ? user?.id : undefined}
                   />
                 </div>
               ) : (

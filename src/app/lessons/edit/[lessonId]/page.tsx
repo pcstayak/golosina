@@ -28,19 +28,20 @@ export default function EditLessonPage() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
-  // Fetch lesson data only once on mount - use a ref to prevent refetching on tab focus
-  const hasLoadedRef = useRef(false)
+  // Fetch lesson data - refetch when lessonId changes
   useEffect(() => {
     const fetchLesson = async () => {
-      if (hasLoadedRef.current) {
-        return
-      }
-
       if (!lessonId) {
         setLessonNotFound(true)
         setIsLoading(false)
         return
       }
+
+      if (!user) {
+        return
+      }
+
+      setIsLoading(true)
 
       try {
         const lesson = await LessonService.getLesson(lessonId)
@@ -59,6 +60,17 @@ export default function EditLessonPage() {
         }
 
         // Pre-populate form with existing data
+        console.log('[EditLesson] Loaded lesson:', {
+          id: lesson.id,
+          title: lesson.title,
+          steps: lesson.steps.length,
+          firstStepMedia: lesson.steps[0]?.media?.map(m => ({
+            id: m.id,
+            lesson_step_id: (m as any).lesson_step_id,
+            url: m.media_url?.substring(0, 50)
+          }))
+        });
+
         setTitle(lesson.title)
         setDescription(lesson.description || '')
         setIsTemplate(lesson.is_template)
@@ -69,7 +81,6 @@ export default function EditLessonPage() {
           }))
         )
         setIsLoading(false)
-        hasLoadedRef.current = true
       } catch (error) {
         console.error('Error fetching lesson:', error)
         showError('Failed to load lesson')
@@ -77,10 +88,9 @@ export default function EditLessonPage() {
       }
     }
 
-    if (user) {
-      fetchLesson()
-    }
-  }, [user]) // Run when user loads, but ref prevents refetching
+    fetchLesson()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId, user?.id]) // Refetch when lessonId or user changes
 
   const handleAddStep = () => {
     setSteps([
@@ -172,6 +182,7 @@ export default function EditLessonPage() {
         title,
         description,
         steps: steps.map((step) => ({
+          id: step.id,
           step_order: step.step_order,
           title: step.title,
           description: step.description,

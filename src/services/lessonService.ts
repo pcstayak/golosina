@@ -199,71 +199,121 @@ export class LessonService {
 
       // Update steps if provided
       if (data.steps) {
-        // Delete existing steps (cascade will delete media)
-        await supabase.from('lesson_steps').delete().eq('lesson_id', lessonId);
+        // Get existing steps
+        const { data: existingSteps, error: fetchError } = await supabase
+          .from('lesson_steps')
+          .select('id')
+          .eq('lesson_id', lessonId);
 
-        // Create new steps
+        if (fetchError) {
+          console.error('Error fetching existing steps:', fetchError);
+          return { success: false, error: 'Failed to fetch existing steps' };
+        }
+
+        const existingStepIds = new Set(existingSteps?.map((s) => s.id) || []);
+        const updatedStepIds = new Set<string>();
+
+        // Update or insert each step
         for (let i = 0; i < data.steps.length; i++) {
           const step = data.steps[i];
 
-          const { data: stepData, error: stepError } = await supabase
-            .from('lesson_steps')
-            .insert({
-              lesson_id: lessonId,
-              step_order: i,
-              title: step.title,
-              description: step.description,
-              tips: step.tips,
-            })
-            .select()
-            .single();
+          if (step.id && existingStepIds.has(step.id)) {
+            // UPDATE existing step
+            updatedStepIds.add(step.id);
 
-          if (stepError || !stepData) {
-            console.error('Error creating step:', stepError);
-            continue;
-          }
+            const { error: stepError } = await supabase
+              .from('lesson_steps')
+              .update({
+                step_order: i,
+                title: step.title,
+                description: step.description,
+                tips: step.tips,
+              })
+              .eq('id', step.id);
 
-          // Create media for this step
-          if (step.media && step.media.length > 0) {
-            for (const media of step.media) {
-              const { data: mediaData, error: mediaError } = await supabase
-                .from('lesson_step_media')
-                .insert({
-                  lesson_step_id: stepData.id,
-                  media_type: media.media_type,
-                  media_url: media.media_url,
-                  media_platform: media.media_platform,
-                  embed_id: media.embed_id,
-                  display_order: media.display_order,
-                  caption: media.caption,
-                  lyrics: media.lyrics,
-                })
-                .select()
-                .single();
+            if (stepError) {
+              console.error('Error updating step:', stepError);
+              continue;
+            }
 
-              if (mediaError) {
-                console.error('Error creating media:', mediaError);
-                continue;
-              }
+            // Handle media for this step
+            await this.updateStepMedia(step.id, step.media);
+          } else {
+            // INSERT new step
+            const { data: newStepData, error: stepError } = await supabase
+              .from('lesson_steps')
+              .insert({
+                lesson_id: lessonId,
+                step_order: i,
+                title: step.title,
+                description: step.description,
+                tips: step.tips,
+              })
+              .select()
+              .single();
 
-              // Insert media comments if they exist
-              if (media.comments && media.comments.length > 0 && mediaData) {
-                const commentInserts = media.comments.map((comment) => ({
-                  media_id: mediaData.id,
-                  timestamp_seconds: comment.timestamp_seconds,
-                  comment_text: comment.comment_text,
-                  created_by: comment.created_by,
-                }));
+            if (stepError || !newStepData) {
+              console.error('Error creating step:', stepError);
+              continue;
+            }
 
-                const { error: commentsError } = await supabase
-                  .from('lesson_media_comments')
-                  .insert(commentInserts);
+            updatedStepIds.add(newStepData.id);
 
-                if (commentsError) {
-                  console.error('Error inserting media comments:', commentsError);
+            // Insert media for new step
+            if (step.media && step.media.length > 0) {
+              for (const media of step.media) {
+                const { data: mediaData, error: mediaError } = await supabase
+                  .from('lesson_step_media')
+                  .insert({
+                    lesson_step_id: newStepData.id,
+                    media_type: media.media_type,
+                    media_url: media.media_url,
+                    media_platform: media.media_platform,
+                    embed_id: media.embed_id,
+                    display_order: media.display_order,
+                    caption: media.caption,
+                    lyrics: media.lyrics,
+                  })
+                  .select()
+                  .single();
+
+                if (mediaError) {
+                  console.error('Error inserting media:', mediaError);
+                  continue;
+                }
+
+                // Insert media comments if they exist
+                if (media.comments && media.comments.length > 0 && mediaData) {
+                  const commentInserts = media.comments.map((comment) => ({
+                    media_id: mediaData.id,
+                    timestamp_seconds: comment.timestamp_seconds,
+                    comment_text: comment.comment_text,
+                    created_by: comment.created_by,
+                  }));
+
+                  const { error: commentsError } = await supabase
+                    .from('lesson_media_comments')
+                    .insert(commentInserts);
+
+                  if (commentsError) {
+                    console.error('Error inserting media comments:', commentsError);
+                  }
                 }
               }
             }
+          }
+        }
+
+        // Delete steps that were removed
+        const stepsToDelete = Array.from(existingStepIds).filter((id) => !updatedStepIds.has(id));
+        if (stepsToDelete.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('lesson_steps')
+            .delete()
+            .in('id', stepsToDelete);
+
+          if (deleteError) {
+            console.error('Error deleting removed steps:', deleteError);
           }
         }
       }
@@ -272,6 +322,199 @@ export class LessonService {
     } catch (error) {
       console.error('Error updating lesson:', error);
       return { success: false, error: 'An unexpected error occurred' };
+    }
+  }
+
+  private static async updateStepMedia(
+    stepId: string,
+    mediaItems: LessonStepMedia[]
+  ): Promise<void> {
+    if (!supabase) return;
+
+    try {
+      // Get existing media for this step
+      const { data: existingMedia, error: fetchError } = await supabase
+        .from('lesson_step_media')
+        .select('id')
+        .eq('lesson_step_id', stepId);
+
+      if (fetchError) {
+        console.error('Error fetching existing media:', fetchError);
+        return;
+      }
+
+      const existingMediaIds = new Set(existingMedia?.map((m) => m.id) || []);
+      const updatedMediaIds = new Set<string>();
+
+      console.log('[updateStepMedia] Existing media IDs:', Array.from(existingMediaIds));
+      console.log('[updateStepMedia] Incoming media items:', mediaItems.map(m => ({ id: m.id, url: m.media_url.substring(0, 50) })));
+
+      // Update or insert each media item
+      for (const media of mediaItems) {
+        if (media.id && existingMediaIds.has(media.id)) {
+          // UPDATE existing media - PRESERVES ID AND ANNOTATIONS!
+          console.log('[updateStepMedia] ✅ UPDATING media (preserving ID):', media.id);
+          updatedMediaIds.add(media.id);
+
+          const { error: mediaError } = await supabase
+            .from('lesson_step_media')
+            .update({
+              media_type: media.media_type,
+              media_url: media.media_url,
+              media_platform: media.media_platform,
+              embed_id: media.embed_id,
+              display_order: media.display_order,
+              caption: media.caption,
+              lyrics: media.lyrics,
+            })
+            .eq('id', media.id);
+
+          if (mediaError) {
+            console.error('Error updating media:', mediaError);
+            continue;
+          }
+
+          // Handle comments for this media
+          await this.updateMediaComments(media.id, media.comments || []);
+        } else {
+          // INSERT new media
+          console.log('[updateStepMedia] ❌ INSERTING new media (media.id missing or not found):', {
+            hasId: !!media.id,
+            id: media.id,
+            inExisting: media.id ? existingMediaIds.has(media.id) : false
+          });
+          const { data: newMediaData, error: mediaError } = await supabase
+            .from('lesson_step_media')
+            .insert({
+              lesson_step_id: stepId,
+              media_type: media.media_type,
+              media_url: media.media_url,
+              media_platform: media.media_platform,
+              embed_id: media.embed_id,
+              display_order: media.display_order,
+              caption: media.caption,
+              lyrics: media.lyrics,
+            })
+            .select()
+            .single();
+
+          if (mediaError || !newMediaData) {
+            console.error('Error inserting media:', mediaError);
+            continue;
+          }
+
+          updatedMediaIds.add(newMediaData.id);
+
+          // Insert comments for new media
+          if (media.comments && media.comments.length > 0) {
+            const commentInserts = media.comments.map((comment) => ({
+              media_id: newMediaData.id,
+              timestamp_seconds: comment.timestamp_seconds,
+              comment_text: comment.comment_text,
+              created_by: comment.created_by,
+            }));
+
+            const { error: commentsError } = await supabase
+              .from('lesson_media_comments')
+              .insert(commentInserts);
+
+            if (commentsError) {
+              console.error('Error inserting media comments:', commentsError);
+            }
+          }
+        }
+      }
+
+      // Delete media that were removed
+      const mediaToDelete = Array.from(existingMediaIds).filter((id) => !updatedMediaIds.has(id));
+      if (mediaToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('lesson_step_media')
+          .delete()
+          .in('id', mediaToDelete);
+
+        if (deleteError) {
+          console.error('Error deleting removed media:', deleteError);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating step media:', error);
+    }
+  }
+
+  private static async updateMediaComments(
+    mediaId: string,
+    comments: MediaComment[]
+  ): Promise<void> {
+    if (!supabase) return;
+
+    try {
+      // Get existing comments for this media
+      const { data: existingComments, error: fetchError } = await supabase
+        .from('lesson_media_comments')
+        .select('id')
+        .eq('media_id', mediaId);
+
+      if (fetchError) {
+        console.error('Error fetching existing comments:', fetchError);
+        return;
+      }
+
+      const existingCommentIds = new Set(existingComments?.map((c) => c.id) || []);
+      const updatedCommentIds = new Set<string>();
+
+      // Update or insert each comment
+      for (const comment of comments) {
+        if (comment.id && existingCommentIds.has(comment.id)) {
+          // UPDATE existing comment
+          updatedCommentIds.add(comment.id);
+
+          const { error: commentError } = await supabase
+            .from('lesson_media_comments')
+            .update({
+              timestamp_seconds: comment.timestamp_seconds,
+              comment_text: comment.comment_text,
+            })
+            .eq('id', comment.id);
+
+          if (commentError) {
+            console.error('Error updating comment:', commentError);
+          }
+        } else {
+          // INSERT new comment
+          const { data: newCommentData, error: commentError } = await supabase
+            .from('lesson_media_comments')
+            .insert({
+              media_id: mediaId,
+              timestamp_seconds: comment.timestamp_seconds,
+              comment_text: comment.comment_text,
+              created_by: comment.created_by,
+            })
+            .select()
+            .single();
+
+          if (commentError || !newCommentData) {
+            console.error('Error inserting comment:', commentError);
+          } else {
+            updatedCommentIds.add(newCommentData.id);
+          }
+        }
+      }
+
+      // Delete comments that were removed
+      const commentsToDelete = Array.from(existingCommentIds).filter((id) => !updatedCommentIds.has(id));
+      if (commentsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('lesson_media_comments')
+          .delete()
+          .in('id', commentsToDelete);
+
+        if (deleteError) {
+          console.error('Error deleting removed comments:', deleteError);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating media comments:', error);
     }
   }
 
@@ -363,18 +606,25 @@ export class LessonService {
       }
 
       // Attach comments to media items
-      const mediaWithComments = mediaData.map((media) => ({
-        id: media.id,
-        lesson_step_id: media.lesson_step_id,
-        media_type: media.media_type,
-        media_url: media.media_url,
-        media_platform: media.media_platform,
-        embed_id: media.embed_id,
-        display_order: media.display_order,
-        caption: media.caption,
-        lyrics: media.lyrics,
-        comments: mediaCommentsData.filter((c) => c.media_id === media.id),
-      }));
+      const mediaWithComments = mediaData.map((media) => {
+        console.log('[getLesson] Raw media from DB:', {
+          id: media.id,
+          lesson_step_id: media.lesson_step_id,
+          url: media.media_url?.substring(0, 50)
+        });
+        return {
+          id: media.id,
+          lesson_step_id: media.lesson_step_id,
+          media_type: media.media_type,
+          media_url: media.media_url,
+          media_platform: media.media_platform,
+          embed_id: media.embed_id,
+          display_order: media.display_order,
+          caption: media.caption,
+          lyrics: media.lyrics,
+          comments: mediaCommentsData.filter((c) => c.media_id === media.id),
+        };
+      });
 
       // Combine steps with media
       const steps: LessonStep[] = (stepsData || []).map((step) => ({
@@ -471,18 +721,25 @@ export class LessonService {
       }
 
       // Attach comments to media items
-      const mediaWithComments = mediaData.map((media) => ({
-        id: media.id,
-        lesson_step_id: media.lesson_step_id,
-        media_type: media.media_type,
-        media_url: media.media_url,
-        media_platform: media.media_platform,
-        embed_id: media.embed_id,
-        display_order: media.display_order,
-        caption: media.caption,
-        lyrics: media.lyrics,
-        comments: mediaCommentsData.filter((c) => c.media_id === media.id),
-      }));
+      const mediaWithComments = mediaData.map((media) => {
+        console.log('[getLesson] Raw media from DB:', {
+          id: media.id,
+          lesson_step_id: media.lesson_step_id,
+          url: media.media_url?.substring(0, 50)
+        });
+        return {
+          id: media.id,
+          lesson_step_id: media.lesson_step_id,
+          media_type: media.media_type,
+          media_url: media.media_url,
+          media_platform: media.media_platform,
+          embed_id: media.embed_id,
+          display_order: media.display_order,
+          caption: media.caption,
+          lyrics: media.lyrics,
+          comments: mediaCommentsData.filter((c) => c.media_id === media.id),
+        };
+      });
 
       // Combine data
       return lessonsData.map((lesson) => {

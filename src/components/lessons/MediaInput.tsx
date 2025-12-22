@@ -432,20 +432,45 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
               {/* Media Preview */}
               {selectedMediaIndex === index && (item.media_type === 'video' || item.media_type === 'audio') && (
                 <div className="border rounded-lg p-4 bg-gray-50">
-                  <MediaPreview
-                    mediaUrl={item.media_url}
-                    mediaType={item.media_type}
-                    mediaPlatform={item.media_platform}
-                    embedId={item.embed_id}
-                    comments={item.comments || []}
-                    onAddComment={(timestamp, text) => handleAddComment(index, timestamp, text)}
-                    onDeleteComment={(commentId) => handleDeleteComment(index, commentId)}
-                    isEditable={true}
-                    lyrics={item.lyrics}
-                    mediaId={item.id || `temp-${index}`}
-                    userId={userId}
-                    isTeacher={true}
-                  />
+                  {item.id ? (
+                    <>
+                      {console.log('[MediaInput] Rendering MediaPreview:', {
+                        'item.id': item.id,
+                        'item.lesson_step_id': (item as any).lesson_step_id,
+                        'mediaId passed to MediaPreview': item.id,
+                        url: item.media_url?.substring(0, 50),
+                        'full item': item
+                      })}
+                      <MediaPreview
+                        mediaUrl={item.media_url}
+                        mediaType={item.media_type}
+                        mediaPlatform={item.media_platform}
+                        embedId={item.embed_id}
+                        comments={item.comments || []}
+                        onAddComment={(timestamp, text) => handleAddComment(index, timestamp, text)}
+                        onDeleteComment={(commentId) => handleDeleteComment(index, commentId)}
+                        isEditable={true}
+                        lyrics={item.lyrics}
+                        mediaId={item.id}
+                        userId={userId}
+                        isTeacher={true}
+                      />
+                    </>
+
+                  ) : (
+                    <div className="p-8 text-center bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-yellow-800 font-medium mb-2">Save the lesson to add annotations</p>
+                      <p className="text-yellow-700 text-sm">Lyrics and annotations can be added after the lesson is saved and media has been assigned a permanent ID.</p>
+                      {item.lyrics && (
+                        <div className="mt-4 p-4 bg-white rounded border text-left">
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Lyrics (preview only)</h4>
+                          <div className="whitespace-pre-wrap text-sm text-gray-800">
+                            {item.lyrics}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
