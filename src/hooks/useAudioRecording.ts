@@ -373,12 +373,13 @@ export const useAudioRecording = () => {
     try {
       // Get microphone stream
       const stream = await ensureMicrophonePermission();
-      
+
       // Reset segment counter for new recording session
       dispatch({ type: 'SET_CURRENT_RECORDING_SEGMENT', payload: 1 });
       dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: false });
       dispatch({ type: 'SET_IS_RECORDING', payload: true });
-      
+      dispatch({ type: 'SET_RECORDING_START_TIME', payload: Date.now() });
+
       // Start first recording segment
       await startNewRecordingSegment(stream);
     } catch (error: any) {
@@ -408,8 +409,9 @@ export const useAudioRecording = () => {
       // Update recording state first
       dispatch({ type: 'SET_IS_RECORDING', payload: false });
       dispatch({ type: 'SET_IS_AUTO_SPLITTING', payload: false });
+      dispatch({ type: 'SET_RECORDING_START_TIME', payload: null });
       setCurrentAudioLevel(0);
-      
+
       // Stop current recording segment - this will trigger onstop event
       if (currentRecorderRef.current && currentRecorderRef.current.state === 'recording') {
         currentRecorderRef.current.stop();

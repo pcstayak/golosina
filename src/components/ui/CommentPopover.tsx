@@ -151,28 +151,80 @@ const CommentPopover: React.FC<CommentPopoverProps> = ({
   return (
     <div
       ref={popoverRef}
-      className="absolute bg-white rounded shadow-lg border border-gray-200 z-50"
       style={{
+        position: 'absolute',
         top: `${position.top}px`,
         left: `${position.left}px`,
         width: '240px',
-        height: `${position.height}px`
+        height: `${position.height}px`,
+        background: 'rgba(11, 18, 32, 0.92)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius)',
+        boxShadow: 'var(--shadow-soft)',
+        backdropFilter: 'blur(12px)',
+        zIndex: 50,
       }}
     >
       {/* Arrow pointing to the target */}
-      <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-        <div className="w-2 h-2 bg-white border-b border-r border-gray-200 transform rotate-45"></div>
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '-4px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+        }}
+      >
+        <div
+          style={{
+            width: '8px',
+            height: '8px',
+            background: 'var(--panel)',
+            border: '1px solid var(--border)',
+            borderTop: 'none',
+            borderLeft: 'none',
+            transform: 'rotate(45deg)',
+          }}
+        ></div>
       </div>
 
       {/* Header */}
-      <div className="px-2 py-1 border-b border-gray-100 flex items-center justify-between">
-        <h3 className="text-xs font-medium text-gray-900">
+      <div
+        style={{
+          padding: '6px 8px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <h3
+          style={{
+            fontSize: '11px',
+            fontWeight: 500,
+            color: 'var(--text)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}
+        >
           Comments {comments.length > 1 && `(${comments.length})`}
         </h3>
         {isSticky && (
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-sm leading-none w-3 h-3 flex items-center justify-center"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--muted)',
+              fontSize: '16px',
+              cursor: 'pointer',
+              width: '16px',
+              height: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              lineHeight: 1,
+            }}
             aria-label="Close comments"
           >
             ×
@@ -181,36 +233,84 @@ const CommentPopover: React.FC<CommentPopoverProps> = ({
       </div>
 
       {/* Comments list - no scrollbar, exact height */}
-      <div className="overflow-hidden">
+      <div style={{ overflow: 'hidden' }}>
         {displayedComments.map((comment, index) => {
           // Check if this is an end-of-recording comment
           const isEndComment = comment.timestamp_seconds != null &&
             recordingDuration > 0 &&
             Math.abs(comment.timestamp_seconds - recordingDuration) < 0.5;
 
-          const avatarColor = isEndComment ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600';
+          const avatarBg = isEndComment ? 'rgba(52, 211, 153, 0.15)' : 'rgba(47, 183, 160, 0.15)';
+          const avatarColor = isEndComment ? 'var(--success)' : 'var(--primary-2)';
 
           return (
             <div
               key={comment.id}
-              className="px-2 py-1.5 flex items-start gap-1"
-              style={{ height: '48px' }}
+              style={{
+                padding: '6px 8px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '6px',
+                height: '48px',
+              }}
             >
               {/* Avatar */}
-              <div className={`w-4 h-4 ${avatarColor} rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5`}>
+              <div
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  background: avatarBg,
+                  color: avatarColor,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '10px',
+                  fontWeight: 500,
+                  flexShrink: 0,
+                  marginTop: '2px',
+                }}
+              >
                 {comment.user_name.charAt(0).toUpperCase()}
               </div>
 
               {/* Content */}
-              <div className="flex-1 min-w-0">
+              <div style={{ flex: 1, minWidth: 0 }}>
                 {/* Header line */}
-                <div className="flex items-center justify-between text-xs leading-tight">
-                  <span className="font-medium text-gray-900 truncate flex-1 mr-1">
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '11px',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontWeight: 500,
+                      color: 'var(--text)',
+                      flex: 1,
+                      marginRight: '4px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {comment.user_name}
                   </span>
-                  <div className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11px',
+                      color: 'var(--muted)',
+                      flexShrink: 0,
+                    }}
+                  >
                     {comment.timestamp_seconds != null && (
-                      <span className={isEndComment ? 'text-green-600' : ''}>
+                      <span style={{ color: isEndComment ? 'var(--success)' : 'var(--muted)' }}>
                         {isEndComment ? 'Full' : formatTime(comment.timestamp_seconds)}
                       </span>
                     )}
@@ -218,7 +318,17 @@ const CommentPopover: React.FC<CommentPopoverProps> = ({
                 </div>
 
                 {/* Comment text */}
-                <div className="text-xs text-gray-700 leading-tight truncate">
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: 'var(--muted)',
+                    lineHeight: 1.3,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    marginTop: '2px',
+                  }}
+                >
                   {comment.comment_text}
                 </div>
               </div>
@@ -227,7 +337,15 @@ const CommentPopover: React.FC<CommentPopoverProps> = ({
         })}
 
         {hiddenCount > 0 && (
-          <div className="px-2 py-1 text-xs text-gray-500 italic" style={{ height: '24px' }}>
+          <div
+            style={{
+              padding: '4px 8px',
+              fontSize: '11px',
+              color: 'var(--faint)',
+              fontStyle: 'italic',
+              height: '24px',
+            }}
+          >
             and {hiddenCount} more...
           </div>
         )}

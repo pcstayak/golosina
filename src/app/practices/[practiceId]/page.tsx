@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
+import { Panel, PanelHeader, PanelContent } from '@/components/ui/Panel';
+import { Card, CardBody } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { ArrowLeft, Calendar, BookOpen, Mic, Send, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { PracticeService, Practice, PracticeComment } from '@/services/practiceService';
 import { LessonService, Lesson } from '@/services/lessonService';
@@ -435,18 +438,18 @@ export default function PracticePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600 text-xl">Loading practice...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div style={{ color: 'var(--muted)', fontSize: '14px' }}>Loading practice...</div>
       </div>
     );
   }
 
   if (error || !practice) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="text-gray-800 text-xl mb-4">{error || 'Practice not found'}</div>
-          <Button onClick={() => router.push('/')}>
+          <div style={{ color: 'var(--text)', fontSize: '16px', marginBottom: '16px' }}>{error || 'Practice not found'}</div>
+          <Button variant="secondary" onClick={() => router.push('/')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Go Back
           </Button>
@@ -458,15 +461,15 @@ export default function PracticePage() {
   // Handle archived practice (lesson was deleted)
   if (!lesson) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="text-gray-800 text-xl mb-4">
+          <div style={{ color: 'var(--text)', fontSize: '16px', marginBottom: '16px' }}>
             This practice session is archived
           </div>
-          <div className="text-gray-600 mb-4">
+          <div style={{ color: 'var(--muted)', fontSize: '13.5px', marginBottom: '16px' }}>
             The original lesson has been deleted, but your practice recordings are preserved.
           </div>
-          <Button onClick={() => router.push('/')}>
+          <Button variant="secondary" onClick={() => router.push('/')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Go Back
           </Button>
@@ -481,255 +484,272 @@ export default function PracticePage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
-          {/* Lesson title and description - centered */}
-          <div className="text-center mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">
-              {lesson.title}{!practice.lesson_id && ' (archived)'}
-            </h1>
-            {lesson.description && (
-              <p className="text-sm text-gray-600 mt-1">{lesson.description}</p>
-            )}
-          </div>
-
-          {/* Metadata row */}
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <Button
-              variant="secondary"
-              onClick={() => router.push('/')}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Button>
-
-            {/* Stats - Inline in header */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-4 h-4 text-blue-600" />
-                <span className="text-gray-600">{formatDate(practice.created_at)}</span>
+    <div className="min-h-screen">
+      <div className="max-w-custom mx-auto px-4 py-6">
+        <Panel>
+          <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--panel)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
+            <PanelHeader>
+              <div>
+                <h1 className="text-lg font-extrabold text-text m-0">
+                  {lesson.title}{!practice.lesson_id && ' (archived)'}
+                </h1>
+                {lesson.description && (
+                  <div className="text-[12.5px] text-muted mt-1">{lesson.description}</div>
+                )}
+                <div className="flex items-center gap-3 flex-wrap mt-2">
+                  <div className="flex items-center gap-2" style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                    <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--primary)' }} />
+                    <span>{formatDate(practice.created_at)}</span>
+                  </div>
+                  <div className="flex items-center gap-2" style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                    <BookOpen className="w-3.5 h-3.5" style={{ color: 'var(--primary)' }} />
+                    <span>{lesson.steps.length} steps</span>
+                  </div>
+                  <div className="flex items-center gap-2" style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                    <Mic className="w-3.5 h-3.5" style={{ color: 'var(--primary)' }} />
+                    <span>{recordingCount} recordings</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <BookOpen className="w-4 h-4 text-green-600" />
-                <span className="text-gray-600">{lesson.steps.length} steps</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Mic className="w-4 h-4 text-purple-600" />
-                <span className="text-gray-600">{recordingCount} recordings</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {canReview && !practice.reviewed_at && (
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="primary"
-                  onClick={handleMarkAsReviewed}
-                  disabled={markingAsReviewed}
-                  className="flex items-center gap-2"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => router.push('/')}
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  {markingAsReviewed ? 'Marking...' : 'Mark as Reviewed'}
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
                 </Button>
-              )}
-              {practice.reviewed_at && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm">
-                  <CheckCircle className="w-4 h-4" />
-                  Reviewed
-                </div>
-              )}
-              {allPractices.length > 1 && currentIndex >= 0 && (
-                <>
+                {canReview && !practice.reviewed_at && (
                   <Button
-                    variant="secondary"
-                    onClick={handlePreviousPractice}
-                    disabled={currentIndex === 0}
+                    size="sm"
+                    variant="primary"
+                    onClick={handleMarkAsReviewed}
+                    disabled={markingAsReviewed}
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    {markingAsReviewed ? 'Marking...' : 'Mark as Reviewed'}
                   </Button>
-                  <span className="text-sm text-gray-600 px-3">
-                    {currentIndex + 1} / {allPractices.length}
-                  </span>
-                  <Button
-                    variant="secondary"
-                    onClick={handleNextPractice}
-                    disabled={currentIndex === allPractices.length - 1}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </>
-              )}
-            </div>
+                )}
+                {practice.reviewed_at && (
+                  <Badge variant="reviewed">
+                    Reviewed
+                  </Badge>
+                )}
+                {allPractices.length > 1 && currentIndex >= 0 && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handlePreviousPractice}
+                      disabled={currentIndex === 0}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <span style={{ fontSize: '11px', color: 'var(--muted)', padding: '0 12px' }}>
+                      {currentIndex + 1} / {allPractices.length}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleNextPractice}
+                      disabled={currentIndex === allPractices.length - 1}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </PanelHeader>
           </div>
-        </div>
 
-        {/* Steps */}
-        {lesson.steps.map((step, stepIndex) => {
-          // Try multiple key formats to find recordings
-          const stepId = step.id || `order_${step.step_order}`;
-          const stepRecordings = practice.recordings[`step_${stepId}`]
-            || practice.recordings[stepId]
-            || practice.recordings[`step_${step.id}`]
-            || practice.recordings[step.id || '']
-            || practice.recordings['undefined']; // Fallback for broken recordings
+          <PanelContent>
+            {lesson.steps.map((step, stepIndex) => {
+              // Try multiple key formats to find recordings
+              const stepId = step.id || `order_${step.step_order}`;
+              const stepRecordings = practice.recordings[`step_${stepId}`]
+                || practice.recordings[stepId]
+                || practice.recordings[`step_${step.id}`]
+                || practice.recordings[step.id || '']
+                || practice.recordings['undefined']; // Fallback for broken recordings
 
-          const stepComments = comments.filter(c =>
-            stepRecordings?.files.some(f => `${stepId}_${f.timestamp}` === c.recording_id)
-          );
+              const stepComments = comments.filter(c =>
+                stepRecordings?.files.some(f => `${stepId}_${f.timestamp}` === c.recording_id)
+              );
 
-          return (
-            <div key={step.id || stepIndex} className="mb-8">
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                {/* Step Header */}
-                <div className="flex items-start gap-3 mb-4">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold">
-                    {stepIndex + 1}
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                      {step.title}
-                    </h2>
-                    {step.description && (
-                      <p className="text-gray-600 mb-3">{step.description}</p>
-                    )}
-                    {step.tips && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                        <div className="text-sm font-semibold text-amber-900 mb-1">
-                          Tips:
+              return (
+                <div key={step.id || stepIndex} style={{ marginBottom: '24px' }}>
+                  <Card>
+                    <CardBody>
+                      {/* Step Header */}
+                      <div className="flex items-start gap-3 mb-4">
+                        <div
+                          className="flex-shrink-0 rounded-full flex items-center justify-center font-black text-xs"
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            background: 'linear-gradient(135deg, var(--primary), var(--primary-2))',
+                            color: 'var(--primary-contrast)'
+                          }}
+                        >
+                          {stepIndex + 1}
                         </div>
-                        <p className="text-sm text-amber-800">{step.tips}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Reference Media */}
-                {step.media && step.media.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                      Reference Media
-                    </h3>
-                    <div className="space-y-4">
-                      {step.media.map((media, mediaIndex) => (
-                        <div key={media.id || mediaIndex} className="space-y-2">
-                          {(media.media_type === 'video' || media.media_type === 'audio') ? (
-                            <MediaPreview
-                              mediaUrl={media.media_url}
-                              mediaType={media.media_type}
-                              mediaPlatform={media.media_platform}
-                              embedId={media.embed_id}
-                              comments={[]}
-                              onAddComment={() => {}}
-                              onDeleteComment={() => {}}
-                              isEditable={false}
-                              lyrics={media.lyrics}
-                              mediaId={media.id}
-                              userId={user?.id}
-                              isTeacher={profile?.role === 'teacher'}
-                              assignmentId={practice.assignment_id}
-                              studentId={practice.created_by}
-                            />
-                          ) : (
-                            <img
-                              src={media.media_url}
-                              alt={media.caption || `Media ${mediaIndex + 1}`}
-                              className="w-full rounded-lg"
-                            />
-                          )}
-                          {media.caption && (media.media_type === 'image' || media.media_type === 'gif') && (
-                            <p className="text-sm text-gray-600 text-center">
-                              {media.caption}
+                        <div className="flex-1">
+                          <h2 className="font-black mb-2" style={{ fontSize: '18px', color: 'var(--text)' }}>
+                            {step.title}
+                          </h2>
+                          {step.description && (
+                            <p style={{ fontSize: '13.5px', color: 'var(--muted)', lineHeight: '1.6', marginBottom: '12px' }}>
+                              {step.description}
                             </p>
                           )}
+                          {step.tips && step.tips.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {step.tips.map((tip, index) => (
+                                <span
+                                  key={index}
+                                  className="border border-border bg-[rgba(255,255,255,0.04)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.03)] text-muted font-extrabold text-xs px-2.5 py-1.5 rounded-full"
+                                >
+                                  {tip}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                      </div>
 
-                {/* Practice Recordings */}
-                {stepRecordings && stepRecordings.files.length > 0 && (
-                  <div className="mt-6">
-                    <div className="space-y-6">
-                      {stepRecordings.files.map((file, fileIndex) => {
-                        const piece = convertedAudioPieces.find(p => p.id === file.timestamp);
-                        if (!piece) return null;
-
-                        const recordingId = `${stepId}_${file.timestamp}`;
-                        const recordingComments = comments.filter(
-                          c => c.recording_id === recordingId
-                        );
-
-                        return (
-                          <div key={file.timestamp} className="space-y-4">
-                            <AudioPlayer
-                              piece={piece}
-                              index={fileIndex}
-                              onDelete={() => {}}
-                              onDownload={() => {
-                                const a = document.createElement('a');
-                                a.href = file.url;
-                                a.download = `${file.name}.webm`;
-                                a.click();
-                              }}
-                              onTitleUpdate={undefined}
-                              isPlaying={playingPieceId === file.timestamp}
-                              onPlayStateChange={(pieceId, playing) => {
-                                if (playing) {
-                                  setPlayingPieceId(pieceId);
-                                } else if (playingPieceId === pieceId) {
-                                  setPlayingPieceId(null);
-                                }
-                              }}
-                              exerciseName={step.title}
-                              showDeleteButton={false}
-                              comments={recordingComments}
-                              onAddComment={(timestampSeconds) => {
-                                handleAddComment(recordingId, timestampSeconds);
-                              }}
-                              onCommentMarkerClick={(commentIds) => {
-                                handleCommentMarkerClick(recordingId, commentIds);
-                              }}
-                            />
-
-                            {/* Integrated Comment Thread - shown when UI is visible */}
-                            {visibleCommentUIs[recordingId] && (
-                              <div className="mt-4">
-                                <CommentThread
-                                  comments={recordingComments}
-                                  onReply={(parentCommentId, commentText) =>
-                                    handleReply(recordingId, parentCommentId, commentText)
-                                  }
-                                  currentUserName={profile?.display_name || user?.email?.split('@')[0] || 'Anonymous'}
-                                  selectedCommentId={selectedCommentThreads[recordingId]}
-                                  onClose={() => handleCloseCommentThread(recordingId)}
-                                  recordingId={recordingId}
-                                  recordingDuration={piece?.duration || 0}
-                                  commentFormState={commentForms[recordingId]}
-                                  onUpdateForm={(field, value) => handleUpdateCommentForm(recordingId, field, value)}
-                                  onSubmitComment={() => handleSubmitComment(recordingId)}
-                                  showForm={true}
-                                />
+                      {/* Reference Media */}
+                      {step.media && step.media.length > 0 && (
+                        <div className="mb-6">
+                          <h3 className="font-black mb-3" style={{ fontSize: '14px', color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Reference Media
+                          </h3>
+                          <div className="space-y-4">
+                            {step.media.map((media, mediaIndex) => (
+                              <div key={media.id || mediaIndex} className="space-y-2">
+                                {(media.media_type === 'video' || media.media_type === 'audio') ? (
+                                  <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+                                    <MediaPreview
+                                      mediaUrl={media.media_url}
+                                      mediaType={media.media_type}
+                                      mediaPlatform={media.media_platform}
+                                      embedId={media.embed_id}
+                                      comments={[]}
+                                      onAddComment={() => {}}
+                                      onDeleteComment={() => {}}
+                                      isEditable={false}
+                                      lyrics={media.lyrics}
+                                      mediaId={media.id}
+                                      userId={user?.id}
+                                      isTeacher={profile?.role === 'teacher'}
+                                      assignmentId={practice.assignment_id}
+                                      studentId={practice.created_by}
+                                    />
+                                  </div>
+                                ) : (
+                                  <img
+                                    src={media.media_url}
+                                    alt={media.caption || `Media ${mediaIndex + 1}`}
+                                    className="w-full rounded-lg"
+                                    style={{ maxWidth: '700px', margin: '0 auto', display: 'block' }}
+                                  />
+                                )}
+                                {media.caption && (media.media_type === 'image' || media.media_type === 'gif') && (
+                                  <p style={{ fontSize: '13px', color: 'var(--muted)', textAlign: 'center' }}>
+                                    {media.caption}
+                                  </p>
+                                )}
                               </div>
-                            )}
+                            ))}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                        </div>
+                      )}
 
-                {/* No Recordings Message */}
-                {(!stepRecordings || stepRecordings.files.length === 0) && (
-                  <div className="text-center py-8 text-gray-500">
-                    No recordings for this step
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                      {/* Practice Recordings */}
+                      {stepRecordings && stepRecordings.files.length > 0 && (
+                        <div className="mt-6">
+                          <div className="space-y-6">
+                            {stepRecordings.files.map((file, fileIndex) => {
+                              const piece = convertedAudioPieces.find(p => p.id === file.timestamp);
+                              if (!piece) return null;
+
+                              const recordingId = `${stepId}_${file.timestamp}`;
+                              const recordingComments = comments.filter(
+                                c => c.recording_id === recordingId
+                              );
+
+                              return (
+                                <div key={file.timestamp} className="space-y-4">
+                                  <AudioPlayer
+                                    piece={piece}
+                                    index={fileIndex}
+                                    onDelete={() => {}}
+                                    onDownload={() => {
+                                      const a = document.createElement('a');
+                                      a.href = file.url;
+                                      a.download = `${file.name}.webm`;
+                                      a.click();
+                                    }}
+                                    onTitleUpdate={undefined}
+                                    isPlaying={playingPieceId === file.timestamp}
+                                    onPlayStateChange={(pieceId, playing) => {
+                                      if (playing) {
+                                        setPlayingPieceId(pieceId);
+                                      } else if (playingPieceId === pieceId) {
+                                        setPlayingPieceId(null);
+                                      }
+                                    }}
+                                    exerciseName={step.title}
+                                    showDeleteButton={false}
+                                    comments={recordingComments}
+                                    onAddComment={(timestampSeconds) => {
+                                      handleAddComment(recordingId, timestampSeconds);
+                                    }}
+                                    onCommentMarkerClick={(commentIds) => {
+                                      handleCommentMarkerClick(recordingId, commentIds);
+                                    }}
+                                  />
+
+                                  {/* Integrated Comment Thread - shown when UI is visible */}
+                                  {visibleCommentUIs[recordingId] && (
+                                    <div className="mt-4">
+                                      <CommentThread
+                                        comments={recordingComments}
+                                        onReply={(parentCommentId, commentText) =>
+                                          handleReply(recordingId, parentCommentId, commentText)
+                                        }
+                                        currentUserName={profile?.display_name || user?.email?.split('@')[0] || 'Anonymous'}
+                                        selectedCommentId={selectedCommentThreads[recordingId]}
+                                        onClose={() => handleCloseCommentThread(recordingId)}
+                                        recordingId={recordingId}
+                                        recordingDuration={piece?.duration || 0}
+                                        commentFormState={commentForms[recordingId]}
+                                        onUpdateForm={(field, value) => handleUpdateCommentForm(recordingId, field, value)}
+                                        onSubmitComment={() => handleSubmitComment(recordingId)}
+                                        showForm={true}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* No Recordings Message */}
+                      {(!stepRecordings || stepRecordings.files.length === 0) && (
+                        <div className="text-center py-8" style={{ color: 'var(--muted)', fontSize: '13px' }}>
+                          No recordings for this step
+                        </div>
+                      )}
+                    </CardBody>
+                  </Card>
+                </div>
+              );
+            })}
+          </PanelContent>
+        </Panel>
       </div>
     </div>
   );

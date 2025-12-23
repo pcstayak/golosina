@@ -52,7 +52,14 @@ export default function VoiceTrainerApp() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500">
+    <div className="min-h-screen" style={{
+      background: `
+        radial-gradient(900px 450px at 15% 10%, var(--bg-glow-1), transparent 60%),
+        radial-gradient(900px 450px at 85% 0%, var(--bg-glow-2), transparent 55%),
+        radial-gradient(900px 450px at 75% 80%, var(--bg-glow-3), transparent 55%),
+        var(--bg)
+      `
+    }}>
       <div className="container mx-auto px-4 py-8">
         {renderCurrentPage()}
       </div>

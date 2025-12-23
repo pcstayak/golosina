@@ -73,6 +73,7 @@ interface AppState {
   mediaRecorder: MediaRecorder | null;
   audioStream: MediaStream | null;
   recordedChunks: BlobPart[];
+  recordingStartTime: number | null;
 
   // Auto-splitting state
   currentRecordingSegment: number;
@@ -100,6 +101,7 @@ interface AppState {
 
 type AppAction =
   | { type: 'SET_IS_RECORDING'; payload: boolean }
+  | { type: 'SET_RECORDING_START_TIME'; payload: number | null }
   | { type: 'SET_MEDIA_RECORDER'; payload: MediaRecorder | null }
   | { type: 'SET_AUDIO_STREAM'; payload: MediaStream | null }
   | { type: 'SET_RECORDED_CHUNKS'; payload: BlobPart[] }
@@ -107,7 +109,7 @@ type AppAction =
   | { type: 'SET_SESSION_ACTIVE'; payload: boolean }
   | { type: 'SET_MICROPHONE_PERMISSION'; payload: boolean }
   | { type: 'UPDATE_SETTINGS'; payload: Partial<Settings> }
-  | { type: 'UPDATE_RECORDING_SETTINGS'; payload: { autoSplitEnabled?: boolean; autoSplitDuration?: number; minRecordingLength?: number; dropSilentRecordings?: boolean; trimSilenceFromEdges?: boolean; maxEdgeSilence?: number } }
+  | { type: 'UPDATE_RECORDING_SETTINGS'; payload: { autoSplitEnabled?: boolean; autoSplitThreshold?: number; autoSplitDuration?: number; minRecordingLength?: number; dropSilentRecordings?: boolean; trimSilenceFromEdges?: boolean; maxEdgeSilence?: number } }
   | { type: 'ADD_AUDIO_PIECE'; payload: { stepId: string; piece: AudioPiece } }
   | { type: 'REMOVE_AUDIO_PIECE'; payload: { stepId: string; pieceId: string } }
   | { type: 'REPLACE_AUDIO_PIECE'; payload: { stepId: string; pieceId: string; piece: AudioPiece } }
@@ -127,6 +129,7 @@ const initialState: AppState = {
   mediaRecorder: null,
   audioStream: null,
   recordedChunks: [],
+  recordingStartTime: null,
 
   // Auto-splitting state
   currentRecordingSegment: 1,
@@ -166,6 +169,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'SET_IS_RECORDING':
       return { ...state, isRecording: action.payload };
+    case 'SET_RECORDING_START_TIME':
+      return { ...state, recordingStartTime: action.payload };
     case 'SET_MEDIA_RECORDER':
       return { ...state, mediaRecorder: action.payload };
     case 'SET_AUDIO_STREAM':
@@ -186,6 +191,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         try {
           localStorage.setItem('recording-settings', JSON.stringify({
             autoSplitEnabled: updatedSettings.autoSplitEnabled,
+            autoSplitThreshold: updatedSettings.autoSplitThreshold,
             autoSplitDuration: updatedSettings.autoSplitDuration,
             minRecordingLength: updatedSettings.minRecordingLength,
             dropSilentRecordings: updatedSettings.dropSilentRecordings,
@@ -302,6 +308,7 @@ function loadRecordingSettings(): Partial<Settings> {
       const settings = JSON.parse(stored);
       return {
         autoSplitEnabled: settings.autoSplitEnabled ?? true,
+        autoSplitThreshold: settings.autoSplitThreshold ?? 0.02,
         autoSplitDuration: settings.autoSplitDuration ?? 1.0,
         minRecordingLength: settings.minRecordingLength ?? 3.0,
         dropSilentRecordings: settings.dropSilentRecordings ?? true,
