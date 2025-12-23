@@ -37,23 +37,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'rgba(0, 0, 0, 0.80)', backdropFilter: 'blur(8px)' }}>
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+      <div
+        className="fixed inset-0 transition-opacity"
         onClick={onClose}
       />
 
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div className={`
-          relative bg-white rounded-lg shadow-xl w-full max-h-[90vh] overflow-y-auto
+          relative rounded-[14px] shadow-[var(--shadow)] w-full max-h-[90vh] overflow-y-auto border border-[var(--border)]
           ${mode === 'register' ? 'max-w-4xl' : 'max-w-md'}
-        `}>
+        `} style={{ background: 'rgba(11, 18, 32, 0.95)', backdropFilter: 'blur(20px)' }}>
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition-colors"
+            className="absolute top-4 right-4 text-[var(--muted)] hover:text-[var(--text)] focus:outline-none transition-colors"
             aria-label="Close modal"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,14 +65,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div className="p-6 pt-12">
             {/* Error message display */}
             {errorMessage && (
-              <div className="mb-6 p-4 bg-red-100 border border-red-300 rounded-lg">
+              <div className="mb-6 p-4 bg-[rgba(var(--danger-rgb),0.1)] border border-[var(--danger)] rounded-[10px]">
                 <div className="flex items-center mb-2">
-                  <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-[var(--danger)] mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <h3 className="text-red-800 font-semibold">Authentication Error</h3>
+                  <h3 className="text-[var(--danger)] font-extrabold">Authentication Error</h3>
                 </div>
-                <p className="text-red-700 text-sm">{errorMessage}</p>
+                <p className="text-[var(--danger)] text-sm">{errorMessage}</p>
               </div>
             )}
 

@@ -378,7 +378,7 @@ export default function EditLessonPage() {
                   />
                 </div>
               ))}
-            </div>
+            </div>  
           </PanelContent>
         </Panel>
       </div>

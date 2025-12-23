@@ -126,9 +126,9 @@ export default function NotificationList({ showAll = false, maxItems = 5 }: Noti
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-        <p className="text-center text-gray-600 mt-4">Loading notifications...</p>
+      <div className="bg-[var(--panel)] rounded-lg border border-[var(--border)] p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary)] mx-auto"></div>
+        <p className="text-center text-[var(--muted)] mt-4">Loading notifications...</p>
       </div>
     );
   }

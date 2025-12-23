@@ -123,78 +123,82 @@ export default function StepEditor({
 
       {isExpanded && (
         <CardBody className="space-y-3.5">
-          <div>
-            <label className="block text-[11px] uppercase tracking-wide font-extrabold text-muted mb-2">
-              Step Title *
-            </label>
-            <input
-              type="text"
-              value={step.title}
-              onChange={(e) => handleFieldChange('title', e.target.value)}
-              placeholder="e.g., Breathing Exercise"
-              className="w-full px-3 py-2.5 bg-panel border border-border rounded-[10px] text-[13.5px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors"
-              required
-            />
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wide font-extrabold text-muted mb-2">
+                  Step Title *
+                </label>
+                <input
+                  type="text"
+                  value={step.title}
+                  onChange={(e) => handleFieldChange('title', e.target.value)}
+                  placeholder="e.g., Breathing Exercise"
+                  className="w-full px-3 py-2.5 bg-panel border border-border rounded-[10px] text-[13.5px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors"
+                  required
+                />
+              </div>
 
-          <div>
-            <label className="block text-[11px] uppercase tracking-wide font-extrabold text-muted mb-2">
-              Description
-            </label>
-            <textarea
-              value={step.description || ''}
-              onChange={(e) => handleFieldChange('description', e.target.value)}
-              placeholder="Explain what the student should do in this step..."
-              className="w-full px-3 py-2.5 bg-panel border border-border rounded-[10px] text-[13.5px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors resize-none"
-              rows={3}
-            />
-          </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wide font-extrabold text-muted mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={step.description || ''}
+                  onChange={(e) => handleFieldChange('description', e.target.value)}
+                  placeholder="Explain what the student should do in this step..."
+                  className="w-full px-3 py-2.5 bg-panel border border-border rounded-[10px] text-[13.5px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors resize-none"
+                  rows={3}
+                />
+              </div>
+            </div>
 
-          <div>
-            <label className="block text-[11px] uppercase tracking-wide font-extrabold text-muted mb-2">
-              Tips
-            </label>
-            <div className="space-y-2">
-              {(step.tips || []).map((tip, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <span className="text-muted text-sm flex-shrink-0">•</span>
-                  <input
-                    type="text"
-                    value={tip}
-                    onChange={(e) => {
-                      const newTips = [...(step.tips || [])];
-                      newTips[index] = e.target.value;
-                      handleFieldChange('tips', newTips);
-                    }}
-                    placeholder="Enter a tip..."
-                    className="flex-1 px-3 py-2.5 bg-panel border border-border rounded-[10px] text-[13.5px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors"
-                  />
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => {
-                      const newTips = (step.tips || []).filter((_, i) => i !== index);
-                      handleFieldChange('tips', newTips.length > 0 ? newTips : undefined);
-                    }}
-                    title="Remove tip"
-                    className="w-8 h-8 p-0 flex items-center justify-center flex-shrink-0"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
+            <div>
+              <label className="block text-[11px] uppercase tracking-wide font-extrabold text-muted mb-2">
+                Tips
+              </label>
+              <div className="space-y-2">
+                {(step.tips || []).map((tip, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="text-muted text-sm flex-shrink-0">•</span>
+                    <input
+                      type="text"
+                      value={tip}
+                      onChange={(e) => {
+                        const newTips = [...(step.tips || [])];
+                        newTips[index] = e.target.value;
+                        handleFieldChange('tips', newTips);
+                      }}
+                      placeholder="Enter a tip..."
+                      className="flex-1 px-3 py-2.5 bg-panel border border-border rounded-[10px] text-[13.5px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors"
+                    />
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => {
+                        const newTips = (step.tips || []).filter((_, i) => i !== index);
+                        handleFieldChange('tips', newTips.length > 0 ? newTips : undefined);
+                      }}
+                      title="Remove tip"
+                      className="w-8 h-8 p-0 flex items-center justify-center flex-shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
 
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const newTips = [...(step.tips || []), ''];
-                  handleFieldChange('tips', newTips);
-                }}
-              >
-                <Plus className="w-4 h-4" />
-                Add Tip
-              </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    const newTips = [...(step.tips || []), ''];
+                    handleFieldChange('tips', newTips);
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Tip
+                </Button>
+              </div>
             </div>
           </div>
 

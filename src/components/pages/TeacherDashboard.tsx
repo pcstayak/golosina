@@ -101,7 +101,13 @@ export default function TeacherDashboard() {
             </div>
             <div className="flex gap-2.5">
               <Button size="sm" variant="secondary">Settings</Button>
-              <Button size="sm" variant="primary">Create lesson</Button>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => router.push('/lessons/create')}
+              >
+                Create lesson
+              </Button>
               <Button
                 size="sm"
                 variant="secondary"
