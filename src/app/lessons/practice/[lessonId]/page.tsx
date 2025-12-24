@@ -116,7 +116,8 @@ export default function LessonPracticePage() {
       const createResult = await PracticeService.createPractice(
         lesson.id,
         user.id,
-        assignmentId || undefined
+        assignmentId || undefined,
+        lesson.title
       )
 
       if (!createResult.success || !createResult.practiceId) {

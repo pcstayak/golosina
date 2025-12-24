@@ -358,19 +358,6 @@ export default function CreateLessonPage() {
                 </div>
               ))}
             </div>
-
-            {/* Info Box */}
-            <Card className="border-warning bg-[rgba(255,191,0,0.08)] [html[data-theme='mist']_&]:bg-[rgba(255,191,0,0.06)]">
-              <CardBody>
-                <h3 className="text-[12px] font-extrabold text-text mb-2.5">Tips for creating lessons</h3>
-                <ul className="text-[13px] text-muted space-y-1.5 list-disc list-inside">
-                  <li>Break your lesson into clear, manageable steps</li>
-                  <li>Add videos, images, or GIFs to demonstrate techniques</li>
-                  <li>Include helpful tips to guide students through each step</li>
-                  <li>You can reorder or remove steps as needed</li>
-                </ul>
-              </CardBody>
-            </Card>
           </PanelContent>
         </Panel>
       </div>

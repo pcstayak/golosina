@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Panel, PanelHeader, PanelContent } from '@/components/ui/Panel';
-import { Settings, LogOut, Home, Mic, MessageSquare, Copy, ExternalLink, Trash2 } from 'lucide-react';
+import { Settings, LogOut, Home, Mic, MessageSquare, Copy, ExternalLink, Trash2, Pencil } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import SettingsModal from '@/components/modals/SettingsModal';
 import Link from 'next/link';
@@ -13,6 +13,7 @@ import { PracticeService, Practice } from '@/services/practiceService';
 import { useNotification } from '@/hooks/useNotification';
 import { LessonService, type Lesson, type LessonAssignment } from '@/services/lessonService';
 import NotificationList from '@/components/student/NotificationList';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 export default function LandingPage() {
   const { state, dispatch } = useApp();
@@ -27,6 +28,10 @@ export default function LandingPage() {
   const [loadingMyLessons, setLoadingMyLessons] = useState(true);
   const [loadingAssignedToMe, setLoadingAssignedToMe] = useState(true);
   const [loadingPractices, setLoadingPractices] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [lessonToDelete, setLessonToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -53,22 +58,6 @@ export default function LandingPage() {
 
   // Load lessons and practices
   useEffect(() => {
-    const loadMyLessons = async () => {
-      if (!user?.id) {
-        setLoadingMyLessons(false);
-        return;
-      }
-
-      try {
-        const lessons = await LessonService.getLessonsByCreator(user.id);
-        setMyLessons(lessons);
-      } catch (error) {
-        console.error('Error loading my lessons:', error);
-      } finally {
-        setLoadingMyLessons(false);
-      }
-    };
-
     loadMyLessons();
   }, [user?.id]);
 
@@ -122,6 +111,86 @@ export default function LandingPage() {
 
     navigator.clipboard.writeText(url);
     showSuccess('Link copied to clipboard');
+  };
+
+  const handleDeleteLesson = async () => {
+    if (!lessonToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const result = await LessonService.deleteLesson(lessonToDelete);
+      if (result.success) {
+        showSuccess('Lesson deleted successfully');
+        setShowDeleteDialog(false);
+        setLessonToDelete(null);
+        loadMyLessons();
+      } else {
+        showError(result.error || 'Failed to delete lesson');
+      }
+    } catch (error) {
+      console.error('Error deleting lesson:', error);
+      showError('An unexpected error occurred');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDuplicateLesson = async (lesson: Lesson) => {
+    if (!user?.id) {
+      showError('You must be logged in to copy lessons');
+      return;
+    }
+
+    setIsCopying(true);
+    try {
+      const result = await LessonService.createLesson({
+        title: `${lesson.title} (Copy)`,
+        description: lesson.description,
+        created_by: user.id,
+        is_template: lesson.is_template,
+        steps: lesson.steps.map(step => ({
+          title: step.title,
+          description: step.description,
+          tips: step.tips,
+          media: step.media.map(m => ({
+            media_type: m.media_type,
+            media_url: m.media_url,
+            media_platform: m.media_platform,
+            embed_id: m.embed_id,
+            display_order: m.display_order,
+            caption: m.caption,
+          })),
+        })),
+      });
+
+      if (result.success) {
+        showSuccess('Lesson copied successfully!');
+        loadMyLessons();
+      } else {
+        showError(result.error || 'Failed to copy lesson');
+      }
+    } catch (error) {
+      console.error('Error copying lesson:', error);
+      showError('An unexpected error occurred');
+    } finally {
+      setIsCopying(false);
+    }
+  };
+
+  const loadMyLessons = async () => {
+    if (!user?.id) {
+      setLoadingMyLessons(false);
+      return;
+    }
+
+    try {
+      const lessons = await LessonService.getLessonsByCreator(user.id);
+      setMyLessons(lessons);
+    } catch (error) {
+      console.error('Error loading my lessons:', error);
+    } finally {
+      setLoadingMyLessons(false);
+    }
   };
 
 
@@ -314,7 +383,7 @@ export default function LandingPage() {
                           <div className="flex items-center gap-2 text-xs text-muted mb-2">
                             <span>{lesson.steps?.length || 0} steps</span>
                           </div>
-                          <div className="flex gap-1">
+                          <div className="flex gap-1.5 items-center">
                             <Link href={`/lessons/edit/${lesson.id}`} className="flex-1">
                               <Button size="sm" variant="secondary" className="w-full">
                                 Edit
@@ -325,6 +394,24 @@ export default function LandingPage() {
                                 Practice
                               </Button>
                             </Link>
+                            <button
+                              onClick={() => handleDuplicateLesson(lesson)}
+                              disabled={isCopying}
+                              className="w-8 h-8 rounded-[10px] border border-border bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.08)] flex items-center justify-center text-text transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Duplicate lesson"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setLessonToDelete(lesson.id);
+                                setShowDeleteDialog(true);
+                              }}
+                              className="w-8 h-8 rounded-[10px] border-0 bg-[rgba(220,38,38,0.15)] hover:bg-[rgba(220,38,38,0.25)] flex items-center justify-center text-red-400 transition-colors"
+                              title="Delete lesson"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -428,6 +515,23 @@ export default function LandingPage() {
         {showSettings && (
           <SettingsModal onClose={() => setShowSettings(false)} />
         )}
+
+        {/* Delete Lesson Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={showDeleteDialog}
+          onClose={() => {
+            setShowDeleteDialog(false);
+            setLessonToDelete(null);
+          }}
+          onConfirm={handleDeleteLesson}
+          title="Delete Lesson"
+          message={`Are you sure you want to delete this lesson? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="danger"
+          confirmButtonVariant="danger"
+          isLoading={isDeleting}
+        />
       </div>
     </div>
   );

@@ -17,6 +17,8 @@ export default function LyricsSearchModal({ isOpen, onClose, onSelect }: LyricsS
   const [results, setResults] = useState<LyricsSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   if (!isOpen) return null;
 
@@ -25,18 +27,37 @@ export default function LyricsSearchModal({ isOpen, onClose, onSelect }: LyricsS
       return;
     }
 
+    const controller = new AbortController();
+    setAbortController(controller);
     setIsSearching(true);
     setResults([]);
     setSelectedIndex(null);
+    setError(null);
 
     try {
       const allResults: LyricsSearchResult[] = [];
 
       // Search external API first (if artist is provided)
       if (artist.trim()) {
-        const externalResult = await LyricsService.searchExternal(title, artist);
-        if (externalResult) {
-          allResults.push(externalResult);
+        try {
+          const externalResult = await LyricsService.searchExternal(title, artist, controller.signal);
+          if (externalResult) {
+            allResults.push(externalResult);
+          }
+        } catch (externalError) {
+          if (externalError instanceof Error) {
+            if (externalError.message === 'Search cancelled') {
+              setError('Search cancelled');
+              return;
+            }
+            if (externalError.message.includes('timed out')) {
+              setError('Search timed out after 5 seconds. Please try again or check your spelling.');
+            } else if (externalError.message.includes('not found')) {
+              setError('Lyrics not found from external source. Checking internal library...');
+            } else {
+              setError(externalError.message);
+            }
+          }
         }
       }
 
@@ -47,13 +68,30 @@ export default function LyricsSearchModal({ isOpen, onClose, onSelect }: LyricsS
       setResults(allResults);
 
       // If no results found, show a message
-      if (allResults.length === 0) {
-        console.log('No lyrics found');
+      if (allResults.length === 0 && !error) {
+        setError('No lyrics found. Try different song/artist name or check spelling.');
+      } else if (allResults.length > 0) {
+        setError(null);
       }
     } catch (error) {
       console.error('Error searching lyrics:', error);
+      if (error instanceof Error && error.message === 'Search cancelled') {
+        setError('Search cancelled');
+      } else {
+        setError('Search failed. Please try again.');
+      }
     } finally {
       setIsSearching(false);
+      setAbortController(null);
+    }
+  };
+
+  const handleCancel = () => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+      setIsSearching(false);
+      setError('Search cancelled');
     }
   };
 
@@ -113,24 +151,42 @@ export default function LyricsSearchModal({ isOpen, onClose, onSelect }: LyricsS
             />
           </div>
 
-          <Button
-            variant="primary"
-            onClick={handleSearch}
-            disabled={!title.trim() || isSearching}
-            className="flex items-center gap-2"
-          >
-            {isSearching ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Searching...
-              </>
-            ) : (
-              <>
-                <Search className="w-4 h-4" />
-                Search
-              </>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              onClick={handleSearch}
+              disabled={!title.trim() || isSearching}
+              className="flex items-center gap-2"
+            >
+              {isSearching ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4" />
+                  Search
+                </>
+              )}
+            </Button>
+            {isSearching && (
+              <Button
+                variant="secondary"
+                onClick={handleCancel}
+                className="flex items-center gap-2"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </Button>
             )}
-          </Button>
+          </div>
+
+          {error && (
+            <div className="mt-2 p-3 rounded-[10px] bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+              {error}
+            </div>
+          )}
         </div>
 
         {/* Results */}

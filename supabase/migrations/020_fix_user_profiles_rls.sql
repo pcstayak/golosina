@@ -5,6 +5,10 @@
 -- Drop the restrictive policy created in migration 019
 DROP POLICY IF EXISTS "Teachers can view their active students" ON public.user_profiles;
 
+-- Drop existing policies in case of re-run
+DROP POLICY IF EXISTS "Teachers can view all students" ON public.user_profiles;
+DROP POLICY IF EXISTS "Students can view all teachers" ON public.user_profiles;
+
 -- Create new policy allowing teachers to view all students
 CREATE POLICY "Teachers can view all students"
   ON public.user_profiles

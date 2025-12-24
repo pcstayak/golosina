@@ -22,6 +22,7 @@ export default function TeacherDashboard() {
   const [lessonsCreatedCount, setLessonsCreatedCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -90,6 +91,14 @@ export default function TeacherDashboard() {
     return profile.email || 'Unknown Student'
   }
 
+  const isArchived = (practice: PracticeWithDetails): boolean => {
+    return !practice.lesson_id
+  }
+
+  const filteredPractices = showArchived
+    ? practices
+    : practices.filter(p => !isArchived(p))
+
   return (
     <div className="min-h-screen">
       <div className="max-w-custom mx-auto px-4 py-6">
@@ -132,7 +141,7 @@ export default function TeacherDashboard() {
               <div className="p-3 border border-border rounded-[14px] bg-[rgba(255,255,255,0.04)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.03)]">
                 <div className="text-xs text-muted">Pending reviews</div>
                 <div className="text-xl font-black mt-1.5">
-                  {loading ? '...' : practices.filter(p => !p.reviewed_at).length}
+                  {loading ? '...' : practices.filter(p => !p.reviewed_at && !isArchived(p)).length}
                 </div>
               </div>
               <div
@@ -150,9 +159,23 @@ export default function TeacherDashboard() {
                 <h2 className="text-base font-extrabold text-text m-0">Student homework</h2>
                 <div className="text-[12.5px] text-muted">Compact list optimized for scanning</div>
               </div>
-              <div className="flex gap-2 items-center">
-                <Badge variant="assigned">Assigned</Badge>
-                <Badge variant="reviewed">Reviewed</Badge>
+              <div className="flex gap-3 items-center">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="showArchived"
+                    checked={showArchived}
+                    onChange={(e) => setShowArchived(e.target.checked)}
+                    className="w-4 h-4 rounded border-border bg-[rgba(255,255,255,0.04)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.03)] text-primary focus:ring-2 focus:ring-primary focus:ring-offset-0 cursor-pointer"
+                  />
+                  <label htmlFor="showArchived" className="text-xs text-muted font-extrabold cursor-pointer">
+                    Show archived
+                  </label>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Badge variant="assigned">Assigned</Badge>
+                  <Badge variant="reviewed">Reviewed</Badge>
+                </div>
               </div>
             </div>
 
@@ -170,10 +193,12 @@ export default function TeacherDashboard() {
               {/* Table Rows */}
               {loading ? (
                 <div className="px-3 py-8 text-center text-muted">Loading...</div>
-              ) : practices.length === 0 ? (
-                <div className="px-3 py-8 text-center text-muted">No homework submissions yet</div>
+              ) : filteredPractices.length === 0 ? (
+                <div className="px-3 py-8 text-center text-muted">
+                  {showArchived ? 'No homework submissions yet' : 'No active homework submissions'}
+                </div>
               ) : (
-                practices.map((practice) => (
+                filteredPractices.map((practice) => (
                   <div
                     key={practice.practice_id}
                     className="grid grid-cols-[1.5fr_1fr_1fr_1fr_auto] gap-2.5 px-3 py-3 items-center border-t border-border bg-[rgba(255,255,255,0.03)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.02)]"

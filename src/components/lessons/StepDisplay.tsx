@@ -108,39 +108,17 @@ export default function StepDisplay({ step, stepNumber, showComments = false, as
         </div>
       )}
 
-      {/* Lyrics/Notes Section (optional) */}
-      {(allMedia[currentMediaIndex]?.lyrics || allMedia[currentMediaIndex]?.caption || (showComments && step.comments && step.comments.length > 0)) && (
-        <div className="p-3">
-          <div className="text-sm font-black text-text mb-2.5">Lyrics / Notes</div>
-
-          {/* Lyrics with Annotations */}
-          {allMedia[currentMediaIndex]?.lyrics && allMedia[currentMediaIndex]?.id && user?.id ? (
-            <LyricsWithAnnotations
-              lyrics={allMedia[currentMediaIndex].lyrics}
-              mediaId={allMedia[currentMediaIndex].id}
-              context={{
-                mode: 'practice',
-                userId: user.id,
-                isTeacher: profile?.role === 'teacher',
-                assignmentId: assignmentId,
-                studentId: assignmentId ? user.id : undefined,
-              }}
-            />
-          ) : allMedia[currentMediaIndex]?.caption ? (
-            <div className="text-[13.5px] text-muted leading-relaxed">
-              {allMedia[currentMediaIndex].caption}
-            </div>
-          ) : null}
-
-          {showComments && step.comments && step.comments.length > 0 && (
-            <div className="mt-2.5 space-y-2">
-              {step.comments.map((comment, index) => (
-                <div key={index} className="text-[13.5px] text-muted">
-                  <p className="whitespace-pre-wrap">{comment.comment}</p>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Step Comments Section (teacher feedback on steps) */}
+      {showComments && step.comments && step.comments.length > 0 && (
+        <div className="p-3 border-t border-border">
+          <div className="text-sm font-black text-text mb-2.5">Teacher Feedback</div>
+          <div className="space-y-2">
+            {step.comments.map((comment, index) => (
+              <div key={index} className="text-[13.5px] text-muted">
+                <p className="whitespace-pre-wrap">{comment.comment}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

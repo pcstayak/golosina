@@ -29,7 +29,7 @@ export interface Practice {
   created_at: string;
   updated_at: string;
   comment_count?: number;
-  title?: string;
+  title: string;
 }
 
 export interface PracticeWithDetails extends Practice {
@@ -69,7 +69,8 @@ export class PracticeService {
   static async createPractice(
     lessonId: string,
     createdBy: string,
-    assignmentId?: string
+    assignmentId?: string,
+    lessonTitle?: string
   ): Promise<{ success: boolean; practiceId?: string; error?: string }> {
     if (!supabase) {
       return { success: false, error: 'Supabase is not configured' };
@@ -77,6 +78,18 @@ export class PracticeService {
 
     try {
       const practiceId = this.generatePracticeId();
+
+      // Fetch lesson title if not provided
+      let title = lessonTitle;
+      if (!title) {
+        const { data: lessonData } = await supabase
+          .from('lessons')
+          .select('title')
+          .eq('id', lessonId)
+          .single();
+
+        title = lessonData?.title || 'Untitled Lesson';
+      }
 
       const { data: practiceData, error: practiceError } = await supabase
         .from('practices')
@@ -88,6 +101,7 @@ export class PracticeService {
           recordings: {},
           recording_count: 0,
           is_shared: false,
+          title,
         })
         .select()
         .single();
@@ -374,14 +388,13 @@ export class PracticeService {
 
       const practices = data || [];
 
-      // Fetch comment counts and lesson titles for all practices
+      // Fetch comment counts for all practices
       const practicesWithCounts = await Promise.all(
         practices.map(async (practice) => {
           if (!supabase) {
             return {
               ...practice,
               comment_count: 0,
-              title: 'Untitled Lesson (archived)'
             };
           }
 
@@ -391,25 +404,9 @@ export class PracticeService {
             .select('*', { count: 'exact', head: true })
             .eq('practice_id', practice.practice_id);
 
-          // Get lesson title - handle null lesson_id (archived)
-          let lessonTitle = 'Untitled Lesson';
-          if (practice.lesson_id) {
-            const { data: lessonData } = await supabase
-              .from('lessons')
-              .select('title')
-              .eq('id', practice.lesson_id)
-              .single();
-
-            lessonTitle = lessonData?.title || 'Untitled Lesson';
-          } else {
-            // Lesson was deleted - mark as archived
-            lessonTitle = 'Untitled Lesson (archived)';
-          }
-
           return {
             ...practice,
             comment_count: count || 0,
-            title: lessonTitle
           };
         })
       );
@@ -659,9 +656,8 @@ export class PracticeService {
         return {
           ...practice,
           student_profile: studentProfile,
-          lesson: lesson || { title: 'Untitled Lesson' },
+          lesson: lesson || { title: practice.title },
           comment_count: commentCounts.get(practice.practice_id) || 0,
-          title: lesson?.title || 'Untitled Lesson',
         };
       });
     } catch (error) {

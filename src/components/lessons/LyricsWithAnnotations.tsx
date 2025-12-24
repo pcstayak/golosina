@@ -345,6 +345,7 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
           color: 'var(--muted)',
           lineHeight: '1.6',
           userSelect: 'text',
+          fontWeight: 'normal',
         }}
         onMouseUp={handleMouseUp}
         onClick={() => setAnnotationPopover(null)}

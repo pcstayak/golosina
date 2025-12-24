@@ -8,6 +8,8 @@ import VideoEmbed from '@/components/lesson/VideoEmbed';
 import { VideoEmbedService } from '@/services/videoEmbedService';
 import AudioPlayer from '@/components/lesson/AudioPlayer';
 import { PracticeComment as RecordingComment } from '@/services/practiceService';
+import LyricsWithAnnotations from './LyricsWithAnnotations';
+import type { AnnotationContext } from '@/services/annotationsService';
 
 export interface MediaComment {
   id: string;
@@ -26,7 +28,7 @@ interface MediaPreviewProps {
   onAddComment: (timestampSeconds: number, commentText: string) => void;
   onDeleteComment: (commentId: string) => void;
   isEditable: boolean;
-  lyrics?: string; // Kept for backward compatibility, not rendered here
+  lyrics?: string;
   mediaId?: string;
   userId?: string;
   isTeacher?: boolean;
@@ -253,7 +255,7 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
                         onClick={() => handleTimestampClick(comment.timestamp_seconds)}
                         style={{
                           fontSize: '11px',
-                          fontWeight: 700,
+                          fontWeight: 'normal',
                           color: 'var(--primary-2)',
                           marginRight: '8px',
                           cursor: 'pointer',
@@ -277,7 +279,7 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
                     ) : (
                       <span style={{
                         fontSize: '11px',
-                        fontWeight: 700,
+                        fontWeight: 'normal',
                         color: 'var(--faint)',
                         marginRight: '8px',
                       }}>
@@ -365,6 +367,41 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
               </Button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Lyrics Section - Show for audio/video with lyrics */}
+      {lyrics && (mediaType === 'video' || mediaType === 'audio') && (
+        <div className="mt-3">
+          <div className="text-sm font-extrabold text-text mb-2">Lyrics</div>
+          <div
+            className="p-3 rounded-lg"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            {mediaId && userId ? (
+              <LyricsWithAnnotations
+                lyrics={lyrics}
+                mediaId={mediaId}
+                context={{
+                  mode: 'lesson_creation',
+                  userId: userId,
+                  isTeacher: isTeacher,
+                }}
+              />
+            ) : (
+              <div>
+                <div className="text-[13.5px] text-muted whitespace-pre-wrap leading-relaxed">
+                  {lyrics}
+                </div>
+                <div className="text-xs text-warning mt-2">
+                  Save the lesson to enable annotations
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

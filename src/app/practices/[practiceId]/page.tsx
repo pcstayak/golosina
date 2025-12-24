@@ -458,30 +458,176 @@ export default function PracticePage() {
     );
   }
 
-  // Handle archived practice (lesson was deleted)
-  if (!lesson) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div style={{ color: 'var(--text)', fontSize: '16px', marginBottom: '16px' }}>
-            This practice session is archived
-          </div>
-          <div style={{ color: 'var(--muted)', fontSize: '13.5px', marginBottom: '16px' }}>
-            The original lesson has been deleted, but your practice recordings are preserved.
-          </div>
-          <Button variant="secondary" onClick={() => router.push('/')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Go Back
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const isArchivedPractice = !lesson && !practice.lesson_id;
 
   const recordingCount = Object.values(practice.recordings).reduce(
     (sum, set) => sum + set.files.length,
     0
   );
+
+  // Handle archived practice (lesson was deleted) - show recordings only
+  if (isArchivedPractice) {
+    return (
+      <div className="min-h-screen">
+        <div className="max-w-custom mx-auto px-4 py-6">
+          <Panel>
+            <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--panel)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
+              <PanelHeader>
+                <div>
+                  <h1 className="text-lg font-extrabold text-text m-0">
+                    {practice.title}
+                  </h1>
+                  <div className="text-[12.5px] text-muted mt-1">Archived practice session</div>
+                  <div className="flex items-center gap-3 flex-wrap mt-2">
+                    <div className="flex items-center gap-2" style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                      <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--primary)' }} />
+                      <span>{formatDate(practice.created_at)}</span>
+                    </div>
+                    <div className="flex items-center gap-2" style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                      <Mic className="w-3.5 h-3.5" style={{ color: 'var(--primary)' }} />
+                      <span>{recordingCount} recordings</span>
+                    </div>
+                    <Badge variant="default">Archived</Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => router.push('/')}
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+                  {canReview && !practice.reviewed_at && (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={handleMarkAsReviewed}
+                      disabled={markingAsReviewed}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      {markingAsReviewed ? 'Marking...' : 'Mark as Reviewed'}
+                    </Button>
+                  )}
+                  {practice.reviewed_at && (
+                    <Badge variant="reviewed">
+                      Reviewed
+                    </Badge>
+                  )}
+                </div>
+              </PanelHeader>
+            </div>
+
+            <PanelContent>
+              <div className="mb-4 p-4 border border-border rounded-[14px] bg-[rgba(255,255,255,0.04)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.03)]">
+                <p style={{ fontSize: '13.5px', color: 'var(--muted)', lineHeight: '1.6' }}>
+                  The original lesson has been deleted, but your practice recordings are preserved below.
+                </p>
+              </div>
+
+              {Object.entries(practice.recordings).map(([stepKey, recordingSet], index) => (
+                <div key={stepKey} style={{ marginBottom: '24px' }}>
+                  <Card>
+                    <CardBody>
+                      <div className="flex items-start gap-3 mb-4">
+                        <div
+                          className="flex-shrink-0 rounded-full flex items-center justify-center font-black text-xs"
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            background: 'linear-gradient(135deg, var(--primary), var(--primary-2))',
+                            color: 'var(--primary-contrast)'
+                          }}
+                        >
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <h2 className="font-black mb-2" style={{ fontSize: '18px', color: 'var(--text)' }}>
+                            {recordingSet.name}
+                          </h2>
+                        </div>
+                      </div>
+
+                      {recordingSet.files.length > 0 && (
+                        <div className="mt-6">
+                          <div className="space-y-6">
+                            {recordingSet.files.map((file, fileIndex) => {
+                              const piece = convertedAudioPieces.find(p => p.id === file.timestamp);
+                              if (!piece) return null;
+
+                              const recordingId = `${stepKey}_${file.timestamp}`;
+                              const recordingComments = comments.filter(
+                                c => c.recording_id === recordingId
+                              );
+
+                              return (
+                                <div key={file.timestamp} className="space-y-4">
+                                  <AudioPlayer
+                                    piece={piece}
+                                    index={fileIndex}
+                                    onDelete={() => {}}
+                                    onDownload={() => {
+                                      const a = document.createElement('a');
+                                      a.href = file.url;
+                                      a.download = `${file.name}.webm`;
+                                      a.click();
+                                    }}
+                                    onTitleUpdate={undefined}
+                                    isPlaying={playingPieceId === file.timestamp}
+                                    onPlayStateChange={(pieceId, playing) => {
+                                      if (playing) {
+                                        setPlayingPieceId(pieceId);
+                                      } else if (playingPieceId === pieceId) {
+                                        setPlayingPieceId(null);
+                                      }
+                                    }}
+                                    exerciseName={recordingSet.name}
+                                    showDeleteButton={false}
+                                    comments={recordingComments}
+                                    onAddComment={(timestampSeconds) => {
+                                      handleAddComment(recordingId, timestampSeconds);
+                                    }}
+                                    onCommentMarkerClick={(commentIds) => {
+                                      handleCommentMarkerClick(recordingId, commentIds);
+                                    }}
+                                  />
+
+                                  {visibleCommentUIs[recordingId] && (
+                                    <div className="mt-4">
+                                      <CommentThread
+                                        comments={recordingComments}
+                                        onReply={(parentCommentId, commentText) =>
+                                          handleReply(recordingId, parentCommentId, commentText)
+                                        }
+                                        currentUserName={profile?.display_name || user?.email?.split('@')[0] || 'Anonymous'}
+                                        selectedCommentId={selectedCommentThreads[recordingId]}
+                                        onClose={() => handleCloseCommentThread(recordingId)}
+                                        recordingId={recordingId}
+                                        recordingDuration={piece?.duration || 0}
+                                        commentFormState={commentForms[recordingId]}
+                                        onUpdateForm={(field, value) => handleUpdateCommentForm(recordingId, field, value)}
+                                        onSubmitComment={() => handleSubmitComment(recordingId)}
+                                        showForm={true}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </CardBody>
+                  </Card>
+                </div>
+              ))}
+            </PanelContent>
+          </Panel>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -491,9 +637,9 @@ export default function PracticePage() {
             <PanelHeader>
               <div>
                 <h1 className="text-lg font-extrabold text-text m-0">
-                  {lesson.title}{!practice.lesson_id && ' (archived)'}
+                  {lesson?.title}{!practice.lesson_id && ' (archived)'}
                 </h1>
-                {lesson.description && (
+                {lesson?.description && (
                   <div className="text-[12.5px] text-muted mt-1">{lesson.description}</div>
                 )}
                 <div className="flex items-center gap-3 flex-wrap mt-2">
@@ -503,7 +649,7 @@ export default function PracticePage() {
                   </div>
                   <div className="flex items-center gap-2" style={{ fontSize: '11px', color: 'var(--muted)' }}>
                     <BookOpen className="w-3.5 h-3.5" style={{ color: 'var(--primary)' }} />
-                    <span>{lesson.steps.length} steps</span>
+                    <span>{lesson?.steps?.length || 0} steps</span>
                   </div>
                   <div className="flex items-center gap-2" style={{ fontSize: '11px', color: 'var(--muted)' }}>
                     <Mic className="w-3.5 h-3.5" style={{ color: 'var(--primary)' }} />
@@ -564,7 +710,7 @@ export default function PracticePage() {
           </div>
 
           <PanelContent>
-            {lesson.steps.map((step, stepIndex) => {
+            {lesson?.steps?.map((step, stepIndex) => {
               // Try multiple key formats to find recordings
               const stepId = step.id || `order_${step.step_order}`;
               const stepRecordings = practice.recordings[`step_${stepId}`]
