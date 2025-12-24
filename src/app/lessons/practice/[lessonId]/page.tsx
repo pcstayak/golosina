@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useApp } from '@/contexts/AppContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/Button'
+import { Panel, PanelHeader, PanelContent } from '@/components/ui/Panel'
 import { ArrowLeft, Share2, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import StepDisplay from '@/components/lessons/StepDisplay'
@@ -115,7 +116,8 @@ export default function LessonPracticePage() {
       const createResult = await PracticeService.createPractice(
         lesson.id,
         user.id,
-        assignmentId || undefined
+        assignmentId || undefined,
+        lesson.title
       )
 
       if (!createResult.success || !createResult.practiceId) {
@@ -255,154 +257,169 @@ export default function LessonPracticePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/">
-            <Button variant="secondary" size="sm" className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Home
-            </Button>
-          </Link>
-
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleSaveAndShare}
-            disabled={isSaving || !hasRecordings}
-            className="flex items-center gap-2"
-          >
-            <Share2 className="w-4 h-4" />
-            {isSaving ? 'Saving...' : 'Save & Share'}
-          </Button>
-        </div>
-
-        {/* Lesson Info */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">{lesson.title}</h1>
-          {lesson.description && (
-            <p className="text-gray-600">{lesson.description}</p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Lesson Steps */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Current Step Display */}
-            {currentStep && (
-              <StepDisplay
-                key={currentStep.id || state.currentStepIndex}
-                step={currentStep}
-                stepNumber={state.currentStepIndex + 1}
-                showComments={!!assignmentId}
-                assignmentId={assignmentId || undefined}
-              />
-            )}
-
-            {/* Step Navigation Footer */}
-            <div className="flex items-center justify-center gap-4">
-              {state.currentStepIndex > 0 && (
+    <div className="min-h-screen">
+      <div className="max-w-custom mx-auto px-4 py-6">
+        <Panel>
+          <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--panel)', backdropFilter: 'blur(8px)', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
+            <PanelHeader>
+              <div>
+                <h1 className="text-lg font-extrabold text-text m-0">{lesson.title}</h1>
+                <div className="text-[12.5px] text-muted mt-1">{lesson.description || 'Practice this lesson step by step'}</div>
+              </div>
+              <div className="flex gap-2.5 items-center">
+                <Link href="/">
+                  <Button size="sm" variant="ghost">← Back</Button>
+                </Link>
                 <Button
-                  variant="secondary"
                   size="sm"
-                  onClick={handlePreviousStep}
-                  className="flex items-center gap-1"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
-                </Button>
-              )}
-              <span className="text-base font-medium text-gray-700 px-4">
-                Step {state.currentStepIndex + 1} of {lesson.steps.length}
-              </span>
-              {state.currentStepIndex === lesson.steps.length - 1 ? (
-                <Button
                   variant="primary"
-                  size="sm"
                   onClick={handleSaveAndShare}
                   disabled={isSaving || !hasRecordings}
-                  className="flex items-center gap-1"
                 >
                   {isSaving ? 'Saving...' : 'Save & Share'}
-                  <Share2 className="w-4 h-4" />
                 </Button>
-              ) : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleNextStep}
-                  disabled={state.currentStepIndex === lesson.steps.length - 1}
-                  className="flex items-center gap-1"
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
+              </div>
+            </PanelHeader>
           </div>
 
-          {/* Recording Section */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm border p-6 sticky top-4">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                Practice Recording
-              </h2>
+          <PanelContent>
+            <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-3.5 items-start">
+              {/* LEFT: Step Content (only ONE step visible) */}
+              <div>
+                {currentStep && (
+                  <StepDisplay
+                    key={currentStep.id || state.currentStepIndex}
+                    step={currentStep}
+                    stepNumber={state.currentStepIndex + 1}
+                    showComments={!!assignmentId}
+                    assignmentId={assignmentId || undefined}
+                  />
+                )}
 
-              <RecordingControls />
-
-              {state.isRecording && (
-                <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                    <p className="text-xs text-red-700 font-medium">
-                      Recording in progress
-                    </p>
+                {/* Footer Actions */}
+                <div className="mt-3 flex justify-between items-center gap-2.5">
+                  <div className="text-xs text-muted font-black">
+                    Step {state.currentStepIndex + 1} of {lesson.steps.length}
+                  </div>
+                  <div className="flex gap-2.5">
+                    {state.currentStepIndex > 0 && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={handlePreviousStep}
+                      >
+                        ← Previous
+                      </Button>
+                    )}
+                    {state.currentStepIndex === lesson.steps.length - 1 ? (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={handleSaveAndShare}
+                        disabled={isSaving || !hasRecordings}
+                      >
+                        {isSaving ? 'Saving...' : 'Save & Share'}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={handleNextStep}
+                      >
+                        Next →
+                      </Button>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
 
-              {currentStepRecordings.length > 0 && (
-                <div className="mt-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-gray-800">
-                      Your Recordings ({currentStepRecordings.length})
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      Record more anytime
-                    </p>
+              {/* RIGHT: Recorder (calm, anchored) */}
+              <aside style={{ position: 'sticky', top: 'calc(100px + 1rem)', alignSelf: 'flex-start' }}>
+                <div className="border border-border rounded-[14px] overflow-hidden bg-[rgba(255,255,255,0.03)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.02)]">
+                  <div className="p-3 flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-black text-text m-0">Practice Recording</div>
+                      <div className="text-[12.5px] text-muted mt-1">Record → review → keep moving</div>
+                    </div>
+                    {state.isRecording && (
+                      <div className="font-black text-muted tabular-nums">
+                        {Math.floor((Date.now() - (state.recordingStartTime || Date.now())) / 1000 / 60)}:
+                        {String(Math.floor(((Date.now() - (state.recordingStartTime || Date.now())) / 1000) % 60)).padStart(2, '0')}
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-3">
-                    {currentStepRecordings.map((piece, index) => (
-                      <AudioPlayer
-                        key={piece.id}
-                        piece={piece}
-                        index={index}
-                        onDelete={() => {
-                          dispatch({
-                            type: 'REMOVE_AUDIO_PIECE',
-                            payload: { stepId: recordingStepId, pieceId: piece.id },
-                          });
-                        }}
-                        onDownload={downloadPiece}
-                        onTitleUpdate={undefined}
-                        isPlaying={currentlyPlaying === piece.id}
-                        onPlayStateChange={handlePlayStateChange}
-                        exerciseName={piece.exerciseName || "Practice Recording"}
-                        showDeleteButton={true}
-                        showWaveform={false}
-                      />
-                    ))}
+
+                  <div className="p-3 grid gap-2.5">
+                    <RecordingControls />
+
+                    {currentStepRecordings.length > 0 && (
+                      <div>
+                        <div className="text-sm font-black text-text mb-2">Your takes</div>
+                        <div className="border border-border rounded-[14px] overflow-hidden">
+                          {currentStepRecordings.map((piece, index) => (
+                            <div key={piece.id}>
+                              <div className="grid grid-cols-[auto_1fr_auto] gap-2.5 px-3 py-2.5 items-center border-t first:border-t-0 border-border bg-[rgba(255,255,255,0.03)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.02)]">
+                                <div className="w-[26px] h-[26px] rounded-full grid place-items-center bg-gradient-to-br from-primary to-primary-2 text-primary-contrast font-black text-xs">
+                                  {index + 1}
+                                </div>
+                                <div>
+                                  <div className="font-black text-sm">Recording {index + 1}</div>
+                                  <div className="text-xs text-muted mt-0.5">
+                                    {Math.floor(piece.duration)}s · {new Date(piece.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handlePlayStateChange(piece.id, currentlyPlaying !== piece.id)}
+                                    className="w-[34px] h-[34px] rounded-[10px] border border-border bg-[rgba(255,255,255,0.04)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.03)] text-text font-black"
+                                    title={currentlyPlaying === piece.id ? 'Pause' : 'Play'}
+                                  >
+                                    {currentlyPlaying === piece.id ? '⏸' : '▶'}
+                                  </button>
+                                  <button
+                                    onClick={() => downloadPiece(piece)}
+                                    className="w-[34px] h-[34px] rounded-[10px] border border-border bg-[rgba(255,255,255,0.04)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.03)] text-text font-black"
+                                    title="Download"
+                                  >
+                                    ⇩
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      dispatch({
+                                        type: 'REMOVE_AUDIO_PIECE',
+                                        payload: { stepId: recordingStepId, pieceId: piece.id },
+                                      });
+                                    }}
+                                    className="w-[34px] h-[34px] rounded-[10px] border-0 bg-[rgba(255,77,109,0.18)] text-text font-black"
+                                    title="Delete"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                              {/* Hidden AudioPlayer for playback functionality */}
+                              <div className="hidden">
+                                <AudioPlayer
+                                  piece={piece}
+                                  index={index}
+                                  isPlaying={currentlyPlaying === piece.id}
+                                  onPlayStateChange={handlePlayStateChange}
+                                  showControls={false}
+                                  showDeleteButton={false}
+                                  showWaveform={false}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-
-              {currentStepRecordings.length === 0 && !state.isRecording}
-
-
+              </aside>
             </div>
-          </div>
-        </div>
+          </PanelContent>
+        </Panel>
       </div>
     </div>
   )

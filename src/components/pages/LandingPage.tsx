@@ -3,23 +3,21 @@
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
-import { Settings, LogOut, Home, Video, ChevronDown, ChevronUp, GraduationCap, Mic, MessageSquare, Calendar, Copy, ExternalLink, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
+import { Panel, PanelHeader, PanelContent } from '@/components/ui/Panel';
+import { Settings, LogOut, Home, Mic, MessageSquare, Copy, ExternalLink, Trash2, Pencil } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import SettingsModal from '@/components/modals/SettingsModal';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import PracticeCard from '@/components/student/PracticeCard';
 import { PracticeService, Practice } from '@/services/practiceService';
 import { useNotification } from '@/hooks/useNotification';
 import { LessonService, type Lesson, type LessonAssignment } from '@/services/lessonService';
-import LessonCard from '@/components/lessons/LessonCard';
-import AssignedLessonCardNew from '@/components/lessons/AssignedLessonCard';
 import NotificationList from '@/components/student/NotificationList';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 export default function LandingPage() {
   const { state, dispatch } = useApp();
   const { signOut, profile, user } = useAuth();
-  const router = useRouter();
   const { showSuccess, showError } = useNotification();
   const [showSettings, setShowSettings] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -30,10 +28,10 @@ export default function LandingPage() {
   const [loadingMyLessons, setLoadingMyLessons] = useState(true);
   const [loadingAssignedToMe, setLoadingAssignedToMe] = useState(true);
   const [loadingPractices, setLoadingPractices] = useState(true);
-  const [showMyLessonsSection, setShowMyLessonsSection] = useState(true);
-  const [showAssignedToMeSection, setShowAssignedToMeSection] = useState(true);
-  const [showPracticesSection, setShowPracticesSection] = useState(true);
-  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [lessonToDelete, setLessonToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -60,22 +58,6 @@ export default function LandingPage() {
 
   // Load lessons and practices
   useEffect(() => {
-    const loadMyLessons = async () => {
-      if (!user?.id) {
-        setLoadingMyLessons(false);
-        return;
-      }
-
-      try {
-        const lessons = await LessonService.getLessonsByCreator(user.id);
-        setMyLessons(lessons);
-      } catch (error) {
-        console.error('Error loading my lessons:', error);
-      } finally {
-        setLoadingMyLessons(false);
-      }
-    };
-
     loadMyLessons();
   }, [user?.id]);
 
@@ -131,21 +113,86 @@ export default function LandingPage() {
     showSuccess('Link copied to clipboard');
   };
 
-  const handleViewPractice = (practiceId: string) => {
-    router.push(`/practices/${practiceId}`);
+  const handleDeleteLesson = async () => {
+    if (!lessonToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const result = await LessonService.deleteLesson(lessonToDelete);
+      if (result.success) {
+        showSuccess('Lesson deleted successfully');
+        setShowDeleteDialog(false);
+        setLessonToDelete(null);
+        loadMyLessons();
+      } else {
+        showError(result.error || 'Failed to delete lesson');
+      }
+    } catch (error) {
+      console.error('Error deleting lesson:', error);
+      showError('An unexpected error occurred');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
-  const toggleLessonExpanded = (lessonId: string) => {
-    setExpandedLessons(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(lessonId)) {
-        newSet.delete(lessonId);
+  const handleDuplicateLesson = async (lesson: Lesson) => {
+    if (!user?.id) {
+      showError('You must be logged in to copy lessons');
+      return;
+    }
+
+    setIsCopying(true);
+    try {
+      const result = await LessonService.createLesson({
+        title: `${lesson.title} (Copy)`,
+        description: lesson.description,
+        created_by: user.id,
+        is_template: lesson.is_template,
+        steps: lesson.steps.map(step => ({
+          title: step.title,
+          description: step.description,
+          tips: step.tips,
+          media: step.media.map(m => ({
+            media_type: m.media_type,
+            media_url: m.media_url,
+            media_platform: m.media_platform,
+            embed_id: m.embed_id,
+            display_order: m.display_order,
+            caption: m.caption,
+          })),
+        })),
+      });
+
+      if (result.success) {
+        showSuccess('Lesson copied successfully!');
+        loadMyLessons();
       } else {
-        newSet.add(lessonId);
+        showError(result.error || 'Failed to copy lesson');
       }
-      return newSet;
-    });
+    } catch (error) {
+      console.error('Error copying lesson:', error);
+      showError('An unexpected error occurred');
+    } finally {
+      setIsCopying(false);
+    }
   };
+
+  const loadMyLessons = async () => {
+    if (!user?.id) {
+      setLoadingMyLessons(false);
+      return;
+    }
+
+    try {
+      const lessons = await LessonService.getLessonsByCreator(user.id);
+      setMyLessons(lessons);
+    } catch (error) {
+      console.error('Error loading my lessons:', error);
+    } finally {
+      setLoadingMyLessons(false);
+    }
+  };
+
 
   const formatDate = (dateString: string) => {
     try {
@@ -179,261 +226,263 @@ export default function LandingPage() {
   });
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="text-center mb-12">
-        <div className="flex items-center justify-between mb-8">
-          <div></div>
-          <h1 className="text-5xl font-bold text-white">
-            🎵 Golosina
-          </h1>
-          <div className="flex items-center gap-2">
-            {(profile?.role === 'admin' || profile?.role === 'teacher') && (
+    <div className="min-h-screen">
+      <div className="max-w-custom mx-auto px-4 py-6">
+        <Panel>
+          <PanelHeader>
+            <div>
+              <h1 className="text-lg font-extrabold text-text m-0">Student Dashboard</h1>
+              <div className="text-[12.5px] text-muted mt-1">Practice, learn, improve</div>
+            </div>
+            <div className="flex gap-2.5">
+              {(profile?.role === 'admin' || profile?.role === 'teacher') && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleReturnToDashboard}
+                >
+                  <Home className="w-4 h-4" />
+                </Button>
+              )}
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={handleReturnToDashboard}
-                className="flex items-center gap-2"
+                onClick={() => setShowSettings(true)}
               >
-                <Home className="w-4 h-4" />
-                Dashboard
+                <Settings className="w-4 h-4" />
               </Button>
+              <Link href="/lessons/create">
+                <Button variant="primary" size="sm">Create lesson</Button>
+              </Link>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          </PanelHeader>
+
+          <PanelContent>
+            {/* Notifications Section - Only show for students (non-admin, non-teacher) */}
+            {user?.id && profile?.role !== 'admin' && profile?.role !== 'teacher' && (
+              <div className="mb-4">
+                <NotificationList maxItems={5} />
+              </div>
             )}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="flex items-center gap-2"
-            >
-              <LogOut className="w-4 h-4" />
-              {isLoggingOut ? 'Logging out...' : 'Logout'}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowSettings(true)}
-              className="flex items-center gap-2"
-            >
-              <Settings className="w-4 h-4" />
-              Settings
-            </Button>
-          </div>
-        </div>
-        <p className="text-xl text-white/80 mb-8">
-          Your AI-powered voice training companion
-        </p>
-      </div>
 
-      {/* Notifications Section - Only show for students (non-admin, non-teacher) */}
-      {user?.id && profile?.role !== 'admin' && profile?.role !== 'teacher' && (
-        <div className="mb-6">
-          <NotificationList maxItems={5} />
-        </div>
-      )}
-
-      {/* Create Lesson Card */}
-      <div className="mb-6">
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Video className="w-6 h-6 text-white" />
+            {/* Stats Cards */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="p-3 border border-border rounded-[14px] bg-[rgba(255,255,255,0.04)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.03)]">
+                <div className="text-xs text-muted">LESSONS ASSIGNED</div>
+                <div className="text-xl font-black mt-1.5">
+                  {loadingAssignedToMe ? '...' : assignedToMeLessons.length}
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-white">Create Lesson</h2>
-                  <p className="text-white/80 text-sm">Build custom step-by-step lessons</p>
+              </div>
+              <div className="p-3 border border-border rounded-[14px] bg-[rgba(255,255,255,0.04)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.03)]">
+                <div className="text-xs text-muted">PENDING PRACTICES</div>
+                <div className="text-xl font-black mt-1.5">
+                  {loadingAssignedToMe ? '...' : assignedToMeLessons.filter(a => !practices.some(p => p.lesson_id === a.lesson_id)).length}
+                </div>
+              </div>
+              <div className="p-3 border border-border rounded-[14px] bg-[rgba(255,255,255,0.04)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.03)]">
+                <div className="text-xs text-muted">COMPLETED PRACTICES</div>
+                <div className="text-xl font-black mt-1.5">
+                  {loadingPractices ? '...' : practices.length}
                 </div>
               </div>
             </div>
-            <p className="text-white/90 mb-4">
-              Create structured lessons with videos, images, tips, and practice recordings. Share with your teacher or use for personal practice.
-            </p>
-            <Link href="/lessons/create">
-              <Button variant="secondary" className="w-full flex items-center justify-center gap-2">
-                <Video className="w-4 h-4" />
-                Create New Lesson
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
 
-      {/* Lessons I Created Section */}
-      {loadingMyLessons ? (
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">Lessons I Created</h2>
-          <div className="text-center text-white/60 py-8">
-            Loading your lessons...
-          </div>
-        </div>
-      ) : myLessons.length > 0 ? (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-white">Lessons I Created ({myLessons.length})</h2>
-            <button
-              onClick={() => setShowMyLessonsSection(!showMyLessonsSection)}
-              className="text-white/80 hover:text-white transition-colors"
-            >
-              {showMyLessonsSection ? (
-                <ChevronUp className="w-5 h-5" />
-              ) : (
-                <ChevronDown className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-          {showMyLessonsSection && (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {myLessons.map((lesson) => (
-                <LessonCard
-                  key={lesson.id}
-                  lesson={lesson}
-                  onDelete={async () => {
-                    // Refresh the list after delete
-                    if (user?.id) {
-                      const lessons = await LessonService.getLessonsByCreator(user.id)
-                      setMyLessons(lessons)
-                    }
-                  }}
-                  onCopy={async () => {
-                    // Refresh the list after copy
-                    if (user?.id) {
-                      const lessons = await LessonService.getLessonsByCreator(user.id)
-                      setMyLessons(lessons)
-                    }
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      ) : null}
+            {/* Lessons Assigned to Me Section */}
+            {assignedToMeLessons.length > 0 && (
+              <>
+                <div className="mt-3.5 flex items-center justify-between gap-2.5 mb-3">
+                  <div>
+                    <h2 className="text-base font-extrabold text-text m-0">Lessons from Teachers</h2>
+                    <div className="text-[12.5px] text-muted">Assigned lessons to practice</div>
+                  </div>
+                </div>
 
-      {/* Lessons Assigned to Me Section (Students) */}
-      {loadingAssignedToMe ? (
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">Lessons from Teachers</h2>
-          <div className="text-center text-white/60 py-8">
-            Loading assigned lessons...
-          </div>
-        </div>
-      ) : assignedToMeLessons.length > 0 ? (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <GraduationCap className="w-6 h-6 text-white" />
-              <h2 className="text-2xl font-bold text-white">
-                Lessons from Teachers ({assignedToMeLessons.length})
-              </h2>
-            </div>
-            <button
-              onClick={() => setShowAssignedToMeSection(!showAssignedToMeSection)}
-              className="text-white/80 hover:text-white transition-colors"
-            >
-              {showAssignedToMeSection ? (
-                <ChevronUp className="w-5 h-5" />
-              ) : (
-                <ChevronDown className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-          {showAssignedToMeSection && (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {assignedToMeLessons.map((assignment) => (
-                <AssignedLessonCardNew key={assignment.id} assignment={assignment} />
-              ))}
-            </div>
-          )}
-        </div>
-      ) : null}
+                <div className="border border-border rounded-[14px] overflow-hidden mb-4">
+                  {loadingAssignedToMe ? (
+                    <div className="px-3 py-8 text-center text-muted">Loading...</div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-0">
+                      {assignedToMeLessons.map((assignment, index) => {
+                        const hasPractice = practices.some(p => p.lesson_id === assignment.lesson_id);
+                        const lesson = assignment.lesson;
+                        return (
+                          <div
+                            key={assignment.id}
+                            className={`p-3 ${
+                              index % 2 === 0 ? 'border-r border-border' : ''
+                            } ${
+                              index < assignedToMeLessons.length - 2 ? 'border-b border-border' : ''
+                            } bg-[rgba(255,255,255,0.03)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.02)]`}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-black text-sm truncate">{lesson?.title || 'Untitled Lesson'}</div>
+                                <div className="text-xs text-muted mt-0.5">
+                                  {assignment.teacher_name || 'Unknown Teacher'}
+                                </div>
+                              </div>
+                              <Badge variant={hasPractice ? 'reviewed' : 'assigned'}>
+                                {hasPractice ? 'Done' : 'Pending'}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted mb-2">
+                              <span>{lesson?.steps?.length || 0} steps</span>
+                            </div>
+                            <Link href={`/lessons/practice/${assignment.lesson_id}`}>
+                              <Button size="sm" variant={hasPractice ? 'secondary' : 'primary'} className="w-full">
+                                {hasPractice ? 'Practice again' : 'Start practice'}
+                              </Button>
+                            </Link>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
-      {/* My Shared Practices Section */}
-      {loadingPractices ? (
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">My Shared Practices</h2>
-          <div className="text-center text-white/60 py-8">
-            Loading your shared practices...
-          </div>
-        </div>
-      ) : practices.length > 0 ? (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-white">My Shared Practices ({practices.length})</h2>
-            <button
-              onClick={() => setShowPracticesSection(!showPracticesSection)}
-              className="text-white/80 hover:text-white transition-colors"
-            >
-              {showPracticesSection ? (
-                <ChevronUp className="w-5 h-5" />
-              ) : (
-                <ChevronDown className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-          {showPracticesSection && (
-            <div className="space-y-4">
-              {sortedGroupedPractices.map((group) => {
-                const isExpanded = expandedLessons.has(group.lessonId);
-                return (
-                  <div key={group.lessonId} className="bg-white rounded-lg shadow-md overflow-hidden">
-                    <button
-                      onClick={() => toggleLessonExpanded(group.lessonId)}
-                      className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <ChevronDown
-                          className={`w-5 h-5 text-gray-600 transition-transform ${
-                            isExpanded ? 'rotate-0' : '-rotate-90'
-                          }`}
-                        />
-                        <h3 className="text-lg font-semibold text-gray-900">{group.lessonTitle}</h3>
-                        <span className="text-sm text-gray-500">
-                          ({group.practices.length} {group.practices.length === 1 ? 'practice' : 'practices'})
-                        </span>
-                      </div>
-                    </button>
+            {/* Lessons I Created Section */}
+            {myLessons.length > 0 && (
+              <>
+                <div className="mt-3.5 flex items-center justify-between gap-2.5 mb-3">
+                  <div>
+                    <h2 className="text-base font-extrabold text-text m-0">Lessons I Created</h2>
+                    <div className="text-[12.5px] text-muted">My custom lessons</div>
+                  </div>
+                </div>
 
-                    {isExpanded && (
-                      <div className="border-t border-gray-200">
-                        {group.practices.map((practice) => {
+                <div className="border border-border rounded-[14px] overflow-hidden mb-4">
+                  {loadingMyLessons ? (
+                    <div className="px-3 py-8 text-center text-muted">Loading...</div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-0">
+                      {myLessons.map((lesson, index) => (
+                        <div
+                          key={lesson.id}
+                          className={`p-3 ${
+                            (index + 1) % 3 !== 0 ? 'border-r border-border' : ''
+                          } ${
+                            index < myLessons.length - 3 ? 'border-b border-border' : ''
+                          } bg-[rgba(255,255,255,0.03)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.02)]`}
+                        >
+                          <div className="mb-2">
+                            <div className="font-black text-sm truncate">{lesson.title || 'Untitled Lesson'}</div>
+                            <div className="text-xs text-muted mt-0.5 line-clamp-2">
+                              {lesson.description || 'No description'}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted mb-2">
+                            <span>{lesson.steps?.length || 0} steps</span>
+                          </div>
+                          <div className="flex gap-1.5 items-center">
+                            <Link href={`/lessons/edit/${lesson.id}`} className="flex-1">
+                              <Button size="sm" variant="secondary" className="w-full">
+                                Edit
+                              </Button>
+                            </Link>
+                            <Link href={`/lessons/practice/${lesson.id}`} className="flex-1">
+                              <Button size="sm" variant="primary" className="w-full">
+                                Practice
+                              </Button>
+                            </Link>
+                            <button
+                              onClick={() => handleDuplicateLesson(lesson)}
+                              disabled={isCopying}
+                              className="w-8 h-8 rounded-[10px] border border-border bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.08)] flex items-center justify-center text-text transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Duplicate lesson"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setLessonToDelete(lesson.id);
+                                setShowDeleteDialog(true);
+                              }}
+                              className="w-8 h-8 rounded-[10px] border-0 bg-[rgba(220,38,38,0.15)] hover:bg-[rgba(220,38,38,0.25)] flex items-center justify-center text-red-400 transition-colors"
+                              title="Delete lesson"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* My Shared Practices Section */}
+            {practices.length > 0 && (
+              <>
+                <div className="mt-3.5 flex items-center justify-between gap-2.5 mb-3">
+                  <div>
+                    <h2 className="text-base font-extrabold text-text m-0">My Shared Practices</h2>
+                    <div className="text-[12.5px] text-muted">Submitted practice sessions</div>
+                  </div>
+                </div>
+
+                <div className="border border-border rounded-[14px] overflow-hidden mb-4">
+                  {/* Table Header */}
+                  <div className="grid grid-cols-[2fr_1fr_0.8fr_0.8fr_auto] gap-2.5 px-3 py-3 items-center bg-panel-2 text-xs text-muted font-extrabold">
+                    <div>LESSON</div>
+                    <div>DATE</div>
+                    <div>RECORDINGS</div>
+                    <div>COMMENTS</div>
+                    <div></div>
+                  </div>
+
+                  {/* Table Rows */}
+                  {loadingPractices ? (
+                    <div className="px-3 py-8 text-center text-muted">Loading...</div>
+                  ) : (
+                    sortedGroupedPractices.map((group) => (
+                      <div key={group.lessonId}>
+                        {group.practices.map((practice, idx) => {
                           const commentCount = (practice as any).comment_count || 0;
                           return (
                             <div
                               key={practice.practice_id}
-                              className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                              className="grid grid-cols-[2fr_1fr_0.8fr_0.8fr_auto] gap-2.5 px-3 py-3 items-center border-t border-border bg-[rgba(255,255,255,0.03)] [html[data-theme='mist']_&]:bg-[rgba(17,24,39,0.02)]"
                             >
-                              <div className="flex items-center gap-4 flex-1">
-                                <div className="flex items-center gap-1 text-sm text-gray-500 min-w-[80px]">
-                                  <Calendar className="w-4 h-4" />
-                                  <span>{formatDate(practice.created_at)}</span>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                  <div className="flex items-center gap-1 text-sm text-gray-600">
-                                    <Mic className="w-4 h-4 text-purple-600" />
-                                    <span>{practice.recording_count}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1 text-sm text-gray-600">
-                                    <MessageSquare className="w-4 h-4 text-blue-600" />
-                                    <span>{commentCount}</span>
-                                  </div>
-                                </div>
+                              <div>
+                                <div className="font-black text-sm">{group.lessonTitle}</div>
+                                <div className="text-xs text-muted mt-0.5">{formatDate(practice.created_at)}</div>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="text-xs text-muted">{formatDate(practice.created_at)}</div>
+                              <div className="text-xs text-muted flex items-center gap-1">
+                                <Mic className="w-3.5 h-3.5" />
+                                {practice.recording_count}
+                              </div>
+                              <div className="text-xs text-muted flex items-center gap-1">
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                {commentCount}
+                              </div>
+                              <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => handleCopyPracticeLink(practice.practice_id)}
-                                  className="p-2 text-gray-600 hover:bg-gray-200 rounded transition-colors"
+                                  className="p-1.5 text-muted hover:text-text hover:bg-[rgba(255,255,255,0.1)] [html[data-theme='mist']_&]:hover:bg-[rgba(17,24,39,0.1)] rounded transition-colors"
                                   title="Copy Link"
                                 >
                                   <Copy className="w-4 h-4" />
                                 </button>
-                                <button
-                                  onClick={() => handleViewPractice(practice.practice_id)}
-                                  className="p-2 text-blue-600 hover:bg-blue-100 rounded transition-colors"
-                                  title="View Practice"
-                                >
-                                  <ExternalLink className="w-4 h-4" />
-                                </button>
+                                <Link href={`/practices/${practice.practice_id}`}>
+                                  <button
+                                    className="p-1.5 text-muted hover:text-text hover:bg-[rgba(255,255,255,0.1)] [html[data-theme='mist']_&]:hover:bg-[rgba(17,24,39,0.1)] rounded transition-colors"
+                                    title="View Practice"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                  </button>
+                                </Link>
                                 <button
                                   onClick={async () => {
                                     const result = await PracticeService.deletePractice(practice.practice_id);
@@ -444,7 +493,7 @@ export default function LandingPage() {
                                       showError(result.error || 'Failed to delete practice');
                                     }
                                   }}
-                                  className="p-2 text-red-600 hover:bg-red-100 rounded transition-colors"
+                                  className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
                                   title="Delete Practice"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -454,19 +503,36 @@ export default function LandingPage() {
                           );
                         })}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : null}
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </PanelContent>
+        </Panel>
 
-      {/* Settings Modal */}
-      {showSettings && (
-        <SettingsModal onClose={() => setShowSettings(false)} />
-      )}
+        {/* Settings Modal */}
+        {showSettings && (
+          <SettingsModal onClose={() => setShowSettings(false)} />
+        )}
+
+        {/* Delete Lesson Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={showDeleteDialog}
+          onClose={() => {
+            setShowDeleteDialog(false);
+            setLessonToDelete(null);
+          }}
+          onConfirm={handleDeleteLesson}
+          title="Delete Lesson"
+          message={`Are you sure you want to delete this lesson? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="danger"
+          confirmButtonVariant="danger"
+          isLoading={isDeleting}
+        />
+      </div>
     </div>
   );
 }

@@ -21,7 +21,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-xl p-6">
           <div className="flex justify-between items-center mb-6">

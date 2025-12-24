@@ -83,8 +83,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   return (
     <div className="max-w-md mx-auto space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-        <p className="text-gray-600 mt-2">Sign in to your account</p>
+        <h1 className="text-2xl font-extrabold text-[var(--text)]">Welcome back</h1>
+        <p className="text-[var(--muted)] mt-2">Sign in to your account</p>
       </div>
 
       {/* Google Sign-In */}
@@ -97,19 +97,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300" />
+            <div className="w-full border-t border-[var(--border)]" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+            <span className="px-2 bg-[rgba(11,18,32,0.95)] text-[var(--muted)]">Or continue with email</span>
           </div>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {errors.general && (
-          <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+          <div className="p-3 text-sm text-[var(--danger)] bg-[rgba(var(--danger-rgb),0.1)] border border-[var(--danger)] rounded-[10px]">
             <div className="flex items-start space-x-2">
-              <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-[var(--danger)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
               <div className="flex-1">
@@ -117,13 +117,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 {errors.suggestedAction === 'register' && onToggleToRegister && (
                   <button
                     onClick={onToggleToRegister}
-                    className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-500 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+                    className="mt-2 text-sm font-medium text-[var(--primary)] hover:opacity-80 underline focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 rounded"
                   >
                     Create an account
                   </button>
                 )}
                 {errors.suggestedAction === 'verify_email' && (
-                  <div className="mt-2 text-sm text-blue-700">
+                  <div className="mt-2 text-sm text-[var(--primary)]">
                     Please check your email for the verification link.
                   </div>
                 )}
@@ -133,7 +133,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         )}
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="email" className="block text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)] mb-1">
             Email
           </label>
           <input
@@ -142,20 +142,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             name="email"
             value={formData.email}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.email ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
+            className={`w-full px-3 py-2 border rounded-[10px] bg-[var(--panel)] text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 ${
+              errors.email ? 'border-[var(--danger)] focus:ring-[var(--danger)]' : 'border-[var(--border)] focus:ring-[var(--primary)]'
             }`}
             placeholder="Enter your email"
             autoComplete="email"
             disabled={loading}
           />
           {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+            <p className="mt-1 text-sm text-[var(--danger)]">{errors.email}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="password" className="block text-[11px] font-extrabold uppercase tracking-wide text-[var(--muted)] mb-1">
             Password
           </label>
           <input
@@ -164,15 +164,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             name="password"
             value={formData.password}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.password ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
+            className={`w-full px-3 py-2 border rounded-[10px] bg-[var(--panel)] text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 ${
+              errors.password ? 'border-[var(--danger)] focus:ring-[var(--danger)]' : 'border-[var(--border)] focus:ring-[var(--primary)]'
             }`}
             placeholder="Enter your password"
             autoComplete="current-password"
             disabled={loading}
           />
           {errors.password && (
-            <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+            <p className="mt-1 text-sm text-[var(--danger)]">{errors.password}</p>
           )}
         </div>
 
@@ -180,7 +180,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           <button
             type="button"
             onClick={onToggleToForgotPassword}
-            className="text-sm text-blue-600 hover:text-blue-500 focus:outline-none focus:underline"
+            className="text-sm text-[var(--primary)] hover:opacity-80 focus:outline-none focus:underline"
             disabled={loading}
           >
             Forgot password?
@@ -189,6 +189,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
         <Button
           type="submit"
+          variant="primary"
           className="w-full"
           disabled={loading}
         >
@@ -197,11 +198,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       </form>
 
       <div className="text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-[var(--muted)]">
           Don't have an account?{' '}
           <button
             onClick={onToggleToRegister}
-            className="text-blue-600 hover:text-blue-500 focus:outline-none focus:underline font-medium"
+            className="text-[var(--primary)] hover:opacity-80 focus:outline-none focus:underline font-extrabold"
             disabled={loading}
           >
             Sign up

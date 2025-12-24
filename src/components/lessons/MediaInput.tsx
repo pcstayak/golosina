@@ -205,21 +205,21 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
   }
 
   return (
-    <div className="space-y-4">
-      <div className="border rounded-lg p-4 bg-gray-50">
+    <div className="space-y-3.5">
+      <div className="border border-border rounded-[10px] p-3 bg-panel">
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-[11px] uppercase tracking-wide font-extrabold text-muted mb-2">
               Media Type
             </label>
             <div className="flex gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => setMediaType('video')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-[10px] text-[13px] font-bold transition-all ${
                   mediaType === 'video'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 border'
+                    ? 'bg-gradient-to-br from-primary to-primary-2 text-primary-contrast'
+                    : 'bg-panel-2 text-text border border-border hover:bg-[rgba(255,255,255,0.08)] [html[data-theme="mist"]_&]:hover:bg-[rgba(17,24,39,0.06)]'
                 }`}
               >
                 <Video className="w-4 h-4" />
@@ -228,10 +228,10 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
               <button
                 type="button"
                 onClick={() => setMediaType('audio')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-[10px] text-[13px] font-bold transition-all ${
                   mediaType === 'audio'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 border'
+                    ? 'bg-gradient-to-br from-primary to-primary-2 text-primary-contrast'
+                    : 'bg-panel-2 text-text border border-border hover:bg-[rgba(255,255,255,0.08)] [html[data-theme="mist"]_&]:hover:bg-[rgba(17,24,39,0.06)]'
                 }`}
               >
                 <Video className="w-4 h-4" />
@@ -240,10 +240,10 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
               <button
                 type="button"
                 onClick={() => setMediaType('image')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-[10px] text-[13px] font-bold transition-all ${
                   mediaType === 'image'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 border'
+                    ? 'bg-gradient-to-br from-primary to-primary-2 text-primary-contrast'
+                    : 'bg-panel-2 text-text border border-border hover:bg-[rgba(255,255,255,0.08)] [html[data-theme="mist"]_&]:hover:bg-[rgba(17,24,39,0.06)]'
                 }`}
               >
                 <ImageIcon className="w-4 h-4" />
@@ -252,10 +252,10 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
               <button
                 type="button"
                 onClick={() => setMediaType('gif')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-[10px] text-[13px] font-bold transition-all ${
                   mediaType === 'gif'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 border'
+                    ? 'bg-gradient-to-br from-primary to-primary-2 text-primary-contrast'
+                    : 'bg-panel-2 text-text border border-border hover:bg-[rgba(255,255,255,0.08)] [html[data-theme="mist"]_&]:hover:bg-[rgba(17,24,39,0.06)]'
                 }`}
               >
                 <ImageIcon className="w-4 h-4" />
@@ -275,7 +275,7 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
                     ? 'https://www.youtube.com/watch?v=...'
                     : 'https://example.com/image.jpg'
                 }
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2.5 bg-panel-2 border border-border rounded-[10px] text-[13.5px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors"
               />
             </div>
             <div className="flex-1">
@@ -284,7 +284,7 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
                 placeholder="Caption (optional)"
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2.5 bg-panel-2 border border-border rounded-[10px] text-[13.5px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors"
               />
             </div>
           </div>
@@ -293,7 +293,7 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
           {(mediaType === 'video' || mediaType === 'audio') && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-[11px] uppercase tracking-wide font-extrabold text-muted">
                   Lyrics (optional)
                 </label>
                 <div className="flex items-center gap-2">
@@ -303,7 +303,6 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
                     size="sm"
                     onClick={handleFormatLyrics}
                     disabled={!lyrics.trim()}
-                    className="flex items-center gap-1 text-xs"
                     title="Clean up formatting"
                   >
                     <Wand2 className="w-3 h-3" />
@@ -314,7 +313,6 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
                     variant="secondary"
                     size="sm"
                     onClick={() => setShowLyricsSearch(true)}
-                    className="flex items-center gap-1 text-xs"
                   >
                     <Search className="w-3 h-3" />
                     Search
@@ -325,17 +323,17 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
                 value={lyrics}
                 onChange={(e) => setLyrics(e.target.value)}
                 placeholder="Enter lyrics or click 'Search' to find automatically..."
-                className="w-full px-3 py-2 border rounded-md text-sm font-mono"
+                className="w-full px-3 py-2.5 bg-panel-2 border border-border rounded-[10px] text-[13px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors resize-none font-mono"
                 rows={8}
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted mt-1">
                 Use the Format button to clean up spacing and structure. Add annotations to media after saving.
               </p>
             </div>
           )}
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-danger">{error}</p>
           )}
 
           <div className="flex gap-2">
@@ -385,53 +383,54 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
 
       {media.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-gray-700">Media Items ({media.length})</h4>
+          <h4 className="text-[11px] uppercase tracking-wide font-extrabold text-muted">Media Items ({media.length})</h4>
           {media.map((item, index) => (
             <div key={index} className="space-y-2">
-              <div className="flex items-center gap-2 p-3 bg-white border rounded-lg">
+              <div className="flex items-center gap-2 p-3 bg-panel-2 border border-border rounded-[10px]">
                 <button
                   type="button"
                   onClick={() => setSelectedMediaIndex(selectedMediaIndex === index ? null : index)}
                   className="flex-1 text-left"
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    {item.media_type === 'video' && <Video className="w-4 h-4 text-blue-600" />}
-                    {item.media_type === 'audio' && <Video className="w-4 h-4 text-purple-600" />}
+                    {item.media_type === 'video' && <Video className="w-4 h-4 text-primary" />}
+                    {item.media_type === 'audio' && <Video className="w-4 h-4 text-primary" />}
                     {(item.media_type === 'image' || item.media_type === 'gif') && (
-                      <ImageIcon className="w-4 h-4 text-green-600" />
+                      <ImageIcon className="w-4 h-4 text-success" />
                     )}
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-[13px] font-black text-text">
                       {item.media_type.toUpperCase()}
                     </span>
                     {item.comments && item.comments.length > 0 && (
-                      <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                      <span className="text-xs font-extrabold text-primary bg-[rgba(0,163,163,0.1)] px-2 py-0.5 rounded-full">
                         {item.comments.length} comment{item.comments.length !== 1 ? 's' : ''}
                       </span>
                     )}
                     {item.lyrics && (
-                      <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded ml-2">
+                      <span className="text-xs font-extrabold text-primary bg-[rgba(0,163,163,0.1)] px-2 py-0.5 rounded-full ml-2">
                         Has lyrics
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 truncate">{item.media_url}</p>
+                  <p className="text-xs text-muted truncate">{item.media_url}</p>
                   {item.caption && (
-                    <p className="text-xs text-gray-600 mt-1">{item.caption}</p>
+                    <p className="text-xs text-text mt-1">{item.caption}</p>
                   )}
                 </button>
-                <button
-                  type="button"
+                <Button
+                  variant="danger"
+                  size="sm"
                   onClick={() => handleRemove(index)}
-                  className="p-1 text-red-600 hover:text-red-700"
                   title="Remove"
+                  className="w-8 h-8 p-0 flex items-center justify-center flex-shrink-0"
                 >
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
 
               {/* Media Preview */}
               {selectedMediaIndex === index && (item.media_type === 'video' || item.media_type === 'audio') && (
-                <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="border border-border rounded-[10px] p-4 bg-panel">
                   {item.id ? (
                     <>
                       {console.log('[MediaInput] Rendering MediaPreview:', {
@@ -458,13 +457,13 @@ export default function MediaInput({ media, onChange, userId, lessonId, stepId }
                     </>
 
                   ) : (
-                    <div className="p-8 text-center bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-yellow-800 font-medium mb-2">Save the lesson to add annotations</p>
-                      <p className="text-yellow-700 text-sm">Lyrics and annotations can be added after the lesson is saved and media has been assigned a permanent ID.</p>
+                    <div className="p-8 text-center bg-[rgba(255,191,0,0.08)] [html[data-theme='mist']_&]:bg-[rgba(255,191,0,0.06)] border border-warning rounded-[10px]">
+                      <p className="text-text font-black mb-2">Save the lesson to add annotations</p>
+                      <p className="text-muted text-[13px]">Lyrics and annotations can be added after the lesson is saved and media has been assigned a permanent ID.</p>
                       {item.lyrics && (
-                        <div className="mt-4 p-4 bg-white rounded border text-left">
-                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Lyrics (preview only)</h4>
-                          <div className="whitespace-pre-wrap text-sm text-gray-800">
+                        <div className="mt-4 p-4 bg-panel-2 rounded-[10px] border border-border text-left">
+                          <h4 className="text-[11px] uppercase tracking-wide font-extrabold text-muted mb-2">Lyrics (preview only)</h4>
+                          <div className="whitespace-pre-wrap text-[13px] text-text font-mono">
                             {item.lyrics}
                           </div>
                         </div>

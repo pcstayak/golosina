@@ -203,28 +203,40 @@ const CommentThread: React.FC<CommentThreadProps> = ({
     return (
       <div key={comment.id} className="mt-1.5">
         <div style={indentStyle}>
-          <div className={`bg-white rounded p-2 ${isReply ? 'border-l-2 border-gray-200' : 'border border-gray-200'}`}>
+          <div className={`rounded p-2 ${isReply ? 'border-l-2' : 'border'}`} style={{
+            background: 'var(--panel)',
+            backdropFilter: 'blur(12px)',
+            border: isReply ? '2px solid var(--border)' : '1px solid var(--border)',
+            borderLeft: isReply ? '2px solid var(--border)' : undefined
+          }}>
             {/* Single line layout: [timestamp] [date] [username] [message] [reply] */}
-            <div className="flex items-center gap-2 flex-wrap text-sm">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Timestamp badge - only for top-level comments with timestamp */}
               {comment.timestamp_seconds !== undefined && !isReply && (
-                <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded shrink-0">
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 900,
+                  color: 'var(--primary)',
+                  background: 'rgba(47, 183, 160, 0.1)',
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-sm)'
+                }} className="shrink-0">
                   {formatTime(comment.timestamp_seconds)}
                 </span>
               )}
 
               {/* Date - subtle */}
-              <span className="text-xs text-gray-500 shrink-0">
+              <span style={{ fontSize: '11px', color: 'var(--faint)' }} className="shrink-0">
                 {formatDate(comment.created_at)}
               </span>
 
               {/* Username - bold and prominent */}
-              <span className="font-semibold text-gray-900 shrink-0">
+              <span style={{ fontWeight: 900, color: 'var(--text)', fontSize: '13.5px' }} className="shrink-0">
                 {comment.user_name}:
               </span>
 
               {/* Message - takes remaining space, allows wrapping */}
-              <span className="text-gray-700 break-words min-w-0">
+              <span style={{ fontSize: '13.5px', color: 'var(--muted)', lineHeight: '1.6' }} className="break-words min-w-0">
                 {comment.comment_text}
               </span>
 
@@ -244,7 +256,12 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           </div>
 
           {showReplyForm && (
-            <div className="mt-2 bg-gray-50 rounded-lg p-3 border border-gray-200" style={{ marginLeft: '1.5rem' }}>
+            <div className="mt-2 rounded-lg p-3" style={{
+              background: 'var(--panel)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid var(--border)',
+              marginLeft: '1.5rem'
+            }}>
               <div className="flex items-center gap-2 flex-wrap">
                 <input
                   type="text"
@@ -257,7 +274,13 @@ const CommentThread: React.FC<CommentThreadProps> = ({
                       handleSubmitReply(comment.id);
                     }
                   }}
-                  className="flex-1 min-w-[200px] px-3 py-1.5 border border-gray-300 rounded text-sm"
+                  className="flex-1 min-w-[200px] px-3 py-1.5 rounded"
+                  style={{
+                    border: '1px solid var(--border)',
+                    background: 'rgba(11, 18, 32, 0.92)',
+                    color: 'var(--text)',
+                    fontSize: '13.5px'
+                  }}
                 />
                 <Button
                   size="sm"
@@ -337,7 +360,13 @@ const CommentThread: React.FC<CommentThreadProps> = ({
                 handleMainCommentSubmit();
               }
             }}
-            className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            className="flex-1 min-w-[200px] px-3 py-2 rounded-lg"
+            style={{
+              border: '1px solid var(--border)',
+              background: 'rgba(11, 18, 32, 0.92)',
+              color: 'var(--text)',
+              fontSize: '13.5px'
+            }}
             disabled={submittingMainComment}
           />
           <Button

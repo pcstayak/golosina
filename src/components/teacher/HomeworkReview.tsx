@@ -142,19 +142,19 @@ export default function HomeworkReview() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-        <p className="text-center text-gray-600 mt-4">Loading homework submissions...</p>
+      <div className="bg-[var(--panel)] rounded-lg border border-[var(--border)] p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary)] mx-auto"></div>
+        <p className="text-center text-[var(--muted)] mt-4">Loading homework submissions...</p>
       </div>
     );
   }
 
   if (practices.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
-        <FileAudio className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-800 mb-2">No Homework Submissions</h3>
-        <p className="text-gray-600">
+      <div className="bg-[var(--panel)] rounded-lg border border-[var(--border)] p-8 text-center">
+        <FileAudio className="w-12 h-12 text-[var(--muted)] mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-[var(--text)] mb-2">No Homework Submissions</h3>
+        <p className="text-[var(--muted)]">
           Student practice submissions will appear here when they share their work with you.
         </p>
       </div>
@@ -162,27 +162,27 @@ export default function HomeworkReview() {
   }
 
   const renderPracticeCard = (practice: PracticeWithActivity, isNew: boolean = true) => (
-    <div key={practice.practice_id} className="p-4 hover:bg-gray-50 transition-colors">
+    <div key={practice.practice_id} className="p-4 hover:bg-[var(--panel-hover)] transition-colors">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             {isNew && (
-              <span className="px-2 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded">
+              <span className="px-2 py-1 text-xs font-semibold bg-[var(--primary)] text-[var(--primary-contrast)] rounded">
                 NEW
               </span>
             )}
             {practice.has_new_activity && (
-              <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded flex items-center gap-1">
+              <span className="px-2 py-1 text-xs font-semibold bg-[var(--primary)] text-[var(--primary-contrast)] rounded flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 NEW ACTIVITY
               </span>
             )}
-            <h3 className="font-semibold text-gray-900">{practice.title}</h3>
+            <h3 className="font-semibold text-[var(--text)]">{practice.title}</h3>
           </div>
 
-          <p className="text-sm text-gray-600 mb-3">Student: {getStudentName(practice)}</p>
+          <p className="text-sm text-[var(--muted)] mb-3">Student: {getStudentName(practice)}</p>
 
-          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+          <div className="flex flex-wrap gap-4 text-sm text-[var(--muted)]">
             <div className="flex items-center gap-1">
               <Mic className="w-4 h-4" />
               <span>
@@ -201,7 +201,7 @@ export default function HomeworkReview() {
               <span>
                 {practice.comment_count || 0} comment{practice.comment_count !== 1 ? 's' : ''}
                 {practice.new_comment_count! > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-blue-500 text-white rounded-full">
+                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-[var(--primary)] text-[var(--primary-contrast)] rounded-full">
                     +{practice.new_comment_count}
                   </span>
                 )}
@@ -217,7 +217,7 @@ export default function HomeworkReview() {
         <div className="flex flex-col gap-2">
           <Link
             href={`/practices/${practice.practice_id}`}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium text-center whitespace-nowrap"
+            className="px-4 py-2 bg-[var(--primary)] text-[var(--primary-contrast)] rounded-lg hover:bg-[var(--primary-hover)] transition-colors text-sm font-medium text-center whitespace-nowrap"
           >
             {practice.has_new_activity ? 'View Updates' : isNew ? 'Review Practice' : 'View Practice'}
           </Link>
@@ -225,7 +225,7 @@ export default function HomeworkReview() {
             <button
               onClick={() => handleMarkAsReviewed(practice.practice_id)}
               disabled={markingAsReviewed === practice.practice_id}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-50"
+              className="px-4 py-2 bg-[var(--panel-2)] text-[var(--text)] rounded-lg hover:bg-[var(--panel-hover)] transition-colors text-sm font-medium disabled:opacity-50"
             >
               {markingAsReviewed === practice.practice_id ? 'Marking...' : 'Mark as Reviewed'}
             </button>
@@ -238,41 +238,41 @@ export default function HomeworkReview() {
   return (
     <div className="space-y-6">
       {unreviewedPractices.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-4">
-            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+        <div className="bg-[var(--panel)] rounded-lg border border-[var(--border)] overflow-hidden">
+          <div className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-2)] p-4">
+            <h2 className="text-xl font-semibold text-[var(--primary-contrast)] flex items-center gap-2">
               <Eye className="w-5 h-5" />
               New Submissions ({unreviewedPractices.length})
             </h2>
           </div>
 
-          <div className="divide-y">{unreviewedPractices.map((practice) => renderPracticeCard(practice, true))}</div>
+          <div className="divide-y divide-[var(--border)]">{unreviewedPractices.map((practice) => renderPracticeCard(practice, true))}</div>
         </div>
       )}
 
       {practicesWithNewActivity.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
-            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+        <div className="bg-[var(--panel)] rounded-lg border border-[var(--border)] overflow-hidden">
+          <div className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-2)] p-4">
+            <h2 className="text-xl font-semibold text-[var(--primary-contrast)] flex items-center gap-2">
               <AlertCircle className="w-5 h-5" />
               New Activity on Reviewed Practices ({practicesWithNewActivity.length})
             </h2>
           </div>
 
-          <div className="divide-y">{practicesWithNewActivity.map((practice) => renderPracticeCard(practice, false))}</div>
+          <div className="divide-y divide-[var(--border)]">{practicesWithNewActivity.map((practice) => renderPracticeCard(practice, false))}</div>
         </div>
       )}
 
       {reviewedPractices.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <div className="bg-gradient-to-r from-green-500 to-green-600 p-4">
-            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+        <div className="bg-[var(--panel)] rounded-lg border border-[var(--border)] overflow-hidden">
+          <div className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-2)] p-4">
+            <h2 className="text-xl font-semibold text-[var(--primary-contrast)] flex items-center gap-2">
               <CheckCircle className="w-5 h-5" />
               Reviewed ({reviewedPractices.length})
             </h2>
           </div>
 
-          <div className="divide-y">{reviewedPractices.map((practice) => renderPracticeCard(practice, false))}</div>
+          <div className="divide-y divide-[var(--border)]">{reviewedPractices.map((practice) => renderPracticeCard(practice, false))}</div>
         </div>
       )}
     </div>

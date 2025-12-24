@@ -255,37 +255,39 @@ const MarketingLandingPageComponent: React.FC = () => {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-500">
+      <div className="min-h-screen bg-[var(--bg)]">
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[rgba(var(--primary-rgb),0.15)] via-transparent to-[rgba(var(--primary-rgb),0.1)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-[var(--text)] mb-6">
               Master Your Voice with{' '}
-              <span className="bg-gradient-to-r from-yellow-300 to-pink-300 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-2)] bg-clip-text text-transparent">
                 Practice & Recording
               </span>
             </h1>
-            <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl md:text-2xl text-[var(--muted)] mb-8 max-w-3xl mx-auto leading-relaxed">
               Practice voice exercises with recording and playback capabilities. Perfect for singers, speakers, performers, and anyone looking to improve their vocal skills through self-guided training.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
               <Button
                 onClick={handleGetStarted}
-                className="bg-white text-purple-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300 transform hover:scale-105"
+                variant="primary"
+                className="px-8 py-4 text-lg font-extrabold transition-all duration-300 transform hover:scale-105"
               >
                 Start Training Free
               </Button>
               <Button
                 onClick={handleLogin}
-                className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-purple-600 px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300 transform hover:scale-105"
+                variant="secondary"
+                className="px-8 py-4 text-lg font-extrabold transition-all duration-300 transform hover:scale-105"
               >
                 Sign In
               </Button>
               <button
                 onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-                className="flex items-center gap-2 text-white/90 hover:text-white px-8 py-4 text-lg font-medium transition-colors"
+                className="flex items-center gap-2 text-[var(--muted)] hover:text-[var(--text)] px-8 py-4 text-lg font-medium transition-colors"
               >
                 <PlayCircle className="w-6 h-6" />
                 See How It Works
@@ -293,20 +295,20 @@ const MarketingLandingPageComponent: React.FC = () => {
             </div>
 
             <div className="mt-16 relative">
-              <div className="absolute inset-0 bg-gradient-to-t from-purple-600/50 to-transparent rounded-2xl"></div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+              <div className="absolute inset-0 bg-gradient-to-t from-[rgba(var(--primary-rgb),0.2)] to-transparent rounded-2xl"></div>
+              <div className="bg-[var(--panel)] backdrop-blur-sm rounded-2xl p-8 border border-[var(--border)]">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
                   <div>
-                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">3+</div>
-                    <div className="text-white/80 text-sm">Exercise Categories</div>
+                    <div className="text-3xl md:text-4xl font-extrabold text-[var(--text)] mb-2">3+</div>
+                    <div className="text-[var(--muted)] text-sm">Exercise Categories</div>
                   </div>
                   <div>
-                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">Free</div>
-                    <div className="text-white/80 text-sm">To Use</div>
+                    <div className="text-3xl md:text-4xl font-extrabold text-[var(--text)] mb-2">Free</div>
+                    <div className="text-[var(--muted)] text-sm">To Use</div>
                   </div>
                   <div>
-                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">Web</div>
-                    <div className="text-white/80 text-sm">Based Tool</div>
+                    <div className="text-3xl md:text-4xl font-extrabold text-[var(--text)] mb-2">Web</div>
+                    <div className="text-[var(--muted)] text-sm">Based Tool</div>
                   </div>
                 </div>
               </div>
@@ -316,13 +318,13 @@ const MarketingLandingPageComponent: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-[var(--panel)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-[var(--text)] mb-6">
               Powerful Features for Voice Excellence
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-[var(--muted)] max-w-3xl mx-auto">
               A simple voice training tool with organized exercises and recording capabilities
               to help you practice and improve your vocal skills.
             </p>
@@ -330,14 +332,14 @@ const MarketingLandingPageComponent: React.FC = () => {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <div key={index} className="bg-gray-50 rounded-xl p-8 hover:shadow-lg transition-shadow duration-300">
-                <div className="text-purple-600 mb-4">
+              <div key={index} className="bg-[var(--bg)] border border-[var(--border)] rounded-xl p-8 hover:shadow-lg transition-shadow duration-300">
+                <div className="text-[var(--primary)] mb-4">
                   {feature.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                <h3 className="text-xl font-extrabold text-[var(--text)] mb-3">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
+                <p className="text-[var(--muted)] leading-relaxed">
                   {feature.description}
                 </p>
               </div>
@@ -347,32 +349,32 @@ const MarketingLandingPageComponent: React.FC = () => {
       </section>
 
       {/* User Types Section */}
-      <section className="py-20 bg-gradient-to-r from-purple-50 to-blue-50">
+      <section className="py-20 bg-gradient-to-r from-[rgba(var(--primary-rgb),0.05)] to-[rgba(var(--primary-rgb),0.1)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-[var(--text)] mb-6">
               Perfect for Every Voice Goal
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Whether you're a complete beginner or a seasoned professional, our tailored approach 
+            <p className="text-xl text-[var(--muted)] max-w-3xl mx-auto">
+              Whether you're a complete beginner or a seasoned professional, our tailored approach
               helps you achieve your specific vocal objectives.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {userTypes.map((type, index) => (
-              <div key={index} className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <div key={index} className="bg-[var(--panel)] border border-[var(--border)] rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300">
                 <div className="text-center mb-6">
                   <div className="text-4xl mb-3">{type.icon}</div>
-                  <h3 className="text-xl font-semibold text-gray-900">
+                  <h3 className="text-xl font-extrabold text-[var(--text)]">
                     {type.title}
                   </h3>
                 </div>
                 <ul className="space-y-3">
                   {type.benefits.map((benefit, benefitIndex) => (
                     <li key={benefitIndex} className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-gray-600 text-sm">{benefit}</span>
+                      <CheckCircle className="w-5 h-5 text-[var(--success)] mt-0.5 flex-shrink-0" />
+                      <span className="text-[var(--muted)] text-sm">{benefit}</span>
                     </li>
                   ))}
                 </ul>
@@ -383,13 +385,13 @@ const MarketingLandingPageComponent: React.FC = () => {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-20 bg-white">
+      <section id="how-it-works" className="py-20 bg-[var(--bg)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-[var(--text)] mb-6">
               How It Works
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-[var(--muted)] max-w-3xl mx-auto">
               Get started with voice training in just three simple steps. Our intuitive platform
               makes professional-quality voice coaching accessible to everyone.
             </p>
@@ -399,17 +401,17 @@ const MarketingLandingPageComponent: React.FC = () => {
             {howItWorks.map((step, index) => (
               <div key={index} className="text-center">
                 <div className="relative mb-8">
-                  <div className="mx-auto w-24 h-24 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                    {step.icon}
+                  <div className="mx-auto w-24 h-24 bg-[rgba(var(--primary-rgb),0.1)] rounded-full flex items-center justify-center mb-4">
+                    <div className="text-[var(--primary)]">{step.icon.props.children}</div>
                   </div>
-                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-2)] text-white rounded-full flex items-center justify-center text-sm font-extrabold">
                     {step.step}
                   </div>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                <h3 className="text-xl font-extrabold text-[var(--text)] mb-4">
                   {step.title}
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
+                <p className="text-[var(--muted)] leading-relaxed">
                   {step.description}
                 </p>
               </div>
@@ -419,76 +421,76 @@ const MarketingLandingPageComponent: React.FC = () => {
       </section>
 
       {/* Educational Content Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-50 to-purple-50">
+      <section className="py-20 bg-gradient-to-r from-[rgba(var(--primary-rgb),0.05)] to-[rgba(var(--primary-rgb),0.1)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              <h2 className="text-4xl md:text-5xl font-extrabold text-[var(--text)] mb-6">
                 Why Voice Training Matters
               </h2>
-              <p className="text-lg text-gray-600 mb-8 leading-relaxed">
+              <p className="text-lg text-[var(--muted)] mb-8 leading-relaxed">
                 Your voice is your most powerful tool for communication, expression, and connection.
                 Whether you're presenting ideas, performing on stage, or having everyday conversations,
                 regular practice with structured exercises can help improve your confidence and vocal skills.
               </p>
-              
+
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-2)] rounded-lg flex items-center justify-center flex-shrink-0">
                     <Users className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Enhanced Communication</h4>
-                    <p className="text-gray-600">Clear, confident speech improves personal and professional relationships.</p>
+                    <h4 className="font-extrabold text-[var(--text)] mb-2">Enhanced Communication</h4>
+                    <p className="text-[var(--muted)]">Clear, confident speech improves personal and professional relationships.</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-2)] rounded-lg flex items-center justify-center flex-shrink-0">
                     <Award className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Career Advancement</h4>
-                    <p className="text-gray-600">Strong vocal skills are essential for leadership and professional success.</p>
+                    <h4 className="font-extrabold text-[var(--text)] mb-2">Career Advancement</h4>
+                    <p className="text-[var(--muted)]">Strong vocal skills are essential for leadership and professional success.</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-2)] rounded-lg flex items-center justify-center flex-shrink-0">
                     <Clock className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Consistent Practice</h4>
-                    <p className="text-gray-600">Regular practice with structured exercises helps build vocal skills over time.</p>
+                    <h4 className="font-extrabold text-[var(--text)] mb-2">Consistent Practice</h4>
+                    <p className="text-[var(--muted)]">Regular practice with structured exercises helps build vocal skills over time.</p>
                   </div>
                 </div>
               </div>
             </div>
-            
-            <div className="bg-white rounded-2xl p-8 shadow-xl">
-              <h3 className="text-2xl font-semibold text-gray-900 mb-6">
+
+            <div className="bg-[var(--panel)] border border-[var(--border)] rounded-2xl p-8 shadow-xl">
+              <h3 className="text-2xl font-extrabold text-[var(--text)] mb-6">
                 Simple Tools for Voice Practice
               </h3>
               <div className="space-y-4">
-                <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Browser-based Recording</span>
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                <div className="flex justify-between items-center py-3 border-b border-[var(--border)]">
+                  <span className="text-[var(--muted)]">Browser-based Recording</span>
+                  <CheckCircle className="w-5 h-5 text-[var(--success)]" />
                 </div>
-                <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Organized Exercise Sets</span>
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                <div className="flex justify-between items-center py-3 border-b border-[var(--border)]">
+                  <span className="text-[var(--muted)]">Organized Exercise Sets</span>
+                  <CheckCircle className="w-5 h-5 text-[var(--success)]" />
                 </div>
-                <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Auto-Split Long Recordings</span>
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                <div className="flex justify-between items-center py-3 border-b border-[var(--border)]">
+                  <span className="text-[var(--muted)]">Auto-Split Long Recordings</span>
+                  <CheckCircle className="w-5 h-5 text-[var(--success)]" />
                 </div>
-                <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                  <span className="text-gray-600">Cross-platform Compatibility</span>
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                <div className="flex justify-between items-center py-3 border-b border-[var(--border)]">
+                  <span className="text-[var(--muted)]">Cross-platform Compatibility</span>
+                  <CheckCircle className="w-5 h-5 text-[var(--success)]" />
                 </div>
                 <div className="flex justify-between items-center py-3">
-                  <span className="text-gray-600">Session Logging</span>
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <span className="text-[var(--muted)]">Session Logging</span>
+                  <CheckCircle className="w-5 h-5 text-[var(--success)]" />
                 </div>
               </div>
             </div>
@@ -497,34 +499,34 @@ const MarketingLandingPageComponent: React.FC = () => {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-[var(--panel)]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-[var(--text)] mb-6">
               Frequently Asked Questions
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-[var(--muted)]">
               Everything you need to know about getting started with voice training
             </p>
           </div>
 
           <div className="space-y-4">
             {faqs.map((faq, index) => (
-              <div key={index} className="bg-gray-50 rounded-xl overflow-hidden">
+              <div key={index} className="bg-[var(--bg)] border border-[var(--border)] rounded-xl overflow-hidden">
                 <button
                   onClick={() => toggleFaq(index)}
-                  className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-100 transition-colors"
+                  className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-[var(--panel)] transition-colors"
                 >
-                  <span className="font-semibold text-gray-900">{faq.question}</span>
+                  <span className="font-extrabold text-[var(--text)]">{faq.question}</span>
                   {expandedFaq === index ? (
-                    <ChevronUp className="w-5 h-5 text-purple-600" />
+                    <ChevronUp className="w-5 h-5 text-[var(--primary)]" />
                   ) : (
-                    <ChevronDown className="w-5 h-5 text-purple-600" />
+                    <ChevronDown className="w-5 h-5 text-[var(--primary)]" />
                   )}
                 </button>
                 {expandedFaq === index && (
                   <div className="px-6 pb-4">
-                    <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
+                    <p className="text-[var(--muted)] leading-relaxed">{faq.answer}</p>
                   </div>
                 )}
               </div>
@@ -534,26 +536,27 @@ const MarketingLandingPageComponent: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-purple-600 to-blue-500">
+      <section className="py-20 bg-gradient-to-br from-[rgba(var(--primary-rgb),0.15)] via-transparent to-[rgba(var(--primary-rgb),0.1)]">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+          <h2 className="text-4xl md:text-5xl font-extrabold text-[var(--text)] mb-6">
             Ready to Transform Your Voice?
           </h2>
-          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-[var(--muted)] mb-8 max-w-2xl mx-auto">
             Start practicing with organized voice exercises and recording tools.
             Begin your vocal improvement journey today with simple, effective practice.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button
               onClick={handleGetStarted}
-              className="bg-white text-purple-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300 transform hover:scale-105"
+              variant="primary"
+              className="px-8 py-4 text-lg font-extrabold transition-all duration-300 transform hover:scale-105"
             >
               Start Training Free
             </Button>
             <button
               onClick={handleLogin}
-              className="text-white/90 hover:text-white px-8 py-4 text-lg font-medium transition-colors border border-white/30 rounded-xl hover:border-white/50"
+              className="text-[var(--muted)] hover:text-[var(--text)] px-8 py-4 text-lg font-medium transition-colors border border-[var(--border)] rounded-xl hover:border-[var(--primary)]"
             >
               Already have an account? Sign In
             </button>
@@ -562,34 +565,34 @@ const MarketingLandingPageComponent: React.FC = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-16">
+      <footer className="bg-[var(--panel-2)] border-t border-[var(--border)] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div className="md:col-span-2">
-              <h3 className="text-2xl font-bold mb-4">🎵 Golosina</h3>
-              <p className="text-gray-400 mb-6 max-w-md">
+              <h3 className="text-2xl font-extrabold text-[var(--text)] mb-4">🎵 Golosina</h3>
+              <p className="text-[var(--muted)] mb-6 max-w-md">
                 Voice training tool with organized exercises and recording capabilities
                 helping singers, speakers, and performers practice and improve their vocal skills.
               </p>
             </div>
-            
+
             <div>
-              <h4 className="font-semibold mb-4">About</h4>
-              <p className="text-gray-400 text-sm">
+              <h4 className="font-extrabold text-[var(--text)] mb-4">About</h4>
+              <p className="text-[var(--muted)] text-sm">
                 Golosina is a simple voice training tool for practice and improvement.
               </p>
             </div>
 
             <div>
-              <h4 className="font-semibold mb-4">Get Started</h4>
-              <p className="text-gray-400 text-sm">
+              <h4 className="font-extrabold text-[var(--text)] mb-4">Get Started</h4>
+              <p className="text-[var(--muted)] text-sm">
                 Click "Start Training Free" above to begin practicing with voice exercises.
               </p>
             </div>
           </div>
-          
-          <div className="border-t border-gray-800 mt-12 pt-8 text-center">
-            <p className="text-gray-400">
+
+          <div className="border-t border-[var(--border)] mt-12 pt-8 text-center">
+            <p className="text-[var(--muted)]">
               © {new Date().getFullYear()} Golosina. All rights reserved.
             </p>
           </div>

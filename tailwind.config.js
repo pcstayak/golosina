@@ -8,12 +8,39 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: '#667eea',
-        secondary: '#f093fb',
-        accent: '#4facfe',
+        bg: 'var(--bg)',
+        panel: 'var(--panel)',
+        'panel-2': 'var(--panel-2)',
+        border: 'var(--border)',
+        text: 'var(--text)',
+        muted: 'var(--muted)',
+        faint: 'var(--faint)',
+        primary: 'var(--primary)',
+        'primary-2': 'var(--primary-2)',
+        'primary-contrast': 'var(--primary-contrast)',
+        success: 'var(--success)',
+        warning: 'var(--warning)',
+        danger: 'var(--danger)',
+      },
+      boxShadow: {
+        'custom': 'var(--shadow)',
+        'custom-soft': 'var(--shadow-soft)',
+      },
+      borderRadius: {
+        'custom': 'var(--radius)',
+        'custom-sm': 'var(--radius-sm)',
+      },
+      gap: {
+        'custom': 'var(--gap)',
+      },
+      maxWidth: {
+        'custom': 'var(--max)',
       },
       animation: {
-        'pulse-recording': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'pulse-recording': 'pulse-recording 1.4s infinite',
+      },
+      backdropBlur: {
+        'custom': '10px',
       }
     },
   },

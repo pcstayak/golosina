@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { Lesson, LessonService } from '@/services/lessonService'
 import { Button } from '@/components/ui/Button'
-import { Play, Calendar, Layers, Trash2, Copy, Pencil } from 'lucide-react'
+import { Play, Calendar, Layers, Trash2, Copy, Pencil, UserPlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNotification } from '@/hooks/useNotification'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import AssignLessonModal from '@/components/modals/AssignLessonModal'
 
 interface LessonCardProps {
   lesson: Lesson
@@ -20,6 +21,7 @@ export default function LessonCard({ lesson, onDelete, onCopy }: LessonCardProps
   const { user } = useAuth()
   const { showSuccess, showError } = useNotification()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showAssignModal, setShowAssignModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isCopying, setIsCopying] = useState(false)
 
@@ -106,21 +108,28 @@ export default function LessonCard({ lesson, onDelete, onCopy }: LessonCardProps
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+      <div className="border border-border bg-[rgba(255,255,255,0.03)] rounded-[14px] hover:bg-[rgba(255,255,255,0.05)] transition-colors overflow-hidden">
         <div className="p-4">
           <div className="flex items-start justify-between mb-3">
-            <h3 className="text-lg font-semibold text-gray-800 flex-1 mr-2">
+            <h3 className="text-base font-extrabold text-text flex-1 mr-2">
               {lesson.title}
             </h3>
             <div className="flex items-center gap-2">
               {lesson.is_template && (
-                <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded">
+                <span className="px-2.5 py-1 text-xs font-medium bg-[rgba(255,255,255,0.05)] text-muted border border-border rounded-full">
                   Template
                 </span>
               )}
               <button
+                onClick={() => setShowAssignModal(true)}
+                className="p-1.5 text-primary hover:bg-[rgba(255,255,255,0.05)] rounded transition-colors"
+                title="Assign to student"
+              >
+                <UserPlus className="w-4 h-4" />
+              </button>
+              <button
                 onClick={() => router.push(`/lessons/edit/${lesson.id}`)}
-                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                className="p-1.5 text-primary hover:bg-[rgba(255,255,255,0.05)] rounded transition-colors"
                 title="Edit lesson"
               >
                 <Pencil className="w-4 h-4" />
@@ -128,14 +137,14 @@ export default function LessonCard({ lesson, onDelete, onCopy }: LessonCardProps
               <button
                 onClick={handleCopy}
                 disabled={isCopying}
-                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
+                className="p-1.5 text-primary hover:bg-[rgba(255,255,255,0.05)] rounded transition-colors disabled:opacity-50"
                 title="Copy lesson"
               >
                 <Copy className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setShowDeleteDialog(true)}
-                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                className="p-1.5 text-red-400 hover:bg-[rgba(239,68,68,0.1)] rounded transition-colors"
                 title="Delete lesson"
               >
                 <Trash2 className="w-4 h-4" />
@@ -143,16 +152,16 @@ export default function LessonCard({ lesson, onDelete, onCopy }: LessonCardProps
             </div>
           </div>
 
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-[13.5px] text-muted mb-4 leading-relaxed">
             {truncateDescription(lesson.description)}
           </p>
 
-          <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+          <div className="flex items-center gap-4 text-sm text-muted mb-4">
             <div className="flex items-center gap-1">
-              <Layers className="w-4 h-4" />
+              <Layers className="w-4 h-4 text-primary" />
               <span>{lesson.steps.length} {lesson.steps.length === 1 ? 'step' : 'steps'}</span>
             </div>
-            <div className="flex items-center gap-1 text-xs text-gray-400">
+            <div className="flex items-center gap-1 text-xs">
               <Calendar className="w-3 h-3" />
               <span>Created {formatDate(lesson.created_at)}</span>
             </div>
@@ -182,6 +191,20 @@ export default function LessonCard({ lesson, onDelete, onCopy }: LessonCardProps
         confirmButtonVariant="danger"
         isLoading={isDeleting}
       />
+
+      {user?.id && (
+        <AssignLessonModal
+          isOpen={showAssignModal}
+          lessonId={lesson.id}
+          lessonTitle={lesson.title}
+          assignedBy={user.id}
+          onClose={() => setShowAssignModal(false)}
+          onAssignmentComplete={() => {
+            setShowAssignModal(false)
+            showSuccess('Lesson assigned successfully')
+          }}
+        />
+      )}
     </>
   )
 }

@@ -9,6 +9,7 @@ import { VideoEmbedService } from '@/services/videoEmbedService';
 import AudioPlayer from '@/components/lesson/AudioPlayer';
 import { PracticeComment as RecordingComment } from '@/services/practiceService';
 import LyricsWithAnnotations from './LyricsWithAnnotations';
+import type { AnnotationContext } from '@/services/annotationsService';
 
 export interface MediaComment {
   id: string;
@@ -213,7 +214,12 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
         </div>
       ) : (
         // Uploaded audio/video - use auto-height container for AudioPlayer
-        <div className="media-container bg-white rounded-lg border p-4">
+        <div className="media-container" style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '16px',
+        }}>
           <AudioPlayer
             url={mediaType === 'audio' ? mediaUrl : undefined}
             videoUrl={mediaType === 'video' ? mediaUrl : undefined}
@@ -233,28 +239,73 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
           {comments.length > 0 && (
             <div className="space-y-2 mb-3">
               {sortedComments.map((comment) => (
-                <div key={comment.id} className="bg-gray-50 rounded p-3 flex justify-between items-start">
-                  <div className="flex-1">
+                <div key={comment.id} style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '12px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                }}>
+                  <div style={{ flex: 1 }}>
                     {comment.timestamp_seconds !== null && comment.timestamp_seconds >= 0 ? (
                       <button
                         type="button"
                         onClick={() => handleTimestampClick(comment.timestamp_seconds)}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer mr-2 transition-colors"
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 'normal',
+                          color: 'var(--primary-2)',
+                          marginRight: '8px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          border: 'none',
+                          background: 'transparent',
+                          padding: 0,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = 'var(--primary)';
+                          e.currentTarget.style.textDecoration = 'underline';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'var(--primary-2)';
+                          e.currentTarget.style.textDecoration = 'none';
+                        }}
                         title={`Jump to ${formatTime(comment.timestamp_seconds)}`}
                       >
                         [{formatTime(comment.timestamp_seconds)}]
                       </button>
                     ) : (
-                      <span className="text-xs font-semibold text-gray-500 mr-2">
+                      <span style={{
+                        fontSize: '11px',
+                        fontWeight: 'normal',
+                        color: 'var(--faint)',
+                        marginRight: '8px',
+                      }}>
                         [General]
                       </span>
                     )}
-                    <span className="text-sm text-gray-800">{comment.comment_text}</span>
+                    <span style={{ fontSize: '13.5px', color: 'var(--text)' }}>{comment.comment_text}</span>
                   </div>
                   {isEditable && (
                     <button
                       onClick={() => onDeleteComment(comment.id)}
-                      className="text-red-600 hover:text-red-700 ml-2"
+                      style={{
+                        color: 'var(--danger)',
+                        marginLeft: '8px',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        padding: 0,
+                        transition: 'opacity 0.2s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = '0.7';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = '1';
+                      }}
                       title="Delete comment"
                     >
                       <X className="w-4 h-4" />
@@ -267,13 +318,21 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
 
           {/* Add Comment Form (teachers only) - Compact single-line */}
           {isEditable && (
-            <div className="flex items-center gap-2">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input
                 type="text"
                 value={timestampInput}
                 onChange={(e) => setTimestampInput(e.target.value)}
                 placeholder="MM:SS"
-                className="w-20 px-2 py-1.5 border rounded text-sm"
+                style={{
+                  width: '80px',
+                  padding: '6px 8px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--panel)',
+                  color: 'var(--text)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '13.5px',
+                }}
               />
               <input
                 type="text"
@@ -286,7 +345,15 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
                   }
                 }}
                 placeholder="Add comment..."
-                className="flex-1 px-3 py-1.5 border rounded text-sm"
+                style={{
+                  flex: 1,
+                  padding: '6px 12px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--panel)',
+                  color: 'var(--text)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '13.5px',
+                }}
               />
               <Button
                 size="sm"
@@ -303,16 +370,73 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
         </div>
       )}
 
+      {/* Lyrics Section - Show for audio/video with lyrics */}
+      {lyrics && (mediaType === 'video' || mediaType === 'audio') && (
+        <div className="mt-3">
+          <div className="text-sm font-extrabold text-text mb-2">Lyrics</div>
+          <div
+            className="p-3 rounded-lg"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            {mediaId && userId ? (
+              <LyricsWithAnnotations
+                lyrics={lyrics}
+                mediaId={mediaId}
+                context={{
+                  mode: 'lesson_creation',
+                  userId: userId,
+                  isTeacher: isTeacher,
+                }}
+              />
+            ) : (
+              <div>
+                <div className="text-[13.5px] text-muted whitespace-pre-wrap leading-relaxed">
+                  {lyrics}
+                </div>
+                <div className="text-xs text-warning mt-2">
+                  Save the lesson to enable annotations
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Comment Creation Form */}
       {isEditable && isAddingComment && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start justify-between mb-2">
-            <h4 className="text-sm font-semibold text-blue-900">
+        <div style={{
+          background: 'rgba(47, 183, 160, 0.08)',
+          border: '1px solid var(--primary)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '16px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <h4 style={{
+              fontSize: '13.5px',
+              fontWeight: 700,
+              color: 'var(--text)',
+            }}>
               Add Comment at {formatTime(newCommentTimestamp || 0)}
             </h4>
             <button
               onClick={handleCancelComment}
-              className="text-blue-600 hover:text-blue-800"
+              style={{
+                color: 'var(--primary-2)',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                padding: 0,
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '0.7';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '1';
+              }}
               title="Cancel"
             >
               <X className="w-4 h-4" />
@@ -322,11 +446,22 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
             value={newCommentText}
             onChange={(e) => setNewCommentText(e.target.value)}
             placeholder="Enter your comment..."
-            className="w-full px-3 py-2 border rounded-md text-sm mb-2"
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              border: '1px solid var(--border)',
+              background: 'var(--panel)',
+              color: 'var(--text)',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '13.5px',
+              marginBottom: '8px',
+              fontFamily: 'inherit',
+              resize: 'vertical',
+            }}
             rows={3}
             autoFocus
           />
-          <div className="flex gap-2">
+          <div style={{ display: 'flex', gap: '8px' }}>
             <Button
               size="sm"
               variant="primary"
@@ -348,40 +483,6 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
         </div>
       )}
 
-      {/* Lyrics Display with Annotations */}
-      {lyrics && mediaId && userId && (
-        <div className="mt-4">
-          <div className="p-4 bg-gray-50 rounded-lg border">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Lyrics</h3>
-            <LyricsWithAnnotations
-              lyrics={lyrics}
-              mediaId={mediaId}
-              context={{
-                mode: isEditable ? 'lesson_creation' : (isTeacher && studentId && !assignmentId ? 'assignment' : 'practice'),
-                userId: userId,
-                isTeacher: isTeacher,
-                assignmentId: assignmentId,
-                studentId: studentId,
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Fallback for lyrics without annotation support */}
-      {lyrics && (!mediaId || !userId) && (
-        <div className="mt-4">
-          <div className="p-4 bg-gray-50 rounded-lg border">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Lyrics</h3>
-            <div className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">
-              {lyrics}
-            </div>
-          </div>
-          <div className="mt-2 text-xs text-gray-500 italic">
-            Sign in to add annotations
-          </div>
-        </div>
-      )}
     </div>
   );
 };

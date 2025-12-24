@@ -11,16 +11,29 @@ export interface LyricsSearchResult {
 
 export class LyricsService {
   // Search external APIs via our server-side endpoint
-  static async searchExternal(title: string, artist: string): Promise<LyricsSearchResult | null> {
+  static async searchExternal(
+    title: string,
+    artist: string,
+    signal?: AbortSignal
+  ): Promise<LyricsSearchResult | null> {
     try {
       const params = new URLSearchParams({
         title,
         artist: artist || '',
       });
 
-      const response = await fetch(`/api/lyrics/search?${params}`);
+      const response = await fetch(`/api/lyrics/search?${params}`, {
+        signal,
+      });
 
       if (!response.ok) {
+        if (response.status === 408) {
+          throw new Error('Search timed out after 5 seconds. Please try again.');
+        }
+        const errorData = await response.json().catch(() => null);
+        if (errorData?.error) {
+          throw new Error(errorData.error);
+        }
         return null;
       }
 
@@ -37,8 +50,11 @@ export class LyricsService {
 
       return null;
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Search cancelled');
+      }
       console.error('Error searching external lyrics:', error);
-      return null;
+      throw error;
     }
   }
 

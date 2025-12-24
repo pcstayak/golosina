@@ -76,26 +76,13 @@ export default function NotificationList({ showAll = false, maxItems = 5 }: Noti
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'practice_reviewed':
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
+        return <CheckCircle className="w-5 h-5" style={{ color: 'var(--primary)' }} />;
       case 'new_comment':
-        return <MessageSquare className="w-5 h-5 text-blue-600" />;
+        return <MessageSquare className="w-5 h-5" style={{ color: 'var(--primary)' }} />;
       case 'comment_reply':
-        return <Reply className="w-5 h-5 text-purple-600" />;
+        return <Reply className="w-5 h-5" style={{ color: 'var(--primary)' }} />;
       default:
-        return <Bell className="w-5 h-5 text-gray-600" />;
-    }
-  };
-
-  const getNotificationColor = (type: string) => {
-    switch (type) {
-      case 'practice_reviewed':
-        return 'bg-green-50 border-green-200';
-      case 'new_comment':
-        return 'bg-blue-50 border-blue-200';
-      case 'comment_reply':
-        return 'bg-purple-50 border-purple-200';
-      default:
-        return 'bg-gray-50 border-gray-200';
+        return <Bell className="w-5 h-5" style={{ color: 'var(--muted)' }} />;
     }
   };
 
@@ -126,9 +113,9 @@ export default function NotificationList({ showAll = false, maxItems = 5 }: Noti
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-        <p className="text-center text-gray-600 mt-4">Loading notifications...</p>
+      <div className="bg-[var(--panel)] rounded-lg border border-[var(--border)] p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary)] mx-auto"></div>
+        <p className="text-center text-[var(--muted)] mt-4">Loading notifications...</p>
       </div>
     );
   }
@@ -136,14 +123,14 @@ export default function NotificationList({ showAll = false, maxItems = 5 }: Noti
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-4">
+    <div className="bg-[var(--panel)] rounded-lg border border-[var(--border)] overflow-hidden">
+      <div className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-2)] p-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-[var(--primary-contrast)] flex items-center gap-2">
             <Bell className="w-5 h-5" />
             Notifications
             {unreadCount > 0 && (
-              <span className="px-2 py-1 text-xs font-semibold bg-white text-purple-600 rounded-full">
+              <span className="px-2 py-1 text-xs font-semibold bg-[var(--primary-contrast)] text-[var(--primary)] rounded-full">
                 {unreadCount}
               </span>
             )}
@@ -151,7 +138,7 @@ export default function NotificationList({ showAll = false, maxItems = 5 }: Noti
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              className="px-3 py-1 text-sm bg-white/20 hover:bg-white/30 text-white rounded transition-colors"
+              className="px-3 py-1 text-sm bg-white/20 hover:bg-white/30 text-[var(--primary-contrast)] rounded transition-colors"
             >
               Mark all as read
             </button>
@@ -161,16 +148,16 @@ export default function NotificationList({ showAll = false, maxItems = 5 }: Noti
 
       {notifications.length === 0 ? (
         <div className="p-8 text-center">
-          <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">No Notifications</h3>
-          <p className="text-gray-600">You are all caught up!</p>
+          <Bell className="w-12 h-12 text-[var(--muted)] mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-[var(--text)] mb-2">No Notifications</h3>
+          <p className="text-[var(--muted)]">You are all caught up!</p>
         </div>
       ) : (
-        <div className="divide-y">
+        <div className="divide-y divide-[var(--border)]">
           {notifications.map((notification) => (
             <div
               key={notification.id}
-              className={`p-4 transition-colors ${!notification.is_read ? getNotificationColor(notification.notification_type) : 'bg-white hover:bg-gray-50'
+              className={`p-4 transition-colors ${!notification.is_read ? 'bg-[rgba(var(--primary-rgb),0.05)]' : 'bg-[var(--panel)] hover:bg-[var(--panel-hover)]'
                 }`}
             >
               <div className="flex items-start gap-3">
@@ -183,10 +170,10 @@ export default function NotificationList({ showAll = false, maxItems = 5 }: Noti
                     className="block group"
                   >
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+                      <h3 className="font-semibold text-[var(--text)] group-hover:text-[var(--primary)] transition-colors">
                         {notification.title}
                         {!notification.is_read && (
-                          <span className="ml-2 inline-block w-2 h-2 bg-purple-600 rounded-full"></span>
+                          <span className="ml-2 inline-block w-2 h-2 bg-[var(--primary)] rounded-full"></span>
                         )}
                       </h3>
                       <button
@@ -195,22 +182,22 @@ export default function NotificationList({ showAll = false, maxItems = 5 }: Noti
                           e.stopPropagation();
                           handleDelete(notification.id);
                         }}
-                        className="flex-shrink-0 p-1 text-gray-400 hover:text-red-600 transition-colors"
+                        className="flex-shrink-0 p-1 text-[var(--muted)] hover:text-red-500 transition-colors"
                         title="Delete notification"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <p className="text-sm text-gray-700 mb-2">{notification.message}</p>
+                    <p className="text-sm text-[var(--muted)] mb-2">{notification.message}</p>
 
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         <span>{formatDate(notification.created_at)}</span>
                       </div>
                       {!notification.is_read && (
-                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded font-medium">
+                        <span className="px-2 py-0.5 bg-[var(--primary)] text-[var(--primary-contrast)] rounded font-medium">
                           New
                         </span>
                       )}
@@ -221,7 +208,7 @@ export default function NotificationList({ showAll = false, maxItems = 5 }: Noti
                 {!notification.is_read && (
                   <button
                     onClick={() => handleMarkAsRead(notification.id)}
-                    className="flex-shrink-0 p-2 text-gray-400 hover:text-purple-600 transition-colors"
+                    className="flex-shrink-0 p-2 text-[var(--muted)] hover:text-[var(--primary)] transition-colors"
                     title="Mark as read"
                   >
                     <Eye className="w-4 h-4" />
@@ -234,10 +221,10 @@ export default function NotificationList({ showAll = false, maxItems = 5 }: Noti
       )}
 
       {notifications.length > 0 && !showAll && (
-        <div className="p-4 bg-gray-50 text-center">
+        <div className="p-4 bg-[var(--panel-2)] text-center">
           <Link
             href="/student/notifications"
-            className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+            className="text-sm text-[var(--primary)] hover:text-[var(--primary-hover)] font-medium"
           >
             View all notifications
           </Link>

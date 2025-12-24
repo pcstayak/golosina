@@ -77,16 +77,65 @@ const AnnotationEditor: React.FC<AnnotationEditorProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0, 0, 0, 0.80)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+        padding: '16px',
+      }}
+    >
+      <div
+        style={{
+          background: 'rgba(11, 18, 32, 0.95)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow)',
+          maxWidth: '500px',
+          width: '100%',
+        }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="text-lg font-semibold text-gray-900">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px',
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          <h3
+            style={{
+              fontSize: '17px',
+              fontWeight: 600,
+              color: 'var(--text)',
+              margin: 0,
+            }}
+          >
             {annotation ? 'Edit Annotation' : 'Add Annotation'}
           </h3>
           <button
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--muted)',
+              cursor: 'pointer',
+              padding: '4px',
+              transition: 'color 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.color = 'var(--text)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.color = 'var(--muted)';
+            }}
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -94,16 +143,45 @@ const AnnotationEditor: React.FC<AnnotationEditorProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-4">
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Highlighted Text Display */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-            <p className="text-xs text-gray-600 mb-1">Selected text:</p>
-            <p className="text-sm text-gray-900 font-medium">{highlightedText}</p>
+          <div
+            style={{
+              background: 'var(--panel)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '12px',
+            }}
+          >
+            <p
+              style={{
+                fontSize: '11px',
+                color: 'var(--faint)',
+                marginBottom: '6px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                fontWeight: 500,
+              }}
+            >
+              Selected text:
+            </p>
+            <p style={{ fontSize: '13.5px', color: 'var(--text)', fontWeight: 500 }}>
+              {highlightedText}
+            </p>
           </div>
 
           {/* Annotation Text */}
           <div>
-            <label htmlFor="annotation-text" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="annotation-text"
+              style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: 'var(--text)',
+                marginBottom: '6px',
+              }}
+            >
               Annotation
             </label>
             <textarea
@@ -111,37 +189,66 @@ const AnnotationEditor: React.FC<AnnotationEditorProps> = ({
               value={annotationText}
               onChange={handleTextChange}
               placeholder="Enter your annotation..."
-              className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: 'var(--panel)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '13.5px',
+                color: 'var(--text)',
+                fontFamily: 'var(--font)',
+                resize: 'vertical',
+                minHeight: '100px',
+              }}
               rows={4}
               autoFocus
             />
-            <div className="mt-1 flex justify-between items-center">
-              <p className="text-xs text-gray-500">
+            <div style={{ marginTop: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p style={{ fontSize: '11px', color: 'var(--faint)' }}>
                 {charCount}/{MAX_CHARS} characters
               </p>
             </div>
           </div>
 
           {/* Context-based visibility info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-xs font-medium text-blue-900 mb-1">
+          <div
+            style={{
+              background: 'var(--panel)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '12px',
+            }}
+          >
+            <p
+              style={{
+                fontSize: '12px',
+                fontWeight: 500,
+                color: 'var(--text)',
+                marginBottom: '4px',
+              }}
+            >
               Annotation Type: {getContextLabel()}
             </p>
-            <p className="text-xs text-blue-700">
+            <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: '1.5' }}>
               {getContextDescription()}
             </p>
           </div>
 
           {/* Share with teacher checkbox (practice mode only) */}
           {context.mode === 'practice' && (
-            <label className="flex items-center gap-2">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input
                 type="checkbox"
                 checked={visibleToTeacher}
                 onChange={(e) => setVisibleToTeacher(e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  cursor: 'pointer',
+                }}
               />
-              <span className="text-sm text-gray-700">
+              <span style={{ fontSize: '13px', color: 'var(--text)' }}>
                 Share with teacher
               </span>
             </label>
@@ -149,20 +256,29 @@ const AnnotationEditor: React.FC<AnnotationEditorProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t bg-gray-50">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--panel)',
+          }}
+        >
           <div>
             {annotation && onDelete && (
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={onDelete}
-                className="text-red-600 hover:text-red-700"
+                style={{ color: 'var(--danger)' }}
               >
                 Delete
               </Button>
             )}
           </div>
-          <div className="flex gap-2">
+          <div style={{ display: 'flex', gap: '8px' }}>
             <Button
               size="sm"
               variant="secondary"

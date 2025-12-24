@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
+import { Panel, PanelHeader, PanelContent } from '@/components/ui/Panel'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
 import { ArrowLeft, Clock, Mic, Calendar } from 'lucide-react'
 import { SharedLessonService, type SharedLessonData, type RecordingComment } from '@/services/sharedLessonService'
 import AudioPlayer from '@/components/lesson/AudioPlayer'
@@ -237,10 +240,10 @@ export default function SharedLessonPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading session...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--primary)' }}></div>
+          <p style={{ color: 'var(--muted)', fontSize: '13.5px' }}>Loading session...</p>
         </div>
       </div>
     )
@@ -248,20 +251,22 @@ export default function SharedLessonPage() {
 
   if (error || !lessonData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-6xl mb-4">🎤</div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Session Not Found</h1>
-          <p className="text-gray-600 mb-6">
-            {error || 'This session may have expired or the link is invalid.'}
-          </p>
-          <Link href="/">
-            <Button variant="primary" className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Go to Voice Trainer
-            </Button>
-          </Link>
-        </div>
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <Card className="max-w-md w-full">
+          <CardBody className="text-center p-8">
+            <div className="text-6xl mb-4">🎤</div>
+            <h1 className="text-2xl font-bold mb-2" style={{ color: 'var(--text)' }}>Session Not Found</h1>
+            <p className="mb-6" style={{ color: 'var(--muted)', fontSize: '13.5px', lineHeight: '1.6' }}>
+              {error || 'This session may have expired or the link is invalid.'}
+            </p>
+            <Link href="/">
+              <Button variant="primary" className="flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Go to Voice Trainer
+              </Button>
+            </Link>
+          </CardBody>
+        </Card>
       </div>
     )
   }
@@ -272,57 +277,89 @@ export default function SharedLessonPage() {
   }, 0)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Mic className="w-6 h-6 text-blue-600" />
+        <Panel className="mb-6">
+          <PanelHeader>
+            <div className="flex items-center gap-3 flex-1">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, var(--primary), var(--primary-2))',
+                  boxShadow: '0 4px 12px rgba(31, 122, 107, 0.25)'
+                }}
+              >
+                <Mic className="w-6 h-6" style={{ color: 'white' }} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">{lessonData.set_name}</h1>
-                <p className="text-gray-600">Shared Vocal Training Session</p>
+                <h1 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
+                  {lessonData.set_name}
+                </h1>
+                <p style={{ color: 'var(--muted)', fontSize: '13.5px' }}>
+                  Shared Vocal Training Session
+                </p>
               </div>
             </div>
             <Link href="/">
-              <Button variant="secondary" size="sm" className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="flex items-center gap-2">
                 <ArrowLeft className="w-4 h-4" />
                 Back to App
               </Button>
             </Link>
-          </div>
+          </PanelHeader>
 
-          {lessonData.set_description && (
-            <p className="text-gray-700 mb-4">{lessonData.set_description}</p>
-          )}
+          <PanelContent>
+            {lessonData.set_description && (
+              <p className="mb-4" style={{ color: 'var(--muted)', fontSize: '13.5px', lineHeight: '1.6' }}>
+                {lessonData.set_description}
+              </p>
+            )}
 
-          {/* Session Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center gap-2 text-gray-600 mb-1">
-                <Calendar className="w-4 h-4" />
-                <span className="text-sm">Session Date</span>
-              </div>
-              <p className="font-semibold">{formatDate(lessonData.created_at)}</p>
+            {/* Session Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardBody className="p-4">
+                  <div className="flex items-center gap-2 mb-1" style={{ color: 'var(--muted)' }}>
+                    <Calendar className="w-4 h-4" />
+                    <span style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Session Date
+                    </span>
+                  </div>
+                  <p style={{ fontWeight: 600, color: 'var(--text)', fontSize: '14px' }}>
+                    {formatDate(lessonData.created_at)}
+                  </p>
+                </CardBody>
+              </Card>
+              <Card>
+                <CardBody className="p-4">
+                  <div className="flex items-center gap-2 mb-1" style={{ color: 'var(--muted)' }}>
+                    <Mic className="w-4 h-4" />
+                    <span style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Total Recordings
+                    </span>
+                  </div>
+                  <p style={{ fontWeight: 600, color: 'var(--text)', fontSize: '14px' }}>
+                    {totalRecordings}
+                  </p>
+                </CardBody>
+              </Card>
+              <Card>
+                <CardBody className="p-4">
+                  <div className="flex items-center gap-2 mb-1" style={{ color: 'var(--muted)' }}>
+                    <Clock className="w-4 h-4" />
+                    <span style={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Total Duration
+                    </span>
+                  </div>
+                  <p style={{ fontWeight: 600, color: 'var(--text)', fontSize: '14px' }}>
+                    {formatDuration(totalDuration)}
+                  </p>
+                </CardBody>
+              </Card>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center gap-2 text-gray-600 mb-1">
-                <Mic className="w-4 h-4" />
-                <span className="text-sm">Total Recordings</span>
-              </div>
-              <p className="font-semibold">{totalRecordings}</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center gap-2 text-gray-600 mb-1">
-                <Clock className="w-4 h-4" />
-                <span className="text-sm">Total Duration</span>
-              </div>
-              <p className="font-semibold">{formatDuration(totalDuration)}</p>
-            </div>
-          </div>
-        </div>
+          </PanelContent>
+        </Panel>
 
         {/* Exercises with AudioPlayer */}
         <div className="space-y-6">
@@ -335,17 +372,24 @@ export default function SharedLessonPage() {
             if (!exercise) return null
 
             return (
-              <div key={exerciseKey} className="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
-                  <h3 className="text-xl font-semibold text-white">
-                    {exercise.name}
-                  </h3>
-                  <p className="text-white/80">
-                    {pieces.length} recording{pieces.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
+              <Panel key={exerciseKey}>
+                <PanelHeader
+                  style={{
+                    background: 'linear-gradient(135deg, var(--primary), var(--primary-2))',
+                    borderBottom: 'none'
+                  }}
+                >
+                  <div>
+                    <h3 className="text-xl font-semibold" style={{ color: 'white' }}>
+                      {exercise.name}
+                    </h3>
+                    <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13.5px' }}>
+                      {pieces.length} recording{pieces.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </PanelHeader>
 
-                <div className="p-4 space-y-6">
+                <PanelContent className="space-y-6">
                   {pieces.map((piece, index) => {
                     const form = commentForms[piece.id]
                     const recordingComments = comments[piece.id] || []
@@ -367,126 +411,177 @@ export default function SharedLessonPage() {
                         />
 
                         {/* Comments Section */}
-                        <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-                          {/* Comments Header */}
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                              <MessageSquare className="w-4 h-4" />
-                              Comments ({recordingComments.length})
-                            </h4>
-                            {recordingComments.length === 0 && (
-                              <span className="text-xs text-gray-500">
-                                Click on waveform to add timestamp comments
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Existing Comments */}
-                          {recordingComments.length > 0 && (
-                            <div className="space-y-3">
-                              {recordingComments
-                                .sort((a, b) => (a.timestamp_seconds || 0) - (b.timestamp_seconds || 0))
-                                .map((comment) => (
-                                  <div key={comment.id} className="bg-white rounded-lg p-3 shadow-sm">
-                                    <div className="flex items-start justify-between mb-2">
-                                      <div className="flex items-center gap-2">
-                                        <div className="flex items-center gap-1 text-gray-600">
-                                          <User className="w-3 h-3" />
-                                          <span className="font-medium text-gray-800">{comment.user_name}</span>
-                                        </div>
-                                        {comment.timestamp_seconds != null && (
-                                          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
-                                            {formatTime(comment.timestamp_seconds)}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <span className="text-xs text-gray-500">
-                                        {formatDate(comment.created_at)}
-                                      </span>
-                                    </div>
-                                    <p className="text-gray-700 text-sm">{comment.comment_text}</p>
-                                  </div>
-                                ))}
-                            </div>
-                          )}
-
-                          {/* Add Comment Form */}
-                          <div className="bg-white rounded-lg p-3 border border-gray-200">
-                            <h5 className="text-sm font-medium text-gray-700 mb-2">
-                              Add a Comment
-                            </h5>
-
-                            <div className="space-y-2">
-                              {/* Comment textarea with inline submit button */}
-                              <div className="flex gap-2 items-end">
-                                <div className="flex-1">
-                                  <textarea
-                                    value={form?.commentText || ''}
-                                    onChange={(e) => handleUpdateCommentForm(piece.id, 'commentText', e.target.value)}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                    placeholder="Enter your comment..."
-                                    rows={2}
-                                  />
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="primary"
-                                  onClick={() => handleSubmitComment(piece.id)}
-                                  disabled={!form?.commentText?.trim()}
-                                  className="flex items-center gap-2 whitespace-nowrap"
-                                >
-                                  <Send className="w-3 h-3" />
-                                  Post
-                                </Button>
-                              </div>
-
-                              {/* Timestamp checkbox */}
-                              {form?.timestampSeconds != null && (
-                                <div className="flex items-center space-x-2">
-                                  <input
-                                    type="checkbox"
-                                    id={`timestamp-${piece.id}`}
-                                    checked={form.includeTimestamp || false}
-                                    onChange={(e) => handleUpdateCommentForm(piece.id, 'includeTimestamp', e.target.checked)}
-                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                                  />
-                                  <label htmlFor={`timestamp-${piece.id}`} className="text-sm text-gray-700">
-                                    Comment applies to specific moment in recording
-                                    {form.includeTimestamp && form.timestampSeconds != null && (
-                                      <span className="text-blue-600 ml-2">
-                                        ({formatTime(form.timestampSeconds)})
-                                      </span>
-                                    )}
-                                  </label>
-                                </div>
+                        <Card>
+                          <CardBody className="space-y-4">
+                            {/* Comments Header */}
+                            <div className="flex items-center justify-between">
+                              <h4
+                                className="flex items-center gap-2"
+                                style={{ fontSize: '14px', fontWeight: 900, color: 'var(--text)' }}
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                                Comments ({recordingComments.length})
+                              </h4>
+                              {recordingComments.length === 0 && (
+                                <span style={{ fontSize: '12px', color: 'var(--faint)' }}>
+                                  Click on waveform to add timestamp comments
+                                </span>
                               )}
+                            </div>
 
-                              <div className="text-xs text-gray-500">
-                                Tip: Click on the waveform above to set a timestamp position
+                            {/* Existing Comments */}
+                            {recordingComments.length > 0 && (
+                              <div className="space-y-3">
+                                {recordingComments
+                                  .sort((a, b) => (a.timestamp_seconds || 0) - (b.timestamp_seconds || 0))
+                                  .map((comment) => (
+                                    <div
+                                      key={comment.id}
+                                      className="rounded-lg p-3"
+                                      style={{
+                                        background: 'var(--panel)',
+                                        border: '1px solid var(--border)'
+                                      }}
+                                    >
+                                      <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
+                                            <User className="w-3.5 h-3.5" />
+                                            <span style={{ fontWeight: 600, color: 'var(--text)', fontSize: '13px' }}>
+                                              {comment.user_name}
+                                            </span>
+                                          </div>
+                                          {comment.timestamp_seconds != null && (
+                                            <Badge
+                                              className="px-2 py-0.5"
+                                              style={{
+                                                background: 'linear-gradient(135deg, var(--primary), var(--primary-2))',
+                                                color: 'white',
+                                                border: 'none',
+                                                fontSize: '11px'
+                                              }}
+                                            >
+                                              {formatTime(comment.timestamp_seconds)}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <span style={{ fontSize: '11px', color: 'var(--faint)' }}>
+                                          {formatDate(comment.created_at)}
+                                        </span>
+                                      </div>
+                                      <p style={{ color: 'var(--muted)', fontSize: '13.5px', lineHeight: '1.6' }}>
+                                        {comment.comment_text}
+                                      </p>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+
+                            {/* Add Comment Form */}
+                            <div
+                              className="rounded-lg p-3"
+                              style={{
+                                border: '1px solid var(--border)',
+                                background: 'var(--panel-2)'
+                              }}
+                            >
+                              <h5
+                                className="mb-2"
+                                style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}
+                              >
+                                Add a Comment
+                              </h5>
+
+                              <div className="space-y-2">
+                                {/* Comment textarea with inline submit button */}
+                                <div className="flex gap-2 items-end">
+                                  <div className="flex-1">
+                                    <textarea
+                                      value={form?.commentText || ''}
+                                      onChange={(e) => handleUpdateCommentForm(piece.id, 'commentText', e.target.value)}
+                                      className="w-full px-3 py-2 rounded-lg resize-none"
+                                      style={{
+                                        fontSize: '13.5px',
+                                        border: '1px solid var(--border)',
+                                        background: 'var(--panel)',
+                                        color: 'var(--text)'
+                                      }}
+                                      placeholder="Enter your comment..."
+                                      rows={2}
+                                    />
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="primary"
+                                    onClick={() => handleSubmitComment(piece.id)}
+                                    disabled={!form?.commentText?.trim()}
+                                    className="flex items-center gap-2 whitespace-nowrap"
+                                  >
+                                    <Send className="w-3 h-3" />
+                                    Post
+                                  </Button>
+                                </div>
+
+                                {/* Timestamp checkbox */}
+                                {form?.timestampSeconds != null && (
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="checkbox"
+                                      id={`timestamp-${piece.id}`}
+                                      checked={form.includeTimestamp || false}
+                                      onChange={(e) => handleUpdateCommentForm(piece.id, 'includeTimestamp', e.target.checked)}
+                                      className="w-4 h-4 rounded"
+                                      style={{
+                                        accentColor: 'var(--primary)'
+                                      }}
+                                    />
+                                    <label
+                                      htmlFor={`timestamp-${piece.id}`}
+                                      style={{ fontSize: '13px', color: 'var(--muted)' }}
+                                    >
+                                      Comment applies to specific moment in recording
+                                      {form.includeTimestamp && form.timestampSeconds != null && (
+                                        <span style={{ color: 'var(--primary)', marginLeft: '8px' }}>
+                                          ({formatTime(form.timestampSeconds)})
+                                        </span>
+                                      )}
+                                    </label>
+                                  </div>
+                                )}
+
+                                <div style={{ fontSize: '12px', color: 'var(--faint)' }}>
+                                  Tip: Click on the waveform above to set a timestamp position
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </div>
+                          </CardBody>
+                        </Card>
                       </div>
                     )
                   })}
-                </div>
-              </div>
+                </PanelContent>
+              </Panel>
             )
           })}
 
           {Object.keys(convertedAudioPieces).length === 0 && !loading && (
-            <div className="bg-white rounded-lg shadow-sm border p-8 text-center">
-              <div className="text-6xl mb-4">🎤</div>
-              <h3 className="text-xl font-semibold mb-2">No recordings available</h3>
-              <p className="text-gray-600">This shared session doesn&apos;t contain any audio recordings.</p>
-            </div>
+            <Card>
+              <CardBody className="p-8 text-center">
+                <div className="text-6xl mb-4">🎤</div>
+                <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--text)' }}>
+                  No recordings available
+                </h3>
+                <p style={{ color: 'var(--muted)', fontSize: '13.5px' }}>
+                  This shared session doesn&apos;t contain any audio recordings.
+                </p>
+              </CardBody>
+            </Card>
           )}
         </div>
 
         {/* Footer */}
         <div className="mt-8 text-center">
-          <p className="text-gray-600 mb-4">
+          <p className="mb-4" style={{ color: 'var(--muted)', fontSize: '13.5px' }}>
             Want to create your own vocal training sessions?
           </p>
           <Link href="/">
@@ -496,7 +591,6 @@ export default function SharedLessonPage() {
           </Link>
         </div>
       </div>
-
     </div>
   )
 }

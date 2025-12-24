@@ -222,11 +222,11 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
   // Render lyrics with highlights
   const renderLyricsWithHighlights = () => {
     if (isLoading) {
-      return <p className="text-gray-500 text-sm">Loading annotations...</p>;
+      return <p style={{ color: 'var(--muted)', fontSize: '13.5px' }}>Loading annotations...</p>;
     }
 
     if (!lyrics) {
-      return <p className="text-gray-500 text-sm">No lyrics available</p>;
+      return <p style={{ color: 'var(--muted)', fontSize: '13.5px' }}>No lyrics available</p>;
     }
 
     // Sort annotations by start index
@@ -260,20 +260,42 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
       });
     }
 
-    // Get highlight class based on annotation type and editability
-    const getHighlightClass = (annotation: LyricsAnnotation) => {
+    // Get highlight style based on annotation type and editability
+    const getHighlightStyle = (annotation: LyricsAnnotation): React.CSSProperties => {
       const isEditable = AnnotationsService.isAnnotationEditable(annotation, context);
-      const baseOpacity = isEditable ? '' : 'opacity-60';
 
+      const baseStyle: React.CSSProperties = {
+        padding: '0 3px',
+        borderRadius: 'var(--radius-sm)',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+      };
+
+      // Use distinct highlights with better contrast between types
       switch (annotation.annotation_type) {
         case 'global':
-          return `bg-yellow-100 border-b-2 border-yellow-400 cursor-pointer hover:bg-yellow-200 transition-colors ${baseOpacity}`;
+          // Teacher feedback for all students - use bright teal
+          return {
+            ...baseStyle,
+            background: isEditable ? 'rgba(47, 183, 160, 0.28)' : 'rgba(47, 183, 160, 0.15)',
+            color: 'inherit',
+          };
         case 'student_specific':
-          return `bg-blue-100 border-b-2 border-blue-400 cursor-pointer hover:bg-blue-200 transition-colors ${baseOpacity}`;
+          // Teacher feedback for specific student - use warm yellow/gold
+          return {
+            ...baseStyle,
+            background: isEditable ? 'rgba(245, 199, 72, 0.25)' : 'rgba(245, 199, 72, 0.15)',
+            color: 'inherit',
+          };
         case 'private':
-          return `bg-gray-100 border-b-2 border-gray-400 cursor-pointer hover:bg-gray-200 transition-colors ${baseOpacity}`;
+          // Private student note - use subtle panel
+          return {
+            ...baseStyle,
+            background: isEditable ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.08)',
+            color: 'inherit',
+          };
         default:
-          return '';
+          return baseStyle;
       }
     };
 
@@ -281,16 +303,29 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
       <div className="relative">
         {segments.map((segment, index) => {
           if (segment.annotation) {
-            const isEditable = AnnotationsService.isAnnotationEditable(segment.annotation, context);
             return (
-              <span
+              <mark
                 key={index}
-                className={getHighlightClass(segment.annotation)}
+                style={getHighlightStyle(segment.annotation)}
                 onClick={(e) => handleClickAnnotation(segment.annotation!, e)}
                 title={`${segment.annotation.annotation_text.slice(0, 100)}`}
+                onMouseEnter={(e) => {
+                  const mark = e.currentTarget as HTMLElement;
+                  const style = getHighlightStyle(segment.annotation!);
+                  mark.style.background = segment.annotation!.annotation_type === 'global'
+                    ? 'rgba(47, 183, 160, 0.38)'
+                    : segment.annotation!.annotation_type === 'student_specific'
+                    ? 'rgba(245, 199, 72, 0.35)'
+                    : 'rgba(255, 255, 255, 0.18)';
+                }}
+                onMouseLeave={(e) => {
+                  const mark = e.currentTarget as HTMLElement;
+                  const style = getHighlightStyle(segment.annotation!);
+                  mark.style.background = style.background as string;
+                }}
               >
                 {segment.text}
-              </span>
+              </mark>
             );
           }
           return <span key={index}>{segment.text}</span>;
@@ -304,7 +339,14 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
       {/* Lyrics Display */}
       <div
         ref={lyricsRef}
-        className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed select-text"
+        style={{
+          whiteSpace: 'pre-wrap',
+          fontSize: '13.5px',
+          color: 'var(--muted)',
+          lineHeight: '1.6',
+          userSelect: 'text',
+          fontWeight: 'normal',
+        }}
         onMouseUp={handleMouseUp}
         onClick={() => setAnnotationPopover(null)}
       >
@@ -315,11 +357,26 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
       {showAddButton && (
         <button
           onClick={handleAddAnnotation}
-          className="absolute bg-blue-600 text-white rounded-full p-1 shadow-lg hover:bg-blue-700 transition-all z-10"
           style={{
+            position: 'absolute',
             left: `${addButtonPosition.x}px`,
             top: `${addButtonPosition.y}px`,
             transform: 'translateX(-50%)',
+            background: 'var(--primary)',
+            color: 'white',
+            borderRadius: '50%',
+            padding: '6px',
+            boxShadow: 'var(--shadow-soft)',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            zIndex: 10,
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'var(--primary-2)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'var(--primary)';
           }}
           title="Add annotation"
         >
@@ -330,22 +387,42 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
       {/* Read-only Annotation Popover */}
       {annotationPopover && (
         <div
-          className="absolute bg-white border shadow-lg rounded-lg p-3 max-w-xs z-20"
           style={{
+            position: 'absolute',
             left: `${annotationPopover.position.x}px`,
             top: `${annotationPopover.position.y}px`,
+            background: 'rgba(11, 18, 32, 0.92)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            boxShadow: 'var(--shadow-soft)',
+            backdropFilter: 'blur(12px)',
+            padding: '12px',
+            maxWidth: '300px',
+            zIndex: 20,
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-start gap-2">
-            <MessageSquare className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-500 mb-1">
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+            <MessageSquare
+              className="w-4 h-4 flex-shrink-0"
+              style={{ color: 'var(--muted)', marginTop: '2px' }}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{
+                fontSize: '11px',
+                color: 'var(--faint)',
+                marginBottom: '4px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                fontWeight: 500,
+              }}>
                 {annotationPopover.annotation.annotation_type === 'global' && 'All Students'}
                 {annotationPopover.annotation.annotation_type === 'student_specific' && 'Student-specific'}
                 {annotationPopover.annotation.annotation_type === 'private' && 'Private Note'}
               </p>
-              <p className="text-sm text-gray-800">{annotationPopover.annotation.annotation_text}</p>
+              <p style={{ fontSize: '13.5px', color: 'var(--text)', lineHeight: '1.5' }}>
+                {annotationPopover.annotation.annotation_text}
+              </p>
             </div>
           </div>
         </div>
@@ -365,25 +442,53 @@ const LyricsWithAnnotations: React.FC<LyricsWithAnnotationsProps> = ({
 
       {/* Legend */}
       {annotations.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-gray-200">
-          <p className="text-xs text-gray-500 mb-2">Annotation types:</p>
-          <div className="flex flex-wrap gap-3 text-xs">
+        <div style={{
+          marginTop: '16px',
+          paddingTop: '12px',
+          borderTop: '1px solid var(--border)',
+        }}>
+          <p style={{
+            fontSize: '11px',
+            color: 'var(--faint)',
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            fontWeight: 500,
+          }}>
+            Annotation types:
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '12px' }}>
             {annotations.some(a => a.annotation_type === 'global') && (
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-3 bg-yellow-100 border-b-2 border-yellow-400 rounded-sm"></div>
-                <span className="text-gray-600">All Students</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{
+                  width: '16px',
+                  height: '12px',
+                  background: 'rgba(47, 183, 160, 0.28)',
+                  borderRadius: 'var(--radius-sm)',
+                }}></div>
+                <span style={{ color: 'var(--muted)' }}>All Students</span>
               </div>
             )}
             {annotations.some(a => a.annotation_type === 'student_specific') && (
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-3 bg-blue-100 border-b-2 border-blue-400 rounded-sm"></div>
-                <span className="text-gray-600">Student-specific</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{
+                  width: '16px',
+                  height: '12px',
+                  background: 'rgba(245, 199, 72, 0.25)',
+                  borderRadius: 'var(--radius-sm)',
+                }}></div>
+                <span style={{ color: 'var(--muted)' }}>Student-specific</span>
               </div>
             )}
             {annotations.some(a => a.annotation_type === 'private') && (
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-3 bg-gray-100 border-b-2 border-gray-400 rounded-sm"></div>
-                <span className="text-gray-600">Private</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{
+                  width: '16px',
+                  height: '12px',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  borderRadius: 'var(--radius-sm)',
+                }}></div>
+                <span style={{ color: 'var(--muted)' }}>Private</span>
               </div>
             )}
           </div>

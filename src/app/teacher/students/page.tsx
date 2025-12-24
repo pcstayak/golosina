@@ -144,18 +144,18 @@ export default function TeacherStudentsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)] mx-auto mb-4"></div>
+          <p className="text-[var(--muted)]">Loading...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="min-h-screen">
+      <div className="max-w-custom mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <Link href="/teacher/dashboard">
@@ -180,23 +180,23 @@ export default function TeacherStudentsPage() {
         </div>
 
         {/* Title */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">My Students</h1>
-          <p className="text-gray-600">
+        <div className="bg-[var(--panel)] rounded-[14px] border border-[var(--border)] p-6 mb-6">
+          <h1 className="text-2xl font-extrabold text-[var(--text)] mb-2">My Students</h1>
+          <p className="text-[var(--muted)]">
             Manage your student roster and handle join requests
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border mb-6">
-          <div className="border-b border-gray-200">
+        <div className="bg-[var(--panel)] rounded-[14px] border border-[var(--border)] mb-6">
+          <div className="border-b border-[var(--border)]">
             <div className="flex">
               <button
                 onClick={() => setActiveTab('active')}
-                className={`flex-1 px-6 py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 px-6 py-3 text-sm font-extrabold transition-colors ${
                   activeTab === 'active'
-                    ? 'text-purple-600 border-b-2 border-purple-600'
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'text-[var(--primary)] border-b-2 border-[var(--primary)]'
+                    : 'text-[var(--muted)] hover:text-[var(--text)]'
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
@@ -206,17 +206,17 @@ export default function TeacherStudentsPage() {
               </button>
               <button
                 onClick={() => setActiveTab('pending')}
-                className={`flex-1 px-6 py-3 text-sm font-medium transition-colors relative ${
+                className={`flex-1 px-6 py-3 text-sm font-extrabold transition-colors relative ${
                   activeTab === 'pending'
-                    ? 'text-purple-600 border-b-2 border-purple-600'
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'text-[var(--primary)] border-b-2 border-[var(--primary)]'
+                    : 'text-[var(--muted)] hover:text-[var(--text)]'
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
                   <UserCheck className="w-4 h-4" />
                   Pending Requests ({pendingRequests.length})
                   {pendingRequests.length > 0 && (
-                    <span className="absolute top-2 right-6 w-2 h-2 bg-red-500 rounded-full"></span>
+                    <span className="absolute top-2 right-6 w-2 h-2 bg-[var(--danger)] rounded-full"></span>
                   )}
                 </div>
               </button>
@@ -228,9 +228,9 @@ export default function TeacherStudentsPage() {
             {activeTab === 'active' ? (
               activeStudents.length === 0 ? (
                 <div className="text-center py-12">
-                  <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Active Students</h3>
-                  <p className="text-gray-600 mb-4">
+                  <Users className="w-16 h-16 text-[var(--muted)] mx-auto mb-4" />
+                  <h3 className="text-lg font-extrabold text-[var(--text)] mb-2">No Active Students</h3>
+                  <p className="text-[var(--muted)] mb-4">
                     Start building your class by adding students
                   </p>
                   <Button
@@ -248,15 +248,15 @@ export default function TeacherStudentsPage() {
                   {activeStudents.map((student) => (
                     <div
                       key={student.id}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="flex items-center justify-between p-4 border border-[var(--border)] rounded-[10px] bg-[var(--bg)] hover:bg-[var(--panel-2)] transition-colors"
                     >
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">
+                        <h3 className="font-extrabold text-[var(--text)]">
                           {getStudentDisplayName(student)}
                         </h3>
-                        <p className="text-sm text-gray-600">{student.email}</p>
+                        <p className="text-sm text-[var(--muted)]">{student.email}</p>
                         {student.experience_level && (
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-[var(--muted)] mt-1">
                             Level: {student.experience_level}
                           </p>
                         )}
@@ -275,9 +275,9 @@ export default function TeacherStudentsPage() {
             ) : (
               pendingRequests.length === 0 ? (
                 <div className="text-center py-12">
-                  <UserCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Requests</h3>
-                  <p className="text-gray-600">
+                  <UserCheck className="w-16 h-16 text-[var(--muted)] mx-auto mb-4" />
+                  <h3 className="text-lg font-extrabold text-[var(--text)] mb-2">No Pending Requests</h3>
+                  <p className="text-[var(--muted)]">
                     You'll see join requests from students here
                   </p>
                 </div>
@@ -286,22 +286,22 @@ export default function TeacherStudentsPage() {
                   {pendingRequests.map((student) => (
                     <div
                       key={student.id}
-                      className="p-4 border border-gray-200 rounded-lg"
+                      className="p-4 border border-[var(--border)] rounded-[10px] bg-[var(--bg)]"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900">
+                          <h3 className="font-extrabold text-[var(--text)]">
                             {getStudentDisplayName(student)}
                           </h3>
-                          <p className="text-sm text-gray-600">{student.email}</p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-sm text-[var(--muted)]">{student.email}</p>
+                          <p className="text-xs text-[var(--muted)] mt-1">
                             Requested: {new Date(student.relationship!.created_at).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
                       {student.relationship?.student_message && (
-                        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded">
-                          <p className="text-sm text-blue-900">{student.relationship.student_message}</p>
+                        <div className="mb-3 p-3 bg-[rgba(var(--primary-rgb),0.1)] border border-[var(--primary)] rounded-[10px]">
+                          <p className="text-sm text-[var(--text)]">{student.relationship.student_message}</p>
                         </div>
                       )}
                       <div className="flex gap-2">
@@ -333,11 +333,11 @@ export default function TeacherStudentsPage() {
 
       {/* Add Student Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800">Add Student to Your Class</h2>
-              <p className="text-sm text-gray-600 mt-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.80)', backdropFilter: 'blur(8px)' }}>
+          <div className="rounded-[14px] shadow-[var(--shadow)] max-w-2xl w-full max-h-[80vh] overflow-hidden border border-[var(--border)]" style={{ background: 'rgba(11, 18, 32, 0.95)', backdropFilter: 'blur(20px)' }}>
+            <div className="p-6 border-b border-[var(--border)]">
+              <h2 className="text-xl font-extrabold text-[var(--text)]">Add Student to Your Class</h2>
+              <p className="text-sm text-[var(--muted)] mt-1">
                 Select a student to add directly to your class
               </p>
             </div>
@@ -345,20 +345,20 @@ export default function TeacherStudentsPage() {
             <div className="p-6 overflow-y-auto max-h-96">
               {allStudents.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-600">No available students to add</p>
+                  <p className="text-[var(--muted)]">No available students to add</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {allStudents.map((student) => (
                     <div
                       key={student.id}
-                      className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                      className="flex items-center justify-between p-3 border border-[var(--border)] rounded-[10px] bg-[var(--panel)] hover:bg-[var(--panel-2)] transition-colors"
                     >
                       <div>
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-extrabold text-[var(--text)]">
                           {getStudentDisplayName(student)}
                         </p>
-                        <p className="text-sm text-gray-600">{student.email}</p>
+                        <p className="text-sm text-[var(--muted)]">{student.email}</p>
                       </div>
                       <Button
                         variant="primary"
@@ -373,7 +373,7 @@ export default function TeacherStudentsPage() {
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200">
+            <div className="p-6 border-t border-[var(--border)]">
               <Button
                 variant="secondary"
                 onClick={() => setShowAddModal(false)}

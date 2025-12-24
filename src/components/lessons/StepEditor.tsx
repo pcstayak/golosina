@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
 import { X, GripVertical, Plus } from 'lucide-react'
 import MediaInput from './MediaInput'
 import type { LessonStep } from '@/services/lessonService'
@@ -69,129 +71,134 @@ export default function StepEditor({
   }
 
   return (
-    <div
-      className={`border rounded-lg bg-white ${isDragging ? 'opacity-50' : ''}`}
-    >
+    <Card className={isDragging ? 'opacity-50' : ''}>
       <div
-        className="flex items-center gap-3 p-4 cursor-pointer bg-gray-50 rounded-t-lg"
+        className="flex items-center gap-3 px-3 py-3 cursor-pointer bg-panel-2 border-b border-border"
         draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onClick={(e) => {
-          // Don't toggle if dragging
           if (!isDragging) {
             setIsExpanded(!isExpanded)
           }
         }}
       >
-        <GripVertical className="w-5 h-5 text-gray-400 cursor-grab active:cursor-grabbing" />
-        <div className="flex-1">
-          <h3 className="font-semibold text-gray-800">
-            Step {stepNumber}: {step.title || 'Untitled Step'}
+        <GripVertical className="w-5 h-5 text-muted cursor-grab active:cursor-grabbing flex-shrink-0" />
+        <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary-2 text-primary-contrast text-sm font-black flex-shrink-0">
+          {stepNumber}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-black text-text text-[13.5px] truncate">
+            {step.title || 'Untitled Step'}
           </h3>
-          <p className="text-sm text-gray-500">
+          <p className="text-xs text-muted">
             {step.media.length} media item{step.media.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             type="button"
-            className="text-gray-500 hover:text-gray-700"
+            className="w-7 h-7 flex items-center justify-center text-muted hover:text-text transition-colors"
           >
             {isExpanded ? '−' : '+'}
           </button>
           {canRemove && (
-            <button
-              type="button"
+            <Button
+              variant="danger"
+              size="sm"
               onClick={(e) => {
                 e.stopPropagation()
                 onRemove()
               }}
-              className="p-1 text-red-600 hover:text-red-700"
               title="Remove step"
+              className="w-7 h-7 p-0 flex items-center justify-center"
             >
-              <X className="w-5 h-5" />
-            </button>
+              <X className="w-4 h-4" />
+            </Button>
           )}
         </div>
       </div>
 
       {isExpanded && (
-        <div className="p-4 space-y-3">
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
-              Step Title *
-            </label>
-            <input
-              type="text"
-              value={step.title}
-              onChange={(e) => handleFieldChange('title', e.target.value)}
-              placeholder="e.g., Breathing Exercise"
-              className="flex-1 px-3 py-2 border rounded-md"
-              required
-            />
-          </div>
+        <CardBody className="space-y-3.5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            <div className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wide font-extrabold text-muted mb-2">
+                  Step Title *
+                </label>
+                <input
+                  type="text"
+                  value={step.title}
+                  onChange={(e) => handleFieldChange('title', e.target.value)}
+                  placeholder="e.g., Breathing Exercise"
+                  className="w-full px-3 py-2.5 bg-panel border border-border rounded-[10px] text-[13.5px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors"
+                  required
+                />
+              </div>
 
-          <div className="flex items-start gap-4">
-            <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0 pt-2">
-              Description
-            </label>
-            <textarea
-              value={step.description || ''}
-              onChange={(e) => handleFieldChange('description', e.target.value)}
-              placeholder="Explain what the student should do in this step..."
-              className="flex-1 px-3 py-2 border rounded-md"
-              rows={3}
-            />
-          </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wide font-extrabold text-muted mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={step.description || ''}
+                  onChange={(e) => handleFieldChange('description', e.target.value)}
+                  placeholder="Explain what the student should do in this step..."
+                  className="w-full px-3 py-2.5 bg-panel border border-border rounded-[10px] text-[13.5px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors resize-none"
+                  rows={3}
+                />
+              </div>
+            </div>
 
-          {/* Tips - Bullet Point List */}
-          <div className="flex items-start gap-4">
-            <label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0 pt-2">
-              Tips
-            </label>
-            <div className="flex-1 space-y-2">
-              {(step.tips || []).map((tip, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <span className="text-gray-500">•</span>
-                  <input
-                    type="text"
-                    value={tip}
-                    onChange={(e) => {
-                      const newTips = [...(step.tips || [])];
-                      newTips[index] = e.target.value;
-                      handleFieldChange('tips', newTips);
-                    }}
-                    placeholder="Enter a tip..."
-                    className="flex-1 px-3 py-2 border rounded-md"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newTips = (step.tips || []).filter((_, i) => i !== index);
-                      handleFieldChange('tips', newTips.length > 0 ? newTips : undefined);
-                    }}
-                    className="p-1 text-red-600 hover:text-red-700"
-                    title="Remove tip"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+            <div>
+              <label className="block text-[11px] uppercase tracking-wide font-extrabold text-muted mb-2">
+                Tips
+              </label>
+              <div className="space-y-2">
+                {(step.tips || []).map((tip, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="text-muted text-sm flex-shrink-0">•</span>
+                    <input
+                      type="text"
+                      value={tip}
+                      onChange={(e) => {
+                        const newTips = [...(step.tips || [])];
+                        newTips[index] = e.target.value;
+                        handleFieldChange('tips', newTips);
+                      }}
+                      placeholder="Enter a tip..."
+                      className="flex-1 px-3 py-2.5 bg-panel border border-border rounded-[10px] text-[13.5px] text-text placeholder:text-faint focus:outline-none focus:border-primary transition-colors"
+                    />
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => {
+                        const newTips = (step.tips || []).filter((_, i) => i !== index);
+                        handleFieldChange('tips', newTips.length > 0 ? newTips : undefined);
+                      }}
+                      title="Remove tip"
+                      className="w-8 h-8 p-0 flex items-center justify-center flex-shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
 
-              <button
-                type="button"
-                onClick={() => {
-                  const newTips = [...(step.tips || []), ''];
-                  handleFieldChange('tips', newTips);
-                }}
-                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-              >
-                <Plus className="w-4 h-4" />
-                Add Tip
-              </button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    const newTips = [...(step.tips || []), ''];
+                    handleFieldChange('tips', newTips);
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Tip
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -202,8 +209,8 @@ export default function StepEditor({
               userId={userId}
             />
           </div>
-        </div>
+        </CardBody>
       )}
-    </div>
+    </Card>
   )
 }

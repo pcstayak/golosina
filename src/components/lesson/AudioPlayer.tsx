@@ -391,7 +391,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="audio-player border-l-4 border-blue-500 shadow-sm hover:shadow-md transition-shadow">
+    <div className="audio-player shadow-sm hover:shadow-md transition-shadow">
       {/* Video element (if videoUrl is provided) */}
       {videoUrl && audioUrl && (
         <div className="mb-4">
@@ -439,11 +439,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                 </div>
               ) : (
                 <div
-                  className={`text-sm font-medium text-gray-800 truncate flex items-center gap-1 ${
-                    onTitleUpdate ? 'cursor-pointer hover:text-blue-600 group' : ''
+                  className={`truncate flex items-center gap-1 ${
+                    onTitleUpdate ? 'cursor-pointer group' : ''
                   }`}
                   onClick={handleTitleClick}
                   title={onTitleUpdate ? 'Click to edit title' : ''}
+                  style={{ fontSize: '13.5px', fontWeight: 900, color: 'var(--text)' }}
                 >
                   <span className="truncate">{getDisplayTitle()}</span>
                   {onTitleUpdate && (
@@ -697,11 +698,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({
                   </div>
                 ) : (
                   <div
-                    className={`text-sm font-medium text-gray-800 truncate flex items-center gap-1 ${
-                      onTitleUpdate ? 'cursor-pointer hover:text-blue-600 group' : ''
+                    className={`truncate flex items-center gap-1 ${
+                      onTitleUpdate ? 'cursor-pointer group' : ''
                     }`}
                     onClick={handleTitleClick}
                     title={onTitleUpdate ? 'Click to edit title' : ''}
+                    style={{ fontSize: '13.5px', fontWeight: 900, color: 'var(--text)' }}
                   >
                     <span className="truncate">{getDisplayTitle()}</span>
                     {onTitleUpdate && (
